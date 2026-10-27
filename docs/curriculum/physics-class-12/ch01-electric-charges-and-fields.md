@@ -56,17 +56,17 @@ Everything after Coulomb's law is a different way of asking "what does a charge 
 
 | ID | Concept | § | What the student must apply | Common misconception | Game idea | Tier | Status |
 |---|---|---|---|---|---|---|---|
-| D1 | Properties of field lines (tangent = direction; density = strength; never cross; start on +, end on −; no closed loops) | 1.8 | Judge whether a drawn pattern is physically possible | Lines are physical paths; lines can cross where fields "meet" | *fix-the-broken*: find the invalid field-line diagram | concept | ⬜ |
-| D2 | Reading a field-line picture | 1.8 | From line density and direction, compare field strength and charge signs/magnitudes | More lines = more charge only in one diagram, not across diagrams | *predict-then-reveal*: infer charges from a pattern | application | ⬜ |
-| D3 | Motion of a charge vs field lines | 1.8 | Path of a released charge does not generally follow a line | A released charge always moves along the field line | *predict-then-reveal* | challenge | ⬜ |
+| D1 | Properties of field lines (tangent = direction; density = strength; never cross; start on +, end on −; no closed loops) | 1.8 | Judge whether a drawn pattern is physically possible | Lines are physical paths; lines can cross where fields "meet" | *fix-the-broken*: find the invalid field-line diagram | concept | ✅ `field-line-detective` L1 (Ex 1.7) |
+| D2 | Reading a field-line picture | 1.8 | From line density and direction, compare field strength and charge signs/magnitudes | More lines = more charge only in one diagram, not across diagrams | *predict-then-reveal*: infer charges from a pattern | application | ✅ `field-line-detective` L2 and L3 |
+| D3 | Motion of a charge vs field lines | 1.8 | Path of a released charge does not generally follow a line | A released charge always moves along the field line | *predict-then-reveal* | challenge | ✅ `field-line-detective` L4 |
 
 ## E. Electric flux (1.9)
 
 | ID | Concept | § | What the student must apply | Common misconception | Game idea | Tier | Status |
 |---|---|---|---|---|---|---|---|
-| E1 | Flux through a flat area, E·ΔS = EΔS cosθ | 1.9 | Compute flux for any orientation; zero when E ∥ surface | Flux is largest when E is parallel to the surface | *tune-to-target*: rotate a loop for a target flux | concept | ⬜ |
-| E2 | Outward normal convention and sign of flux | 1.9 | Sign of flux through each face of a closed surface | Sign depends on the field only | *numeric-puzzle*: net flux through a box in a uniform field (Ex 1.10, 1.11) | application | ⬜ |
-| E3 | Units and dimensions of E and flux | 1.9 | Check dimensional consistency | – | *match-and-sort*: units to quantities | concept | ⬜ |
+| E1 | Flux through a flat area, E·ΔS = EΔS cosθ | 1.9 | Compute flux for any orientation; zero when E ∥ surface | Flux is largest when E is parallel to the surface | *tune-to-target*: rotate a loop for a target flux | concept | ✅ `flux-gate` L1 and L3 (Ex 1.14) |
+| E2 | Outward normal convention and sign of flux | 1.9 | Sign of flux through each face of a closed surface | Sign depends on the field only | *numeric-puzzle*: net flux through a box in a uniform field (Ex 1.10, 1.11) | application | ✅ `flux-gate` L2 and L4 (Ex 1.15, Example 1.10) |
+| E3 | Units and dimensions of E and flux | 1.9 | Check dimensional consistency | – | *match-and-sort*: units to quantities | concept | 🟡 `flux-gate` (N m²/C used throughout; no unit-sorting task) |
 
 ## F. Electric dipole (1.10–1.11)
 

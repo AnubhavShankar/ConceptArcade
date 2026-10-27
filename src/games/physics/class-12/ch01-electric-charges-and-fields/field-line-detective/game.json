@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "field-line-detective",
+  "title": "The Field-Line Detective",
+  "summary": "Hunt for faults in field-line pictures, read charges from the lines and predict which released charges follow them.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": { "number": 1, "name": "Electric Charges and Fields" },
+  "ncertRef": "Section 1.8, Electric field lines",
+  "order": 1,
+  "concepts": ["Properties of field lines", "Reading a field-line picture", "Line density and field strength", "Path of a released charge"],
+  "learningOutcome": "The student can spot an impossible field-line diagram and say which rule it breaks, read signs and sizes from a picture, compare field strengths by line density, and say when a charge follows a line.",
+  "mechanic": "deduce-the-hidden",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Spot the fault",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: field lines are continuous, never cross, never close up and point from + to − (Ex 1.7). Find the fault and the rule.",
+      "hints": [
+        "Check each rule in turn: do two lines cross? Does a line stop in empty space? Is there a closed loop? Do all arrows run from + to −?",
+        "At a crossing the field would have two directions at one point, which is impossible.",
+        "Lines start on positive charges (or come from far away) and end on negative ones (or run off)."
+      ]
+    },
+    {
+      "title": "Read the picture",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: the arrows tell you the signs and the number of lines at each charge tells you its relative size.",
+      "hints": [
+        "Lines leave a positive charge and arrive on a negative one.",
+        "Count the lines that touch each charge: twice the lines means twice the charge.",
+        "When one of two opposite charges is larger, some of its lines have no partner and run off to infinity."
+      ]
+    },
+    {
+      "title": "Compare the strength",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: closely packed lines mean a strong field. Rank three points by how crowded the lines are.",
+      "hints": [
+        "The field is stronger where lines are closer together.",
+        "Near a charge the lines are crowded, far away they spread out.",
+        "Between two opposite charges the lines are packed along the axis."
+      ]
+    },
+    {
+      "title": "Does it follow the line?",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: a charge released from rest follows a field line only where the line is straight, because it has inertia.",
+      "hints": [
+        "A field line shows the direction of the force at each point, not the path of a moving charge.",
+        "Where a line curves, the charge keeps going in its old direction and swings off the line.",
+        "On the straight line through two charges, the lines are straight, so the charge stays on them."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Field lines are the paths of charges",
+    "Field lines can cross where two fields meet",
+    "A line can stop anywhere in space",
+    "More lines mean a bigger charge in every picture, not just within one picture"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

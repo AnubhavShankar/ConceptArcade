@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "flux-gate",
+  "title": "The Flux Gate",
+  "summary": "Turn a loop in a stream of field, mark the faces of a cube and find the net flux when the field grows.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 1,
+    "name": "Electric Charges and Fields"
+  },
+  "ncertRef": "Section 1.9, Electric flux",
+  "order": 1,
+  "concepts": [
+    "Flux through a flat area, E A cos θ",
+    "Outward normal and the sign of flux",
+    "Net flux through a closed surface",
+    "Flux in a field that is not uniform"
+  ],
+  "learningOutcome": "The student can find the flux through a flat area at any angle, give the sign of the flux through each face of a closed surface, and find the net flux in a uniform and a non-uniform field.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Tilt the loop",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the flux through a flat loop is Φ = E A cos θ (Ex 1.14). Turn the loop to reach a target flux.",
+      "hints": [
+        "Φ = E A cos θ, where θ is the angle between the field and the loop’s outward normal.",
+        "Facing the field (θ = 0) gives the most flux; edge-on (θ = 90°) gives none.",
+        "Beyond 90° the field enters through the outward side, so the flux is negative."
+      ]
+    },
+    {
+      "title": "Faces of a cube",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: outward normals give each face a sign, and the net flux through a closed surface in a uniform field is zero (Ex 1.15).",
+      "hints": [
+        "For each face, compare the field with the outward normal: along it means flux out (+), against it means flux in (−), square to it means zero.",
+        "Opposite faces have equal and opposite flux in a uniform field.",
+        "What enters a closed surface also leaves it, so the net is zero."
+      ]
+    },
+    {
+      "title": "Find the angle",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Harder: work backwards from a target flux to the angle, including a negative flux (Ex 1.14 turned round).",
+      "hints": [
+        "Rearrange: cos θ = Φ / (E A). Remember A is the side squared, in square metres.",
+        "A negative flux needs an angle between 90° and 180°.",
+        "Use the inverse cosine, and check the answer lies between 0° and 180°."
+      ]
+    },
+    {
+      "title": "Growing field",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: in a field that grows with x the near and far faces do not cancel, so the net flux is not zero (Example 1.10).",
+      "hints": [
+        "Only the two faces square to the field carry flux; the other four are parallel to it.",
+        "The far face is at 2a where E = α√(2a); the near face is at a where E = α√a. Each has area a².",
+        "Net flux = far (out) minus near (in): a² α (√(2a) − √a)."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Flux is largest when the field is parallel to the surface",
+    "The net flux through a cube in a uniform field depends on how it is turned",
+    "Flux has no sign",
+    "A field that is not uniform still gives zero net flux through any cube"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
