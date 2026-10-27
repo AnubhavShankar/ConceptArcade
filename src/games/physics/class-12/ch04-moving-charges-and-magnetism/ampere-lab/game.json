@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "ampere-lab",
+  "title": "The Ampère Lab",
+  "summary": "Use Ampère’s law for long wires, thick wires, a neutral point, a solenoid and a toroid.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 4,
+    "name": "Moving Charges and Magnetism"
+  },
+  "ncertRef": "Section 4.6, Ampere's circuital law",
+  "order": 1,
+  "concepts": [
+    "Field of a long straight wire",
+    "Field inside and outside a thick wire",
+    "Neutral point of two wires",
+    "Solenoid B = μ₀nI",
+    "Toroid"
+  ],
+  "learningOutcome": "The student can use Ampère’s law to find the field of long wires, inside and outside a current-carrying wire, a solenoid and a toroid, and locate the neutral point between two wires.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "A long wire",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: B = μ₀I/2πr with the field circling the wire by the right-hand grip rule (Ex 4.2, 4.3, 4.4).",
+      "hints": [
+        "B = μ₀I/2πr = 2 × 10⁻⁷ I/r with r in metres.",
+        "The field is at right angles to the line from the wire to the point.",
+        "Right-hand grip: thumb along the current, fingers show the way the field circles."
+      ]
+    },
+    {
+      "title": "Inside the wire",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: inside a wire carrying a uniform current only the enclosed part of the current counts (Example 4.7).",
+      "hints": [
+        "Outside, the Amperian circle encloses all of the current.",
+        "Inside, the enclosed current is I r²/a².",
+        "B grows in proportion to r inside, and falls as 1/r outside."
+      ]
+    },
+    {
+      "title": "The null point",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: superpose the fields of two wires and find where they cancel.",
+      "hints": [
+        "Slide the probe and watch the net field change sign.",
+        "At the neutral point the two fields are equal in size and opposite in direction.",
+        "The neutral point is nearer the wire with the smaller current."
+      ]
+    },
+    {
+      "title": "The solenoid",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: inside a long solenoid B = μ₀nI, with n the turns per unit length (Ex 4.8, Example 4.8).",
+      "hints": [
+        "Count the turns in all the layers, then divide by the length in metres.",
+        "B = μ₀nI, with μ₀ = 4π × 10⁻⁷ T m/A.",
+        "Give the field in mT."
+      ]
+    },
+    {
+      "title": "The toroid",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: a toroid is a solenoid bent into a ring, B = μ₀NI/2πr in the winding and zero in the hole (Section 4.7).",
+      "hints": [
+        "Use Ampère's law round a circle at the mean radius, which encloses N times the current.",
+        "B = μ₀NI/2πr.",
+        "A circle in the hole encloses no net current."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The field of a straight wire points along the wire",
+    "The field inside a current-carrying wire is zero everywhere",
+    "The field of a solenoid is strongest outside it",
+    "A toroid has a strong field in its hole"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
