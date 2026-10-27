@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "equipotential-explorer",
+  "title": "The Equipotential Explorer",
+  "summary": "Find points that share a potential, read the field from the potential between two probes and rank fields by band spacing.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 2,
+    "name": "Electrostatic Potential and Capacitance"
+  },
+  "ncertRef": "Section 2.6, Equipotential surfaces",
+  "order": 1,
+  "concepts": [
+    "Equipotential surfaces",
+    "The field is perpendicular to an equipotential",
+    "E = −dV/dr and E = ΔV/d",
+    "Field strength from the spacing of equipotentials"
+  ],
+  "learningOutcome": "The student can find points of equal potential, say how the field meets an equipotential surface, find a uniform field from a potential difference, and compare fields from equipotential spacing.",
+  "mechanic": "deduce-the-hidden",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Find the equipotential",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: an equipotential joins points of equal potential, and the field meets it at right angles (Ex 2.3).",
+      "hints": [
+        "The potential is kq/r summed over the charges. Points with the same total are on the same equipotential.",
+        "Halfway between two equal and opposite charges the potential is zero along a whole plane.",
+        "The field is perpendicular to the surface: otherwise moving along it would cost energy."
+      ]
+    },
+    {
+      "title": "Field from potential",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: in a uniform field E = ΔV/d, pointing towards lower potential.",
+      "hints": [
+        "ΔV is the difference of the two readings; d is their separation along the field, in metres.",
+        "E = ΔV / d.",
+        "The field points from the higher potential to the lower."
+      ]
+    },
+    {
+      "title": "Rank by crowding",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: E = −dV/dr, so closely spaced equipotentials mean a strong field.",
+      "hints": [
+        "Each colour step is an equipotential surface with a fixed potential difference to the next.",
+        "The closer the steps, the larger the change of V per metre.",
+        "Near a charge the bands crowd together."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The field points along an equipotential surface",
+    "The potential is zero only at the midpoint between opposite charges, not on a whole plane",
+    "The field points towards higher potential"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
