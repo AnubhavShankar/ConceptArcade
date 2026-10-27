@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { parseCurriculum, type Curriculum } from '../../src/core/curriculum';
 import { expectedDir, parseManifest, type GameManifest } from '../../src/core/manifest';
 
 export interface ValidationResult {
@@ -31,6 +32,9 @@ const FORBIDDEN_SVG: [RegExp, string][] = [
   [/href\s*=\s*["'](?!#)/i, 'external references in SVG are not allowed'],
 ];
 
+// A game must read ctx.level (directly, via destructuring, or via ctx.levelInfo) to vary by level.
+const LEVEL_USE = /\bctx\.level\b|\blevelInfo\b|=\s*ctx\s*;/;
+
 const IMPORT_RE =
   /(?:\bimport|\bexport)\s[^'"`;]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 
@@ -54,10 +58,32 @@ function findGameDirs(root: string): string[] {
   return [...dirs].sort();
 }
 
-export function validateGames(gamesRoot: string): ValidationResult {
+/** Read the curriculum files (chapters per subject and class). Invalid files are reported as errors. */
+function loadCurricula(root: string, errors: string[]): Map<string, Curriculum> {
+  const out = new Map<string, Curriculum>();
+  if (!fs.existsSync(root)) return out;
+  for (const f of walk(root).filter((x) => x.endsWith('.json'))) {
+    try {
+      const parsed = parseCurriculum(JSON.parse(fs.readFileSync(path.join(root, f), 'utf8')));
+      if (!parsed.ok) {
+        parsed.errors.forEach((e) => errors.push(`curriculum/${f}: ${e}`));
+        continue;
+      }
+      const key = `${parsed.curriculum.subject}|${parsed.curriculum.classLevel}`;
+      if (out.has(key)) errors.push(`curriculum/${f}: a second file for ${parsed.curriculum.subject} class ${parsed.curriculum.classLevel}`);
+      else out.set(key, parsed.curriculum);
+    } catch (e) {
+      errors.push(`curriculum/${f}: not valid JSON (${(e as Error).message})`);
+    }
+  }
+  return out;
+}
+
+export function validateGames(gamesRoot: string, curriculumRoot = path.join(gamesRoot, '..', 'curriculum')): ValidationResult {
   const errors: string[] = [];
   const games: ValidationResult['games'] = [];
   const ids = new Map<string, string>();
+  const curricula = loadCurricula(curriculumRoot, errors);
 
   if (!fs.existsSync(gamesRoot)) return { errors: [`${gamesRoot} does not exist`], games };
 
@@ -85,6 +111,13 @@ export function validateGames(gamesRoot: string): ValidationResult {
     if (manifest) {
       const want = expectedDir(manifest);
       if (dir !== want) err(`folder must be "${want}" to match game.json`);
+      // One canonical name per chapter: it comes from the curriculum file for that subject and class, if there is one.
+      const cur = curricula.get(`${manifest.subject}|${manifest.classLevel}`);
+      if (cur) {
+        const ch = cur.chapters.find((c) => c.number === manifest.chapter.number);
+        if (!ch) err(`chapter ${manifest.chapter.number} is not in the ${manifest.subject} class ${manifest.classLevel} curriculum (src/curriculum): add it there first`);
+        else if (ch.name !== manifest.chapter.name) err(`chapter name must be "${ch.name}" to match the curriculum`);
+      }
       const clash = ids.get(manifest.id);
       if (clash) err(`id "${manifest.id}" already used by ${clash}`);
       else ids.set(manifest.id, dir);
@@ -95,6 +128,11 @@ export function validateGames(gamesRoot: string): ValidationResult {
     if (!files.some((f) => f.endsWith('.test.ts'))) {
       err('needs at least one *.test.ts that checks the physics/maths (e.g. logic.test.ts)');
     }
+
+    // 3b. levels must actually be used by the game code
+    const sources = files.filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'));
+    const usesLevel = sources.some((f) => LEVEL_USE.test(fs.readFileSync(path.join(abs, f), 'utf8')));
+    if (manifest && manifest.levels.length > 1 && !usesLevel) err('no source file reads ctx.level: a game with several levels must behave differently per level (see game.json "levels")');
 
     // 4. file rules
     let total = 0;

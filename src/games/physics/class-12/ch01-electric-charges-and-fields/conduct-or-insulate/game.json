@@ -1,0 +1,66 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "conduct-or-insulate",
+  "title": "Fuel Station Inspector",
+  "summary": "Repair the discharge path from a charged worker to the Earth before they touch a fuel nozzle and strike a spark.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": { "number": 1, "name": "Electric Charges and Fields" },
+  "ncertRef": "Section 1.3, Conductors and Insulators",
+  "concepts": ["Conductors and insulators", "Charge leakage to ground", "Series and parallel paths", "Mobile charges"],
+  "learningOutcome": "After winning, the student can tell conductors from insulators, find the one break that stops a discharge path, choose between routes, and trade off resistance against cost.",
+  "mechanic": "build-the-setup",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Ground the worker",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: one lead from the worker to the Earth. Choose a material that lets the charge drain away.",
+      "hints": [
+        "A charge can only flow through a material that has charges free to move.",
+        "Metals are conductors. Glass, plastic, rubber, nylon, porcelain and dry wood are insulators.",
+        "An insulator holds the charge where it is, so the worker stays charged and sparks at the nozzle."
+      ]
+    },
+    {
+      "title": "Find the break",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the path has four parts in series, and one is an insulator. You may swap only one part, so find the one that breaks the path.",
+      "hints": [
+        "In a path of parts one after another, the charge has to pass through every part.",
+        "A single insulator anywhere stops the whole path, however good the other parts are.",
+        "Swapping a part that already conducts changes nothing. Find the insulator and replace that one."
+      ]
+    },
+    {
+      "title": "Two ways out",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: two parallel routes to the Earth, each with insulators. Charge only needs one complete route, and you may swap just one part.",
+      "hints": [
+        "Charge takes any route that is complete. You only need one to work.",
+        "Count the insulators on each route. Each one needs a swap.",
+        "With one swap you can only repair the route that has a single insulator."
+      ]
+    },
+    {
+      "title": "Dissipate it",
+      "tier": "challenge",
+      "kind": "complexity",
+      "adds": "Harder: parts have a resistance and a cost. A high-resistance path drains too slowly and still sparks. Stay under both limits.",
+      "hints": [
+        "Resistances in series add up. Add the three you choose.",
+        "Semiconductors and salt-water gel conduct, but with more resistance than a metal. Insulators do not conduct at all.",
+        "You need the total resistance at or below the limit and the total cost within the cap. Try the cheapest option that still drains in time."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A metal object cannot hold a charge (it can, if it is insulated from the ground)",
+    "One good conductor in a chain is enough (every part must conduct)",
+    "Semiconductors and insulators behave the same"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

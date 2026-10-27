@@ -1,0 +1,78 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "electron-ledger",
+  "title": "Electron Ledger: The Static Workshop",
+  "summary": "Run a static-charge workshop: pump and rub bodies to fill customer orders, then work out which materials give electrons away.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 1,
+    "name": "Electric Charges and Fields"
+  },
+  "ncertRef": "Section 1.2, Electric Charge",
+  "order": 2,
+  "concepts": [
+    "Charging by electron transfer",
+    "Equal and opposite charges",
+    "Charge from electron count, q = N e",
+    "Which material gives up electrons"
+  ],
+  "learningOutcome": "The student can predict the sign each body gets when two are rubbed, find the electrons needed for a given charge, and order materials by how easily they lose electrons.",
+  "mechanic": "deduce-the-hidden",
+  "estimatedMinutes": 10,
+  "levels": [
+    {
+      "title": "Pump it",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: only electrons move. Work out the charge needed to attract or repel a body, then pump electrons on or off.",
+      "hints": [
+        "First decide what charge the other body has: gaining electrons makes a body negative, losing them makes it positive.",
+        "Like charges repel and unlike charges attract, so that tells you the charge your sphere needs.",
+        "A negative body has gained electrons and a positive one has lost them. Protons never move."
+      ]
+    },
+    {
+      "title": "Rub two bodies",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: rubbing moves electrons from one body to the other, so both are charged, with opposite signs.",
+      "hints": [
+        "Rub different pairs and watch what each one becomes.",
+        "Whatever one body loses, the other gains.",
+        "A material can be positive with one partner and negative with another."
+      ]
+    },
+    {
+      "title": "Count the electrons",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: charge comes from a count of electrons, q = N e. Convert the order to a stroke count.",
+      "hints": [
+        "Each electron carries 1.6 × 10⁻¹⁹ C.",
+        "N = q / e, and the strokes are N divided by the electrons per stroke.",
+        "Both bodies end with the same size of charge, with opposite signs."
+      ]
+    },
+    {
+      "title": "Who gives way?",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: materials have an order. Test pairs, then chain the results to rank all four pads.",
+      "hints": [
+        "Each rub tells you which pad gives electrons to which.",
+        "If A gives to B and B gives to C, then A gives to C. No rub needed.",
+        "The pad that never gains electrons from the others goes first."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Protons are what move between rubbed solids",
+    "Rubbing creates new charge",
+    "A body that loses electrons stays neutral"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

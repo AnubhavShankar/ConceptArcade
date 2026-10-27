@@ -1,4 +1,6 @@
-import { DIFFICULTIES, parseManifest, type GameManifest } from './manifest';
+import { parseCurriculum, type Curriculum } from './curriculum';
+import { compareGames } from './browse';
+import { parseManifest, type GameManifest } from './manifest';
 import type { GameModule } from './types';
 
 // Games register themselves just by existing: a folder with game.json + index.ts.
@@ -8,6 +10,18 @@ const manifestFiles = import.meta.glob<unknown>('/src/games/**/game.json', {
   import: 'default',
 });
 const loaders = import.meta.glob<{ default: GameModule }>('/src/games/**/index.ts');
+
+// Curriculum files (chapters per subject and class) are discovered the same way: add a file, nothing else.
+const curriculumFiles = import.meta.glob<unknown>('/src/curriculum/**/*.json', { eager: true, import: 'default' });
+
+export const curricula: Curriculum[] = Object.entries(curriculumFiles).flatMap(([path, raw]) => {
+  const parsed = parseCurriculum(raw);
+  if (!parsed.ok) {
+    console.error(`Skipping invalid curriculum file ${path}`, parsed.errors);
+    return [];
+  }
+  return [parsed.curriculum];
+});
 
 export interface GameEntry {
   manifest: GameManifest;
@@ -27,17 +41,8 @@ function build(): GameEntry[] {
     }
     entries.push({ manifest: parsed.manifest, load: async () => (await loader()).default });
   }
-  return entries.sort((a, b) => {
-    const x = a.manifest;
-    const y = b.manifest;
-    return (
-      x.subject.localeCompare(y.subject) ||
-      x.classLevel - y.classLevel ||
-      x.chapter.number - y.chapter.number ||
-      DIFFICULTIES.indexOf(x.difficulty) - DIFFICULTIES.indexOf(y.difficulty) ||
-      x.title.localeCompare(y.title)
-    );
-  });
+  // Textbook order: subject, class, chapter, section (see compareGames).
+  return entries.sort((a, b) => compareGames(a.manifest, b.manifest));
 }
 
 export const catalog: GameEntry[] = build();

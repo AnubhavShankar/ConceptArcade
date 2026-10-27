@@ -21,6 +21,7 @@ Open a PR with one new folder. See **[CONTRIBUTING.md](CONTRIBUTING.md)**. `npm 
 ```
 src/core/        shell: home page, game page, hints, stars, progress, helpers
 src/games/       one folder per game, auto-discovered (no registry to edit)
+src/curriculum/  one JSON file per subject and class listing its chapters (drives "coming soon")
 scripts/         new-game scaffolder, validator (runs in CI), schema generator
 tests/           tests for the framework itself
 ```

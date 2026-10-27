@@ -1,0 +1,66 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "net-charge",
+  "title": "Coulomb's Cabinet II: Algebra of Charge",
+  "summary": "Route an exact charge into a vault by touching identical conductors, across mC, µC, nC and pC, without overloading the circuit.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": { "number": 1, "name": "Electric Charges and Fields" },
+  "ncertRef": "Section 1.4.1, Additivity of charges",
+  "concepts": ["Additivity of charge", "Charge is a scalar", "Algebraic sum", "Unit prefixes"],
+  "learningOutcome": "After winning, the student can add charges algebraically, deduce a hidden internal charge from a net charge, share charge between identical conductors, and convert between mC, µC, nC and pC.",
+  "mechanic": "build-the-setup",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "The Desync Circuit",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: two terminals with mismatched charges, a blank sphere and a vault. Touch bodies together to route an exact charge into the vault.",
+      "hints": [
+        "When two identical conductors touch, their combined charge is shared equally.",
+        "Add the two charges with their signs first, then halve.",
+        "A blank sphere is a handy way to split a charge in half."
+      ]
+    },
+    {
+      "title": "Prefix locks",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the readouts mix mC and µC, and the vault door asks in a different prefix. A factor-of-1000 slip overloads the circuit.",
+      "hints": [
+        "Convert everything to one unit before you compare: 1 mC = 1000 µC and 1 µC = 1000 nC.",
+        "The door's number is only comparable to the vault's reading once both are in the same prefix.",
+        "If an overload says you are off by a power of ten, a prefix was converted the wrong way."
+      ]
+    },
+    {
+      "title": "The sealed capsule",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: a cell hides a sealed capsule and the door only says \"match it\". Deduce its charge from the cell's net charge minus the listed parts.",
+      "hints": [
+        "A cell's net charge is the algebraic sum of ALL its internal charges, the sealed capsule included.",
+        "Measure the cell with the electrometer, then subtract the listed charges from its net charge. Convert them to one prefix first.",
+        "Once you know the capsule's charge, plan the touches like in the earlier levels. A wrong seal tells you nothing."
+      ]
+    },
+    {
+      "title": "Down to picocoulombs",
+      "tier": "challenge",
+      "kind": "complexity",
+      "adds": "Harder: fine-scale charges and a picocoulomb target that needs a long chain of touches.",
+      "hints": [
+        "1 nC = 1000 pC.",
+        "Each touch with a blank sphere halves a charge: count how many halvings the target needs.",
+        "Plan the chain first so you never waste a touch."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Adding label numbers without converting prefixes",
+    "Adding sizes and ignoring signs",
+    "Thinking touching moves all the charge to the other body"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}
