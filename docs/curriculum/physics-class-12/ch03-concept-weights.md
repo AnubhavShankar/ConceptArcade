@@ -14,14 +14,14 @@ Class 12 Physics, Chapter 3: Current Electricity (NCERT 2026-27 reprint, read lo
 
 | Concepts | Total weight | Covered by games |
 |---|---|---|
-| 13 | 104 | 59% |
+| 13 | 104 | 73% |
 
 ## Every concept, heaviest first
 
 | Rank | ID | Concept | § | Exercises | Examples | Tier | Score | Share | Games |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | Q8 | Temperature dependence, R = R₀(1 + α ΔT); thermistors, alloys | 3.8 | 3.3, 3.5, 3.6 | 3.3, 3.4 | A | 16 | 15.4% | ✅ |
-| 2 | Q10 | EMF, internal resistance, terminal voltage V = ε − Ir; charging a cell | 3.10 | 3.1, 3.2, 3.8 | – | A | 12 | 11.5% | ⬜ |
+| 2 | Q10 | EMF, internal resistance, terminal voltage V = ε − Ir; charging a cell | 3.10 | 3.1, 3.2, 3.8 | – | A | 12 | 11.5% | ✅ |
 | 3 | Q12 | Kirchhoff's junction and loop rules | 3.12 | 3.7 | 3.5, 3.6 | A | 12 | 11.5% | ⬜ |
 | 4 | Q2 | Drift velocity and current: I = n e A v_d; drift speed is tiny, the signal is fast | 3.5 | 3.9 | 3.1, 3.2 | A | 12 | 11.5% | ✅ |
 | 5 | Q9 | Electrical energy and power: P = VI = I²R = V²/R; the kilowatt-hour | 3.9 | 3.6 | 3.3 | A | 10 | 9.6% | ✅ |
@@ -31,7 +31,7 @@ Class 12 Physics, Chapter 3: Current Electricity (NCERT 2026-27 reprint, read lo
 | 9 | Q3 | Ohm's law, V = IR; ohmic and non-ohmic conductors | 3.4 | – | – | A | 6 | 5.8% | ✅ |
 | 10 | Q5 | Mobility and the origin of resistivity, ρ = m/(ne²τ) | 3.5 | – | 3.2 | B | 5 | 4.8% | ✅ |
 | 11 | Q1 | Electric current as the flow of charge, I = Q/t; the direction convention | 3.2 | – | – | B | 3 | 2.9% | ✅ |
-| 12 | Q11 | Cells in series and in parallel | 3.11 | – | – | B | 3 | 2.9% | ⬜ |
+| 12 | Q11 | Cells in series and in parallel | 3.11 | – | – | B | 3 | 2.9% | ✅ |
 | 13 | Q7 | Colour code of carbon resistors; resistivity of various materials | 3.7 | – | – | C | 1 | 1.0% | ✅ |
 
 ## Build waves (textbook order)
@@ -41,7 +41,7 @@ Class 12 Physics, Chapter 3: Current Electricity (NCERT 2026-27 reprint, read lo
 | 1 (done) | Drift lab (§3.2 to 3.5): current as flow, drift speed from I = nAev, why the signal is fast | Q1, Q2, Q5 | 20 (19.2%) | Ex 3.9; Examples 3.1, 3.2 |
 | 2 (done) | Resistance bench (§3.4, 3.7): Ohm's law, R = ρl/A, the colour code | Q3, Q4, Q7 | 15 (14.4%) | Ex 3.4 |
 | 3 (done) | Heating wire (§3.8 to 3.9): temperature dependence and power | Q8, Q9 | 26 (25.0%) | Ex 3.3, 3.5, 3.6; Examples 3.3, 3.4 |
-| 4 | Cell bench (§3.10 to 3.11): emf, internal resistance, terminal voltage, charging, cells in series and parallel | Q10, Q11 | 15 (14.4%) | Ex 3.1, 3.2, 3.8 |
+| 4 (done) | Cell bench (§3.10 to 3.11): emf, internal resistance, terminal voltage, charging, cells in series and parallel | Q10, Q11 | 15 (14.4%) | Ex 3.1, 3.2, 3.8 |
 | 5 | Circuit solver (§3.12): series/parallel networks and Kirchhoff's rules | Q6, Q12 | 20 (19.2%) | Ex 3.7; Examples 3.5, 3.6 |
 | 6 | Bridge balance (§3.13): the Wheatstone bridge | Q13 | 8 (7.7%) | Example 3.7 |
 
