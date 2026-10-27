@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "circuit-solver",
+  "title": "The Circuit Solver",
+  "summary": "Reduce resistor networks, balance junction currents and solve loops with Kirchhoff's rules.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 3,
+    "name": "Current Electricity"
+  },
+  "ncertRef": "Section 3.12, Kirchhoff's rules",
+  "order": 1,
+  "concepts": [
+    "Resistors in series and parallel",
+    "Kirchhoff's junction rule",
+    "Kirchhoff's loop rule",
+    "Two-loop networks",
+    "Symmetry in a network"
+  ],
+  "learningOutcome": "The student can reduce series-parallel networks, apply the junction and loop rules, solve a two-loop network for currents and directions, and use symmetry on a cube of resistors.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "Reduce the network",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: series add, parallel add reciprocals, and work from the inside out (Example 3.5).",
+      "hints": [
+        "Combine the group that is purely series or purely parallel first.",
+        "Series: resistances add. Parallel: reciprocals add.",
+        "Then decide whether R₁ carries the whole current or has the whole battery across it."
+      ]
+    },
+    {
+      "title": "The junction rule",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: the currents into a junction equal the currents out of it (Section 3.12).",
+      "hints": [
+        "Count the current going in as positive and going out as negative.",
+        "The four currents must sum to zero.",
+        "The sign of what is missing tells you the direction."
+      ]
+    },
+    {
+      "title": "The loop rule",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: emfs and voltage drops add to zero round a loop, with signs from the direction (Section 3.12).",
+      "hints": [
+        "Go round the loop: emfs that help the current are positive, those that oppose are negative.",
+        "The total of IR drops equals the net emf.",
+        "The larger emf decides which way the current flows."
+      ]
+    },
+    {
+      "title": "A two-loop network",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: one junction equation and two loop equations give three unknown currents (Ex 3.7, Example 3.6).",
+      "hints": [
+        "The middle current is the sum of the two outer currents.",
+        "Write the loop rule for each outer loop, using the shared resistor.",
+        "A negative answer means the current really flows the other way."
+      ]
+    },
+    {
+      "title": "The cube of resistors",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Apply it: use symmetry to find R_eq of a cube of 12 resistors across opposite corners (Example 3.5).",
+      "hints": [
+        "The three edges at the positive corner carry equal currents by symmetry.",
+        "At the next corners each current splits equally in two.",
+        "Apply the loop rule along one path from the positive to the negative corner."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Current is used up as it passes through a resistor",
+    "Resistors in parallel add their resistances",
+    "The current in a branch must flow from the positive terminal",
+    "A negative current in a Kirchhoff equation means a mistake"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
