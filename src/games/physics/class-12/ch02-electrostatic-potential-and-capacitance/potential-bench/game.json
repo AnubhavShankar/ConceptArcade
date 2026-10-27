@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "potential-bench",
+  "title": "The Potential Bench",
+  "summary": "Map potential around charges, find where it is zero, add potentials at a centre and read a dipole’s potential.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 2,
+    "name": "Electrostatic Potential and Capacitance"
+  },
+  "ncertRef": "Section 2.3, Potential due to a point charge",
+  "order": 1,
+  "concepts": [
+    "Potential of a point charge, V = kq/r",
+    "Work to bring a charge from infinity",
+    "Potential of a system of charges",
+    "Points where the potential is zero",
+    "Potential of a dipole"
+  ],
+  "learningOutcome": "The student can find the potential of one charge or several, the work to bring a charge in from infinity, where the potential is zero, and the potential of a dipole.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Probe the potential",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: V = kq/r is a scalar with the sign of the charge, and bringing a charge in from infinity takes work qV.",
+      "hints": [
+        "V = kq/r, with q in coulombs and r in metres. It takes the sign of q.",
+        "The potential at infinity is zero. Work to bring q₀ in from infinity is W = q₀V.",
+        "A negative potential gives negative work: the field helps."
+      ]
+    },
+    {
+      "title": "Add them up",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: potentials add as plain numbers, so equal charges never cancel even where the field is zero (Ex 2.2).",
+      "hints": [
+        "Potential is a scalar: add kq/r for every charge, with signs.",
+        "All the charges are the same distance from the centre, so V = n kq/R.",
+        "The field is a vector and the individual fields cancel at the centre; the potentials do not."
+      ]
+    },
+    {
+      "title": "Where is it zero?",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: with opposite charges the potential is zero at two points on the line, found from the ratio of the charges (Ex 2.1).",
+      "hints": [
+        "Set kq₁/r₁ + kq₂/r₂ = 0: the distances are in the ratio of the charge magnitudes.",
+        "One zero lies between the charges, one lies outside, on the side of the smaller charge.",
+        "Slide the probe: the meter changes sign as you cross a zero."
+      ]
+    },
+    {
+      "title": "The dipole’s potential",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: a dipole’s potential is kp cos θ / r², and it is zero on the whole equatorial plane.",
+      "hints": [
+        "V = k p cos θ / r², with p = q × 2a and θ measured from the axis.",
+        "On the equatorial plane θ = 90° and cos θ = 0, so V = 0.",
+        "Past 90° (on the negative side) the potential is negative."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Potential is a vector",
+    "Where the field is zero the potential is zero",
+    "The potential midway between opposite charges is the only zero",
+    "The potential of a dipole falls as 1/r"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
