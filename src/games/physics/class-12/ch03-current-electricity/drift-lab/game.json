@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "drift-lab",
+  "title": "The Drift Lab",
+  "summary": "Count electrons through a gate, find the slow drift speed in a copper wire and why a lamp still lights at once.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 3,
+    "name": "Current Electricity"
+  },
+  "ncertRef": "Section 3.5, Drift of electrons and the origin of resistivity",
+  "order": 1,
+  "concepts": [
+    "Current as charge per second",
+    "Direction of conventional current",
+    "Drift speed, I = nAev_d",
+    "Speed of the signal versus drift",
+    "Mobility"
+  ],
+  "learningOutcome": "The student can find a current from the charge that passes, find the drift speed from I = nAev_d, explain why the signal is fast while the drift is slow, and use mobility.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Count the charge",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: current is charge per second, I = Q/t, and the conventional direction is opposite to the electrons (Section 3.2).",
+      "hints": [
+        "The charge that passed is the number of electrons times 1.6 × 10⁻¹⁹ C.",
+        "Current is that charge divided by the time in seconds.",
+        "Electrons are negative, so the conventional current points the other way."
+      ]
+    },
+    {
+      "title": "A slow crawl",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: I = nAev_d, so the drift speed in a copper wire is only a fraction of a millimetre per second (Ex 3.9, Example 3.1).",
+      "hints": [
+        "Rearrange I = n e A v_d for the drift speed. Convert the area to m².",
+        "The time to drift the length is the length divided by the drift speed.",
+        "Convert seconds to hours at the end."
+      ]
+    },
+    {
+      "title": "Thick and thin",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: for a fixed current the drift speed is inversely proportional to the area, and the signal travels at the speed of light (Example 3.2).",
+      "hints": [
+        "For a fixed current, v_d is inversely proportional to the cross-sectional area.",
+        "The electric field that starts every electron drifting travels at 3 × 10⁸ m/s.",
+        "Signal time is length divided by the speed of light. Give it in nanoseconds."
+      ]
+    },
+    {
+      "title": "Mobility",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: v_d = μE with E = V/L, then I = nAev_d (Section 3.5.1).",
+      "hints": [
+        "The field in the wire is the voltage divided by its length.",
+        "Drift speed is the mobility times the field. Take care with the 10⁻³ in μ.",
+        "Then the current is n e A v_d, with the area in m² and the speed in m/s."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Electrons race along a wire at nearly the speed of light",
+    "A lamp lights at once because electrons travel instantly from the switch",
+    "Conventional current flows the same way as the electrons",
+    "A thinner wire has a slower drift speed"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
