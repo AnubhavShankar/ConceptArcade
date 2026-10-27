@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "resistance-bench",
+  "title": "The Resistance Bench",
+  "summary": "Test components against Ohm's law, find resistivity, stretch a wire and set a resistor's colour bands.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 3,
+    "name": "Current Electricity"
+  },
+  "ncertRef": "Section 3.4, Ohm's law",
+  "order": 1,
+  "concepts": [
+    "Ohm's law, V = IR",
+    "Ohmic and non-ohmic components",
+    "Resistivity, R = ρl/A",
+    "Stretching a wire",
+    "Colour code of resistors"
+  ],
+  "learningOutcome": "The student can find R from V and I, tell ohmic from non-ohmic graphs, use R = ρl/A for new dimensions, handle a stretched wire, and read the colour code.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Find the resistance",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: apply voltages, read the current, and find R = V/I (Section 3.4).",
+      "hints": [
+        "Resistance is the ratio of the voltage to the current.",
+        "Try more than one voltage. For an ohmic resistor the ratio does not change.",
+        "The points on the V–I graph lie on a straight line through the origin."
+      ]
+    },
+    {
+      "title": "Ohmic or not?",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: only a component whose V–I graph is a straight line through the origin obeys Ohm's law (Section 3.6).",
+      "hints": [
+        "Sweep every component and watch the curve it draws.",
+        "Ohm's law means the current is proportional to the voltage.",
+        "A curved graph means V/I changes with the voltage."
+      ]
+    },
+    {
+      "title": "Wire dimensions",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: R = ρl/A, with ρ of the material and R scaling with length and with 1/radius² (Ex 3.4).",
+      "hints": [
+        "Resistivity ρ = RA/l. Convert the area into m² before you divide.",
+        "R is proportional to the length.",
+        "The area goes as the radius squared, and R is inversely proportional to the area."
+      ]
+    },
+    {
+      "title": "Drawing a wire",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: stretching at constant volume changes both length and area, so R scales as k² while ρ is unchanged.",
+      "hints": [
+        "The volume of the wire is length times area, and it does not change.",
+        "If the length is k times larger, the area is 1/k of its old value.",
+        "The resistivity belongs to the material, not to the wire's shape."
+      ]
+    },
+    {
+      "title": "The colour code",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: set the three bands of a carbon resistor to a given value (Section 3.7).",
+      "hints": [
+        "The first two bands are digits and the third is the power of ten.",
+        "Black is 0, brown 1, red 2, orange 3, yellow 4, green 5, blue 6, violet 7, grey 8, white 9.",
+        "For 4.7 kΩ: yellow, violet, red, since 47 × 10² = 4700."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Resistance depends only on the material",
+    "A thinner wire has a lower resistance",
+    "Every conductor obeys Ohm's law",
+    "Stretching a wire changes the resistivity of the metal"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
