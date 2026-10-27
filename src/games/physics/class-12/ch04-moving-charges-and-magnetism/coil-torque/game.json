@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "coil-torque",
+  "title": "The Coil Torque Bench",
+  "summary": "Find the torque on a coil, its magnetic moment, the energy of a dipole and the far field of a loop.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 4,
+    "name": "Moving Charges and Magnetism"
+  },
+  "ncertRef": "Section 4.9, Torque on current loop, magnetic dipole",
+  "order": 1,
+  "concepts": [
+    "Torque on a current loop",
+    "Magnetic moment m = NIA",
+    "Swing and angular speed",
+    "Dipole energy and equilibrium",
+    "Far field of a loop"
+  ],
+  "learningOutcome": "The student can find the torque on a coil and its magnetic moment, use energy to find how fast a coil swings, say which orientations are stable, and find the far field of a loop.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "Torque on a coil",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: τ = NIAB sin θ for a coil whose normal makes an angle θ with the field (Ex 4.9).",
+      "hints": [
+        "The area of a square coil is the side squared, in m².",
+        "τ = N I A B sin θ, with θ the angle between the normal and the field.",
+        "Check the units: N m."
+      ]
+    },
+    {
+      "title": "Moment and shape",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: the moment m = NIA, and the torque does not depend on the shape of the coil (Ex 4.13).",
+      "hints": [
+        "The magnetic moment is N I A, with A in m².",
+        "The torque is mB sin θ.",
+        "Only the area counts, not the outline of the coil."
+      ]
+    },
+    {
+      "title": "Swing into line",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: the torque does work as the coil turns, giving its kinetic energy of rotation (Example 4.10).",
+      "hints": [
+        "At release the moment is at 90° to the field, so the torque is mB.",
+        "The work done turning through 90° is mB.",
+        "Set ½Jω² = mB to find the angular speed."
+      ]
+    },
+    {
+      "title": "Energy of a dipole",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: U = −mB cos θ, with stable equilibrium at θ = 0 and unstable at θ = 180° (Example 4.11).",
+      "hints": [
+        "U = −mB cos θ. The work is the change in U from θ = 0.",
+        "Equilibrium needs zero torque: θ = 0 or 180°.",
+        "At θ = 0 the energy is a minimum (stable); at 180° a maximum (unstable)."
+      ]
+    },
+    {
+      "title": "Far away",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Apply it: a small loop is a magnetic dipole, with B on the axis twice B on the equator at the same distance (Section 4.9).",
+      "hints": [
+        "First find the magnetic moment m = N I A.",
+        "On the axis B = μ₀m/2πx³.",
+        "On the equatorial line B is half of that."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The torque on a coil depends on the shape of its outline",
+    "The torque is greatest when the normal is along the field",
+    "A dipole at 180° to the field is in stable equilibrium",
+    "The magnetic moment of a loop does not depend on the number of turns"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
