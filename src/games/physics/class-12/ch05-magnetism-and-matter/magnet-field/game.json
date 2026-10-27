@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "magnet-field",
+  "title": "The Magnet Field Probe",
+  "summary": "Probe the axial and equatorial field of a short bar magnet and find where it cancels an outside field.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 5,
+    "name": "Magnetism and Matter"
+  },
+  "ncertRef": "Section 5.2.4, The electrostatic analog",
+  "order": 1,
+  "concepts": [
+    "Axial field of a short magnet",
+    "Equatorial field of a short magnet",
+    "Inverse cube law",
+    "Null point against an external field"
+  ],
+  "learningOutcome": "The student can find the axial and equatorial fields of a short bar magnet with their directions, use the inverse-cube dependence on distance, and find where the field cancels an external field.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Axis and equator",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: B(axis) = (μ₀/4π) 2m/r³ along m, and B(equator) = (μ₀/4π) m/r³ against m (Ex 5.7).",
+      "hints": [
+        "μ₀/4π = 10⁻⁷ T m/A. Change r to metres.",
+        "On the axis the field is twice the equatorial value at the same distance.",
+        "The axial field points along m; the equatorial field points opposite to m."
+      ]
+    },
+    {
+      "title": "The null point",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: find where the field of the magnet on its axis cancels an opposing external field.",
+      "hints": [
+        "Slide the probe and watch the net field change sign.",
+        "At the null point (μ₀/4π) 2m/r³ equals the external field.",
+        "Rearrange for r and take a cube root."
+      ]
+    },
+    {
+      "title": "Scale it",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: use the 1/r³ law and the factor of 2 to predict one field from another without knowing m (Section 5.2.4).",
+      "hints": [
+        "The equatorial field at r is half the axial field at the same r.",
+        "Both fields fall as 1/r³.",
+        "Divide by k³ when the distance is multiplied by k."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The field of a bar magnet falls as 1/r², like a point charge",
+    "The axial and equatorial fields point the same way",
+    "The equatorial field is stronger than the axial field"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
