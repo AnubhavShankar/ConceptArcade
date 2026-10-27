@@ -21,12 +21,12 @@ This file does that for Class 12 Physics, Chapter 1 (Electric Charges and Fields
 | C. Electric field (1.7) | 6 | 38 | 14.5% | 63% |
 | D. Field lines (1.8) | 3 | 12 | 4.6% | 0% |
 | E. Flux (1.9) | 3 | 21 | 8.0% | 93% |
-| F. Dipole (1.10 to 1.11) | 5 | 30 | 11.5% | 0% |
+| F. Dipole (1.10 to 1.11) | 5 | 30 | 11.5% | 100% |
 | G. Continuous charge (1.12) | 1 | 5 | 1.9% | 0% |
 | H. Gauss's law (1.13 to 1.14) | 7 | 60 | 22.9% | 0% |
-| **Chapter 1** | **42** | **262** | **100%** | **44%** |
+| **Chapter 1** | **42** | **262** | **100%** | **56%** |
 
-Only about **44%** of the exam-weighted content is covered by the seven built games.
+Only about **56%** of the exam-weighted content is covered by the seven built games.
 
 ## Every concept, heaviest first
 
@@ -43,9 +43,9 @@ Only about **44%** of the exam-weighted content is covered by the seven built ga
 | 9 | C4 | Charged particle in a uniform field (kinematics) | 1.7.2 | – | 1.7 | A | 8 | 3.1% | ⬜ |
 | 10 | D1 | Properties of field lines | 1.8 | 1.7 | – | A | 8 | 3.1% | ⬜ |
 | 11 | E1 | Flux through a flat area, EΔS cosθ | 1.9 | 1.14 | – | A | 8 | 3.1% | ✅ |
-| 12 | F1 | Dipole moment p = 2qa; total charge of a dipole | 1.10 | 1.9 | – | A | 8 | 3.1% | ⬜ |
-| 13 | F2 | Dipole field on the axis and the equatorial plane | 1.10.1 | – | 1.9 | A | 8 | 3.1% | ⬜ |
-| 14 | F4 | Torque on a dipole, τ = pE sinθ; zero net force | 1.11 | 1.10 | – | A | 8 | 3.1% | ⬜ |
+| 12 | F1 | Dipole moment p = 2qa; total charge of a dipole | 1.10 | 1.9 | – | A | 8 | 3.1% | ✅ |
+| 13 | F2 | Dipole field on the axis and the equatorial plane | 1.10.1 | – | 1.9 | A | 8 | 3.1% | ✅ |
+| 14 | F4 | Torque on a dipole, τ = pE sinθ; zero net force | 1.11 | 1.10 | – | A | 8 | 3.1% | ✅ |
 | 15 | H4 | Infinite line charge, E = λ/2πε₀r | 1.14.1 | 1.22 | – | A | 8 | 3.1% | ⬜ |
 | 16 | H5 | Infinite plane sheet and parallel plates | 1.14.2 | 1.23 | – | A | 8 | 3.1% | ⬜ |
 | 17 | A2 | Charging is electron transfer; both bodies charged, opposite signs | 1.2 | 1.5, 1.11 | – | B | 7 | 2.7% | ✅ |
@@ -67,8 +67,8 @@ Only about **44%** of the exam-weighted content is covered by the seven built ga
 | 33 | A7 | Size of the coulomb; k and 1 C = 1 A s | 1.5 | – | 1.1 | C | 3 | 1.1% | ✅ |
 | 34 | D2 | Reading a field-line picture | 1.8 | – | – | B | 3 | 1.1% | ⬜ |
 | 35 | E3 | Units and dimensions of E and flux | 1.9 | – | – | B | 3 | 1.1% | 🟡 |
-| 36 | F3 | Dipole field falls as 1/r³; zero total charge but non-zero field | 1.10.2 | – | – | B | 3 | 1.1% | ⬜ |
-| 37 | F5 | Stable versus unstable equilibrium of a dipole | 1.11 | – | – | B | 3 | 1.1% | ⬜ |
+| 36 | F3 | Dipole field falls as 1/r³; zero total charge but non-zero field | 1.10.2 | – | – | B | 3 | 1.1% | ✅ |
+| 37 | F5 | Stable versus unstable equilibrium of a dipole | 1.11 | – | – | B | 3 | 1.1% | ✅ |
 | 38 | A3 | Conductors and insulators; earthing | 1.3 | – | – | C | 1 | 0.4% | 🟡 |
 | 39 | A4 | Additivity: charge is a scalar, algebraic sum | 1.4.1 | – | – | C | 1 | 0.4% | ✅ |
 | 40 | B6b | Superposition means no extra many-body forces | 1.6 | – | – | C | 1 | 0.4% | ✅ |
@@ -85,7 +85,7 @@ Games are built one at a time, **in textbook (NCERT section) order**, so the stu
 | 2 (done) | Field bench (§1.7: field of one or several charges, particle in a field, tracks) | C1, C2, C3, C4, C5, C6 | 38 (14.5%) | Ex 1.8, 1.13; Examples 1.7, 1.8 |
 | 3 (done) | Field detective (§1.8: field lines) | D1, D2, D3 | 12 (4.6%) | Ex 1.7 |
 | 4 (done) | Flux gate (§1.9) | E1, E2, E3 | 21 (8.0%) | Ex 1.14, 1.15; Example 1.10 |
-| 5 | Dipole bench (§1.10 to 1.11) | F1, F2, F3, F4, F5 | 30 (11.5%) | Ex 1.9, 1.10; Example 1.9 |
+| 5 (done) | Dipole bench (§1.10 to 1.11) | F1, F2, F3, F4, F5 | 30 (11.5%) | Ex 1.9, 1.10; Example 1.9 |
 | 6 | Gauss lab (§1.12 to 1.14) | G1, H1, H1b, H2, H3, H4, H5, H6 | 65 (24.8%) | Ex 1.16 to 1.23; Examples 1.11, 1.12 |
 | 7 | Gap fill in the built games (§1.2 to 1.5) | A2b, A3, A5, A6, A6b, A7, B5 | 31 (11.8%) | Ex 1.3, 1.4, 1.11; Examples 1.1, 1.3 |
 

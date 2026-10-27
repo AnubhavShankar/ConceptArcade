@@ -72,11 +72,11 @@ Everything after Coulomb's law is a different way of asking "what does a charge 
 
 | ID | Concept | § | What the student must apply | Common misconception | Game idea | Tier | Status |
 |---|---|---|---|---|---|---|---|
-| F1 | Dipole and dipole moment, p = 2qa, direction −→+ | 1.10 | Compute p; give its direction | p points + to − | *numeric-puzzle* | concept | ⬜ |
-| F2 | Field on the axis and on the equatorial plane | 1.10.1 | Choose the right formula; far-field limits; axis ≈ 2 × equator at large r | Same direction on axis and equator | *numeric-puzzle*; *predict-then-reveal* directions | application | ⬜ |
-| F3 | Dipole field falls as 1/r³, faster than a point charge | 1.10.1–1.10.2 | Compare how fields change when distance doubles | Net-zero charge means zero field | *predict-then-reveal*: "double the distance, what happens?" | application | ⬜ |
-| F4 | Torque on a dipole in a uniform field, τ = pE sinθ; net force zero | 1.11 | Compute torque; predict rotation and equilibrium orientation | A dipole in a uniform field accelerates sideways | *tune-to-target*: choose angle/field for a target torque | application | ⬜ |
-| F5 | Stable vs unstable equilibrium of a dipole | 1.11 | Identify θ = 0 vs θ = 180° and what happens after a small push | Both orientations are equally stable | *predict-then-reveal* | challenge | ⬜ |
+| F1 | Dipole and dipole moment, p = 2qa, direction −→+ | 1.10 | Compute p; give its direction | p points + to − | *numeric-puzzle* | concept | ✅ `dipole-bench` L1 (Ex 1.9) |
+| F2 | Field on the axis and on the equatorial plane | 1.10.1 | Choose the right formula; far-field limits; axis ≈ 2 × equator at large r | Same direction on axis and equator | *numeric-puzzle*; *predict-then-reveal* directions | application | ✅ `dipole-bench` L4 (Example 1.9) |
+| F3 | Dipole field falls as 1/r³, faster than a point charge | 1.10.1–1.10.2 | Compare how fields change when distance doubles | Net-zero charge means zero field | *predict-then-reveal*: "double the distance, what happens?" | application | ✅ `dipole-bench` L5 (and L1: zero total charge) |
+| F4 | Torque on a dipole in a uniform field, τ = pE sinθ; net force zero | 1.11 | Compute torque; predict rotation and equilibrium orientation | A dipole in a uniform field accelerates sideways | *tune-to-target*: choose angle/field for a target torque | application | ✅ `dipole-bench` L2 (Ex 1.10) |
+| F5 | Stable vs unstable equilibrium of a dipole | 1.11 | Identify θ = 0 vs θ = 180° and what happens after a small push | Both orientations are equally stable | *predict-then-reveal* | challenge | ✅ `dipole-bench` L3 |
 
 ## G. Continuous charge distributions (1.12)
 
