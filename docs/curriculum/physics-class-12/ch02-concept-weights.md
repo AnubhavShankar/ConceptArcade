@@ -14,7 +14,7 @@ Class 12 Physics, Chapter 2: Electrostatic Potential and Capacitance (NCERT 2026
 
 | Concepts | Total weight | Covered by games |
 |---|---|---|
-| 19 | 158 | 47% |
+| 19 | 158 | 62% |
 
 ## Every concept, heaviest first
 
@@ -27,7 +27,7 @@ Class 12 Physics, Chapter 2: Electrostatic Potential and Capacitance (NCERT 2026
 | 5 | P11 | Parallel-plate capacitor: C = ε₀A/d | 2.12 | 2.5, 2.8 | – | A | 10 | 6.3% | ⬜ |
 | 6 | P14b | Energy lost when charged and uncharged capacitors are connected | 2.15 | 2.11 | 2.10 | A | 10 | 6.3% | ⬜ |
 | 7 | P5 | Equipotential surfaces: E is perpendicular to them and points to lower potential | 2.6 | 2.3 | 2.3 | A | 10 | 6.3% | ✅ |
-| 8 | P8 | Conductors: E = 0 inside, E perpendicular at the surface, charge on the surface, V constant | 2.9 | 2.4 | 2.7 | A | 10 | 6.3% | ⬜ |
+| 8 | P8 | Conductors: E = 0 inside, E perpendicular at the surface, charge on the surface, V constant | 2.9 | 2.4 | 2.7 | A | 10 | 6.3% | ✅ |
 | 9 | P1 | Potential and potential difference: work per unit charge, V = W/q; zero at infinity | 2.2 | – | 2.1 | A | 8 | 5.1% | ✅ |
 | 10 | P10 | Capacitance C = Q/V; the farad and its small units | 2.11 | 2.8 | – | A | 8 | 5.1% | ⬜ |
 | 11 | P14 | Energy stored in a capacitor: U = ½CV² = Q²/2C = ½QV | 2.15 | 2.10 | – | A | 8 | 5.1% | ⬜ |
@@ -35,10 +35,10 @@ Class 12 Physics, Chapter 2: Electrostatic Potential and Capacitance (NCERT 2026
 | 13 | P7 | Potential energy of a charge in an external field, qV | 2.8.1 | – | 2.5 | A | 8 | 5.1% | ✅ |
 | 14 | P7b | Potential energy of a dipole in a field, U = −pE cosθ; work to turn it | 2.8.3 | – | 2.6 | A | 8 | 5.1% | ✅ |
 | 15 | P4 | Potential of a dipole: V = kp cosθ / r²; zero on the equatorial plane | 2.4 | – | – | A | 6 | 3.8% | ✅ |
-| 16 | P8b | Electrostatic shielding: a cavity is shielded from outside, not the reverse | 2.9 | – | 2.7 | B | 5 | 3.2% | ⬜ |
-| 17 | P9b | Field and potential of a charged shell: field discontinuous, potential continuous | 2.9 | 2.4 | – | B | 5 | 3.2% | ⬜ |
+| 16 | P8b | Electrostatic shielding: a cavity is shielded from outside, not the reverse | 2.9 | – | 2.7 | B | 5 | 3.2% | ✅ |
+| 17 | P9b | Field and potential of a charged shell: field discontinuous, potential continuous | 2.9 | 2.4 | – | B | 5 | 3.2% | ✅ |
 | 18 | P5b | Relation of field and potential: E = −dV/dr | 2.6.1 | – | – | B | 3 | 1.9% | ✅ |
-| 19 | P9 | Dielectrics and polarisation: the induced field reduces the field, dielectric constant K | 2.10 | – | – | B | 3 | 1.9% | ⬜ |
+| 19 | P9 | Dielectrics and polarisation: the induced field reduces the field, dielectric constant K | 2.10 | – | – | B | 3 | 1.9% | ✅ |
 
 ## Build waves (textbook order)
 
@@ -47,7 +47,7 @@ Class 12 Physics, Chapter 2: Electrostatic Potential and Capacitance (NCERT 2026
 | 1 (done) | Potential bench (§2.2 to 2.5): potential of one charge and of a system, V = 0 points, the dipole | P1, P2, P3, P4 | 38 (24.1%) | Ex 2.1, 2.2; Examples 2.1, 2.2 |
 | 2 (done) | Equipotential maps (§2.6): surfaces and the field–potential link | P5, P5b | 13 (8.2%) | Ex 2.3; Example 2.3 |
 | 3 (done) | Energy bench (§2.7 to 2.8): energy of a system, a charge in a field, a dipole in a field | P6, P7, P7b | 24 (15.2%) | Examples 2.4, 2.5, 2.6 |
-| 4 | Conductor lab (§2.9 to 2.10): inside and surface of conductors, shielding, shell, dielectrics | P8, P8b, P9, P9b | 23 (14.6%) | Ex 2.4; Example 2.7 |
+| 4 (done) | Conductor lab (§2.9 to 2.10): inside and surface of conductors, shielding, shell, dielectrics | P8, P8b, P9, P9b | 23 (14.6%) | Ex 2.4; Example 2.7 |
 | 5 | Capacitor bench (§2.11 to 2.13): C = Q/V, the parallel plate, dielectric with the supply on or off | P10, P11, P12 | 30 (19.0%) | Ex 2.5, 2.8, 2.9; Example 2.8 |
 | 6 | Circuit builder (§2.14 to 2.15): series and parallel, energy stored and lost | P13, P14, P14b | 30 (19.0%) | Ex 2.6, 2.7, 2.10, 2.11; Examples 2.9, 2.10 |
 
