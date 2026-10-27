@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # --ignore-scripts: PRs must not be able to run install scripts in CI.
+      - run: npm ci --ignore-scripts
+      - name: Validate game folders (structure, metadata, safety rules)
+        run: npm run validate
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

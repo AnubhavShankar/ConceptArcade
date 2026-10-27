@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# NCERT textbook PDFs are copyrighted reference material: never commit them.
+leph1dd/
+*.pdf

@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 48,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 60
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 140
+    },
+    "subject": {
+      "type": "string",
+      "enum": [
+        "physics",
+        "chemistry",
+        "mathematics",
+        "biology"
+      ]
+    },
+    "classLevel": {
+      "type": "integer",
+      "minimum": 6,
+      "maximum": 12
+    },
+    "chapter": {
+      "type": "object",
+      "properties": {
+        "number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "name": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "number",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "ncertRef": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 80,
+      "description": "Where the concept is taught, e.g. \"Section 1.4, Coulomb's Law\". Reference only; never copy text."
+    },
+    "concepts": {
+      "minItems": 1,
+      "maxItems": 6,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 60
+      }
+    },
+    "learningOutcome": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 200,
+      "description": "What a student can do after winning that they could not reliably do before."
+    },
+    "mechanic": {
+      "type": "string",
+      "enum": [
+        "tune-to-target",
+        "build-the-setup",
+        "predict-then-reveal",
+        "fix-the-broken",
+        "numeric-puzzle",
+        "match-and-sort",
+        "other"
+      ]
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "concept",
+        "application",
+        "challenge"
+      ]
+    },
+    "estimatedMinutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30
+    },
+    "hints": {
+      "minItems": 2,
+      "maxItems": 4,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 200
+      },
+      "description": "Ordered from gentlest nudge to most revealing. Each hint costs the student one star."
+    },
+    "misconceptions": {
+      "maxItems": 5,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 160
+      }
+    },
+    "author": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "github": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$"
+        }
+      },
+      "required": [
+        "name",
+        "github"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "summary",
+    "subject",
+    "classLevel",
+    "chapter",
+    "ncertRef",
+    "concepts",
+    "learningOutcome",
+    "mechanic",
+    "difficulty",
+    "estimatedMinutes",
+    "hints",
+    "author"
+  ],
+  "additionalProperties": false
+}

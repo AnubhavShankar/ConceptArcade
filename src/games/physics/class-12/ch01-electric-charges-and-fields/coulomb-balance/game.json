@@ -1,0 +1,25 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "coulomb-balance",
+  "title": "Coulomb Balance",
+  "summary": "Find the separation at which two charges push on each other with a given force.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": { "number": 1, "name": "Electric Charges and Fields" },
+  "ncertRef": "Section 1.4, Coulomb's Law",
+  "concepts": ["Coulomb's law", "Inverse-square dependence", "Unit conversion"],
+  "learningOutcome": "After winning, the student can rearrange Coulomb's law to find distance from force and charges, and knows force falls as 1/r².",
+  "mechanic": "numeric-puzzle",
+  "difficulty": "concept",
+  "estimatedMinutes": 3,
+  "hints": [
+    "Which law gives the force between two point charges at rest?",
+    "Force is proportional to 1/r². Doubling r does not halve the force.",
+    "Rearrange F = k q₁q₂ / r² to get r = √(k q₁q₂ / F). Convert μC to C first."
+  ],
+  "misconceptions": [
+    "Force varies linearly (1/r) with distance",
+    "Forgetting to convert μC to C or cm to m"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "concept-arcade" }
+}
