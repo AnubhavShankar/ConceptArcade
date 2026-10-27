@@ -12,7 +12,11 @@ beforeEach(() => {
   vi.stubGlobal('cancelAnimationFrame', () => undefined);
   vi.stubGlobal('scrollTo', () => undefined);
 });
-afterEach(() => {
+afterEach(async () => {
+  // the game module loads lazily after the page renders: let it finish mounting while the stubs are still in place,
+  // otherwise it mounts after teardown and logs a console error into a closed worker
+  await vi.dynamicImportSettled();
+  await new Promise((r) => setTimeout(r, 0));
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
