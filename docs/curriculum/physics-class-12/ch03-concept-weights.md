@@ -14,7 +14,7 @@ Class 12 Physics, Chapter 3: Current Electricity (NCERT 2026-27 reprint, read lo
 
 | Concepts | Total weight | Covered by games |
 |---|---|---|
-| 13 | 104 | 92% |
+| 13 | 104 | 100% |
 
 ## Every concept, heaviest first
 
@@ -25,7 +25,7 @@ Class 12 Physics, Chapter 3: Current Electricity (NCERT 2026-27 reprint, read lo
 | 3 | Q12 | Kirchhoff's junction and loop rules | 3.12 | 3.7 | 3.5, 3.6 | A | 12 | 11.5% | ✅ |
 | 4 | Q2 | Drift velocity and current: I = n e A v_d; drift speed is tiny, the signal is fast | 3.5 | 3.9 | 3.1, 3.2 | A | 12 | 11.5% | ✅ |
 | 5 | Q9 | Electrical energy and power: P = VI = I²R = V²/R; the kilowatt-hour | 3.9 | 3.6 | 3.3 | A | 10 | 9.6% | ✅ |
-| 6 | Q13 | Wheatstone bridge and its balance condition | 3.13 | – | 3.7 | A | 8 | 7.7% | ⬜ |
+| 6 | Q13 | Wheatstone bridge and its balance condition | 3.13 | – | 3.7 | A | 8 | 7.7% | ✅ |
 | 7 | Q4 | Resistivity: R = ρl/A, and what it depends on | 3.4 | 3.4 | – | A | 8 | 7.7% | ✅ |
 | 8 | Q6 | Resistors in series and in parallel: equivalent resistance, current and voltage sharing | 3.12 | – | 3.5 | A | 8 | 7.7% | ✅ |
 | 9 | Q3 | Ohm's law, V = IR; ohmic and non-ohmic conductors | 3.4 | – | – | A | 6 | 5.8% | ✅ |
@@ -43,7 +43,7 @@ Class 12 Physics, Chapter 3: Current Electricity (NCERT 2026-27 reprint, read lo
 | 3 (done) | Heating wire (§3.8 to 3.9): temperature dependence and power | Q8, Q9 | 26 (25.0%) | Ex 3.3, 3.5, 3.6; Examples 3.3, 3.4 |
 | 4 (done) | Cell bench (§3.10 to 3.11): emf, internal resistance, terminal voltage, charging, cells in series and parallel | Q10, Q11 | 15 (14.4%) | Ex 3.1, 3.2, 3.8 |
 | 5 (done) | Circuit solver (§3.12): series/parallel networks and Kirchhoff's rules | Q6, Q12 | 20 (19.2%) | Ex 3.7; Examples 3.5, 3.6 |
-| 6 | Bridge balance (§3.13): the Wheatstone bridge | Q13 | 8 (7.7%) | Example 3.7 |
+| 6 (done) | Bridge balance (§3.13): the Wheatstone bridge | Q13 | 8 (7.7%) | Example 3.7 |
 
 Waves 3 (temperature and power) and 5 (Kirchhoff) carry most of the numerical questions.
 
