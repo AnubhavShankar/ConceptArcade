@@ -16,29 +16,29 @@ This file does that for Class 12 Physics, Chapter 1 (Electric Charges and Fields
 
 | Group | Concepts | Weight | Share of chapter | Covered by games |
 |---|---|---|---|---|
-| A. Charge itself (1.2 to 1.4) | 9 | 35 | 13.4% | 74% |
-| B. Coulomb's law and superposition (1.5 to 1.6) | 8 | 61 | 23.3% | 77% |
+| A. Charge itself (1.2 to 1.4) | 9 | 35 | 13.4% | 99% |
+| B. Coulomb's law and superposition (1.5 to 1.6) | 8 | 61 | 23.3% | 90% |
 | C. Electric field (1.7) | 6 | 38 | 14.5% | 63% |
 | D. Field lines (1.8) | 3 | 12 | 4.6% | 0% |
 | E. Flux (1.9) | 3 | 21 | 8.0% | 93% |
 | F. Dipole (1.10 to 1.11) | 5 | 30 | 11.5% | 100% |
 | G. Continuous charge (1.12) | 1 | 5 | 1.9% | 100% |
 | H. Gauss's law (1.13 to 1.14) | 7 | 60 | 22.9% | 100% |
-| **Chapter 1** | **42** | **262** | **100%** | **81%** |
+| **Chapter 1** | **42** | **262** | **100%** | **87%** |
 
-Only about **81%** of the exam-weighted content is covered by the seven built games.
+Only about **87%** of the exam-weighted content is covered by the seven built games.
 
 ## Every concept, heaviest first
 
 | Rank | ID | Concept | § | Exercises | Examples | Tier | Score | Share | Games |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | H1 | Gauss's law: net flux = q enclosed / ε₀ | 1.13 | 1.16, 1.18, 1.19, 1.21 | 1.10, 1.11 | A | 18 | 6.9% | ✅ |
-| 2 | B1 | Coulomb's law: magnitude, inverse square, solve for any unknown | 1.5 | 1.1, 1.2, 1.12 | 1.2, 1.3 | A | 16 | 6.1% | 🟡 |
+| 2 | B1 | Coulomb's law: magnitude, inverse square, solve for any unknown | 1.5 | 1.1, 1.2, 1.12 | 1.2, 1.3 | A | 16 | 6.1% | ✅ |
 | 3 | B6 | Superposition: vector sum of forces, symmetry cancellation | 1.6 | 1.6 | 1.5, 1.6 | A | 12 | 4.6% | 🟡 |
 | 4 | C3 | Field of several charges; point where E = 0 | 1.7.1 | 1.8 | 1.8 | A | 10 | 3.8% | ✅ |
 | 5 | E2 | Outward normal, sign of flux, net flux through a closed surface | 1.9 | 1.15 | 1.10 | A | 10 | 3.8% | ✅ |
 | 6 | H6 | Spherical shell: outside like a point charge, zero inside | 1.14.3 | 1.20 | 1.12 | A | 10 | 3.8% | ✅ |
-| 7 | A6 | Quantisation, q = ne; charge from electron count | 1.4.3 | 1.4, 1.11 | 1.1 | B | 9 | 3.4% | 🟡 |
+| 7 | A6 | Quantisation, q = ne; charge from electron count | 1.4.3 | 1.4, 1.11 | 1.1 | B | 9 | 3.4% | ✅ |
 | 8 | C1 | Definition E = F/q; force on a test charge | 1.7 | 1.8 | – | A | 8 | 3.1% | ✅ |
 | 9 | C4 | Charged particle in a uniform field (kinematics) | 1.7.2 | – | 1.7 | A | 8 | 3.1% | ⬜ |
 | 10 | D1 | Properties of field lines | 1.8 | 1.7 | – | A | 8 | 3.1% | ⬜ |
@@ -55,7 +55,7 @@ Only about **81%** of the exam-weighted content is covered by the seven built ga
 | 21 | B7 | Equilibrium of a charge under several forces; where to place a third charge | 1.6 | – | – | A | 6 | 2.3% | ✅ |
 | 22 | C2 | Field of a point charge: 1/r², direction by sign | 1.7 | – | – | A | 6 | 2.3% | ✅ |
 | 23 | H3 | Choosing a Gaussian surface by symmetry | 1.14 | – | – | A | 6 | 2.3% | ✅ |
-| 24 | A5 | Conservation of charge | 1.4.2 | 1.5 | – | B | 5 | 1.9% | 🟡 |
+| 24 | A5 | Conservation of charge | 1.4.2 | 1.5 | – | B | 5 | 1.9% | ✅ |
 | 25 | B4 | Sharing of charge between identical spheres, then the force | 1.5 | – | 1.4 | B | 5 | 1.9% | ✅ |
 | 26 | C6 | Reading tracks of charged particles: sign and charge-to-mass ratio | 1.7.2 | 1.13 | – | B | 5 | 1.9% | ⬜ |
 | 27 | G1 | Linear, surface, volume charge density | 1.12 | 1.21 | – | B | 5 | 1.9% | ✅ |
@@ -63,7 +63,7 @@ Only about **81%** of the exam-weighted content is covered by the seven built ga
 | 29 | H2 | Flux through part of a surface by symmetry (cube face) | 1.13 | 1.17 | – | B | 5 | 1.9% | ✅ |
 | 30 | A1 | Two kinds of charge; like repel, unlike attract; neutral bodies are attracted | 1.2 | – | – | B | 3 | 1.1% | ✅ |
 | 31 | A2b | Mass transferred when charging is negligible | 1.2 | 1.11 | – | C | 3 | 1.1% | ✅ |
-| 32 | A6b | Quantisation is invisible at macroscopic scale | 1.4.3 | 1.4 | – | C | 3 | 1.1% | 🟡 |
+| 32 | A6b | Quantisation is invisible at macroscopic scale | 1.4.3 | 1.4 | – | C | 3 | 1.1% | ✅ |
 | 33 | A7 | Size of the coulomb; k and 1 C = 1 A s | 1.5 | – | 1.1 | C | 3 | 1.1% | ✅ |
 | 34 | D2 | Reading a field-line picture | 1.8 | – | – | B | 3 | 1.1% | ⬜ |
 | 35 | E3 | Units and dimensions of E and flux | 1.9 | – | – | B | 3 | 1.1% | 🟡 |
@@ -87,7 +87,7 @@ Games are built one at a time, **in textbook (NCERT section) order**, so the stu
 | 4 (done) | Flux gate (§1.9) | E1, E2, E3 | 21 (8.0%) | Ex 1.14, 1.15; Example 1.10 |
 | 5 (done) | Dipole bench (§1.10 to 1.11) | F1, F2, F3, F4, F5 | 30 (11.5%) | Ex 1.9, 1.10; Example 1.9 |
 | 6 (done) | Gauss lab (§1.12 to 1.14) | G1, H1, H1b, H2, H3, H4, H5, H6 | 65 (24.8%) | Ex 1.16 to 1.23; Examples 1.11, 1.12 |
-| 7 | Gap fill in the built games (§1.2 to 1.5) | A2b, A3, A5, A6, A6b, A7, B5 | 31 (11.8%) | Ex 1.3, 1.4, 1.11; Examples 1.1, 1.3 |
+| 7 (done) | Gap fill in the built games (§1.2 to 1.5) | A2b, A3, A5, A6, A6b, A7, B5 | 31 (11.8%) | Ex 1.3, 1.4, 1.11; Examples 1.1, 1.3 |
 
 Wave 6 (Gauss) is the single heaviest cluster, then wave 1; flux (wave 4) must precede Gauss, so the textbook order is also the dependency order. Within a wave, build the highest-weight concepts first.
 
