@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "capacitor-circuits",
+  "title": "The Circuit Builder",
+  "summary": "Combine capacitors in series, parallel and mixed networks, then find the energy stored and lost.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 2,
+    "name": "Electrostatic Potential and Capacitance"
+  },
+  "ncertRef": "Section 2.14, Combination of capacitors",
+  "order": 2,
+  "concepts": [
+    "Capacitors in series",
+    "Capacitors in parallel",
+    "Mixed networks",
+    "Energy stored, U = ½CV²",
+    "Energy lost when charge is shared"
+  ],
+  "learningOutcome": "The student can find the equivalent capacitance of series, parallel and mixed networks, the charge and voltage on each capacitor, the stored energy, and the energy lost on sharing charge.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "In a chain",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: in series the same charge sits on each capacitor, 1/C = Σ 1/Cᵢ, and the voltages add up (Ex 2.6).",
+      "hints": [
+        "In series the reciprocals add: 1/C = 1/C₁ + 1/C₂ + 1/C₃.",
+        "The same charge Q = CV sits on every capacitor in the chain.",
+        "The voltage across one capacitor is Q divided by its own capacitance."
+      ]
+    },
+    {
+      "title": "Side by side",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: in parallel each capacitor has the full voltage and the capacitances add (Ex 2.7).",
+      "hints": [
+        "In parallel the capacitances simply add.",
+        "Every capacitor has the full battery voltage across it.",
+        "Charge on one capacitor is Q = CV with its own C. pF × V gives pC, so divide by 1000 for nC."
+      ]
+    },
+    {
+      "title": "A mixed network",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: combine one group first, then treat it as one capacitor in the rest of the circuit (Example 2.9).",
+      "hints": [
+        "Find the group that is purely in series or purely in parallel, and replace it by its equivalent.",
+        "Then combine the result with the remaining capacitor.",
+        "The battery sees one equivalent capacitor, so Q = C_eq V."
+      ]
+    },
+    {
+      "title": "Energy in the field",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the energy stored is U = ½CV², so doubling the voltage multiplies it by four (Ex 2.10).",
+      "hints": [
+        "U = ½CV², which is also ½QV and Q²/2C.",
+        "With C in pF and V in volts, ½CV² is in pJ; divide by 1000 for nJ.",
+        "The energy depends on the square of the voltage."
+      ]
+    },
+    {
+      "title": "The lost energy",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: sharing charge conserves charge but not energy; the difference is dissipated (Ex 2.11, Example 2.10).",
+      "hints": [
+        "The total charge before is C₁V, and it is the same after, spread over C₁ + C₂.",
+        "The common voltage is the total charge divided by the total capacitance.",
+        "Work out ½CV² before and after and subtract."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "In series the capacitances add",
+    "The voltage is the same across capacitors in series",
+    "The charge is the same on capacitors in parallel",
+    "Energy is conserved when charge is shared between capacitors"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

@@ -14,23 +14,23 @@ Class 12 Physics, Chapter 2: Electrostatic Potential and Capacitance (NCERT 2026
 
 | Concepts | Total weight | Covered by games |
 |---|---|---|
-| 19 | 158 | 81% |
+| 19 | 158 | 100% |
 
 ## Every concept, heaviest first
 
 | Rank | ID | Concept | § | Exercises | Examples | Tier | Score | Share | Games |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | P12 | A dielectric multiplies C by K; supply connected or disconnected (V, Q, E, U change) | 2.13 | 2.5, 2.9 | 2.8 | A | 12 | 7.6% | ✅ |
-| 2 | P13 | Capacitors in series and in parallel: equivalent capacitance, charge and voltage sharing | 2.14 | 2.6, 2.7 | 2.9 | A | 12 | 7.6% | ⬜ |
+| 2 | P13 | Capacitors in series and in parallel: equivalent capacitance, charge and voltage sharing | 2.14 | 2.6, 2.7 | 2.9 | A | 12 | 7.6% | ✅ |
 | 3 | P2 | Potential of a point charge, V = kq/r (a scalar, sign of the charge) | 2.3 | 2.1, 2.2 | 2.1 | A | 12 | 7.6% | ✅ |
 | 4 | P3 | Potential of a system of charges: add the potentials as numbers; find where V = 0 | 2.5 | 2.1, 2.2 | 2.2 | A | 12 | 7.6% | ✅ |
 | 5 | P11 | Parallel-plate capacitor: C = ε₀A/d | 2.12 | 2.5, 2.8 | – | A | 10 | 6.3% | ✅ |
-| 6 | P14b | Energy lost when charged and uncharged capacitors are connected | 2.15 | 2.11 | 2.10 | A | 10 | 6.3% | ⬜ |
+| 6 | P14b | Energy lost when charged and uncharged capacitors are connected | 2.15 | 2.11 | 2.10 | A | 10 | 6.3% | ✅ |
 | 7 | P5 | Equipotential surfaces: E is perpendicular to them and points to lower potential | 2.6 | 2.3 | 2.3 | A | 10 | 6.3% | ✅ |
 | 8 | P8 | Conductors: E = 0 inside, E perpendicular at the surface, charge on the surface, V constant | 2.9 | 2.4 | 2.7 | A | 10 | 6.3% | ✅ |
 | 9 | P1 | Potential and potential difference: work per unit charge, V = W/q; zero at infinity | 2.2 | – | 2.1 | A | 8 | 5.1% | ✅ |
 | 10 | P10 | Capacitance C = Q/V; the farad and its small units | 2.11 | 2.8 | – | A | 8 | 5.1% | ✅ |
-| 11 | P14 | Energy stored in a capacitor: U = ½CV² = Q²/2C = ½QV | 2.15 | 2.10 | – | A | 8 | 5.1% | ⬜ |
+| 11 | P14 | Energy stored in a capacitor: U = ½CV² = Q²/2C = ½QV | 2.15 | 2.10 | – | A | 8 | 5.1% | ✅ |
 | 12 | P6 | Potential energy of a system of charges | 2.7 | – | 2.4 | A | 8 | 5.1% | ✅ |
 | 13 | P7 | Potential energy of a charge in an external field, qV | 2.8.1 | – | 2.5 | A | 8 | 5.1% | ✅ |
 | 14 | P7b | Potential energy of a dipole in a field, U = −pE cosθ; work to turn it | 2.8.3 | – | 2.6 | A | 8 | 5.1% | ✅ |
@@ -49,7 +49,7 @@ Class 12 Physics, Chapter 2: Electrostatic Potential and Capacitance (NCERT 2026
 | 3 (done) | Energy bench (§2.7 to 2.8): energy of a system, a charge in a field, a dipole in a field | P6, P7, P7b | 24 (15.2%) | Examples 2.4, 2.5, 2.6 |
 | 4 (done) | Conductor lab (§2.9 to 2.10): inside and surface of conductors, shielding, shell, dielectrics | P8, P8b, P9, P9b | 23 (14.6%) | Ex 2.4; Example 2.7 |
 | 5 (done) | Capacitor bench (§2.11 to 2.13): C = Q/V, the parallel plate, dielectric with the supply on or off | P10, P11, P12 | 30 (19.0%) | Ex 2.5, 2.8, 2.9; Example 2.8 |
-| 6 | Circuit builder (§2.14 to 2.15): series and parallel, energy stored and lost | P13, P14, P14b | 30 (19.0%) | Ex 2.6, 2.7, 2.10, 2.11; Examples 2.9, 2.10 |
+| 6 (done) | Circuit builder (§2.14 to 2.15): series and parallel, energy stored and lost | P13, P14, P14b | 30 (19.0%) | Ex 2.6, 2.7, 2.10, 2.11; Examples 2.9, 2.10 |
 
 Wave 6 (series, parallel and energy) and wave 5 (the capacitor itself) are the heaviest, and between them cover most of the numerical questions (Ex 2.5 to 2.11).
 
