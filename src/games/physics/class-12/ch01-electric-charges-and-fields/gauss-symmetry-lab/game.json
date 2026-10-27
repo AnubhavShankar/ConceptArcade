@@ -1,0 +1,90 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "gauss-symmetry-lab",
+  "title": "Gauss Lab: Symmetry at Work",
+  "summary": "Choose the right Gaussian surface and use symmetry to find the field of a wire, a sheet, plates and a charged shell.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 1,
+    "name": "Electric Charges and Fields"
+  },
+  "ncertRef": "Section 1.14, Applications of Gauss’s law",
+  "order": 1,
+  "concepts": [
+    "Choosing a Gaussian surface by symmetry",
+    "Field of an infinite line charge",
+    "Field of a sheet and of parallel plates",
+    "Field of a charged spherical shell"
+  ],
+  "learningOutcome": "The student can pick the Gaussian surface that fits a charge distribution, and find the field of a long wire, a large sheet, parallel plates and a uniformly charged shell.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Pick the surface",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: match the Gaussian surface to the symmetry: sphere, cylinder or pillbox.",
+      "hints": [
+        "The field must be perpendicular to the surface and the same size everywhere on it (or parallel to it, with no flux).",
+        "A point charge and a sphere of charge have spherical symmetry.",
+        "A long wire has cylindrical symmetry; a large flat sheet has planar symmetry."
+      ]
+    },
+    {
+      "title": "The long wire",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: the field of a line charge is E = λ/2πε₀r, falling as 1/r (Ex 1.22).",
+      "hints": [
+        "Use a coaxial cylinder: E × 2πrl = λl/ε₀.",
+        "So E = λ/(2πε₀r) = 2kλ/r. Convert the distance to metres.",
+        "E is proportional to 1/r, not 1/r²."
+      ]
+    },
+    {
+      "title": "Sheets and plates",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: a sheet gives σ/2ε₀ at any distance; opposite plates give σ/ε₀ between and zero outside (Ex 1.23).",
+      "hints": [
+        "A pillbox through the sheet gives 2EA = σA/ε₀, so E = σ/2ε₀.",
+        "This field does not depend on the distance from the sheet.",
+        "Two opposite plates: the fields add between them and cancel outside."
+      ]
+    },
+    {
+      "title": "Inside or outside the shell",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: a uniformly charged shell has no field inside and acts like a point charge outside (Example 1.12).",
+      "hints": [
+        "Compare the probe’s distance with the shell’s radius first.",
+        "A Gaussian sphere inside the shell encloses no charge, so E = 0 there.",
+        "Outside, E = kq/r², outward for positive q and inward for negative q."
+      ]
+    },
+    {
+      "title": "Find the charge",
+      "tier": "challenge",
+      "kind": "complexity",
+      "adds": "Harder: work backwards from the field outside a sphere to its charge, with the sign (Ex 1.20).",
+      "hints": [
+        "Outside the sphere E = kq/r², so |q| = E r²/k.",
+        "The direction of the field gives the sign: outward means positive, inward means negative.",
+        "The radius of the sphere does not enter, only the distance from the centre."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The field of a long wire falls as 1/r²",
+    "The field of a large sheet weakens with distance",
+    "There is a field inside a uniformly charged shell",
+    "Any closed surface makes Gauss’s law easy to use"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

@@ -82,18 +82,18 @@ Everything after Coulomb's law is a different way of asking "what does a charge 
 
 | ID | Concept | § | What the student must apply | Common misconception | Game idea | Tier | Status |
 |---|---|---|---|---|---|---|---|
-| G1 | Linear, surface and volume charge density (λ, σ, ρ) | 1.12 | Pick the right density and compute total charge; use units | Mixing C/m, C/m², C/m³ | *match-and-sort*: pick the density for a geometry; *numeric-puzzle*: total charge | concept | ⬜ |
+| G1 | Linear, surface and volume charge density (λ, σ, ρ) | 1.12 | Pick the right density and compute total charge; use units | Mixing C/m, C/m², C/m³ | *match-and-sort*: pick the density for a geometry; *numeric-puzzle*: total charge | concept | ✅ `gauss-flux-lab` L1 (Ex 1.21a) |
 
 ## H. Gauss's law (1.13–1.14)
 
 | ID | Concept | § | What the student must apply | Common misconception | Game idea | Tier | Status |
 |---|---|---|---|---|---|---|---|
-| H1 | Gauss's law: net flux = q_enclosed / ε₀ | 1.13 | Find flux from enclosed charge, ignoring surface shape and outside charges | Outside charges contribute to net flux; flux depends on the surface's shape | *predict-then-reveal*: deform the surface, does the flux change? | application | ⬜ |
-| H2 | Flux through part of a surface using symmetry (e.g. one face of a cube, hemisphere) | 1.13 (Ex 1.10, 1.11) | Apply symmetry to split flux equally | – | *numeric-puzzle* | challenge | ⬜ |
-| H3 | Choosing a Gaussian surface | 1.14 | Match a charge distribution's symmetry to sphere, cylinder or pillbox | Any closed surface makes the calculation easy | *match-and-sort*: distribution → surface | application | ⬜ |
-| H4 | Infinite line charge, E = λ/2πε₀r | 1.14.1 | Use the result; field ∝ 1/r | Same 1/r² as a point | *numeric-puzzle* | application | ⬜ |
-| H5 | Infinite plane sheet, E = σ/2ε₀ (independent of distance) | 1.14.2 | Use the result; superpose two sheets/plates | Field weakens with distance from a large sheet | *predict-then-reveal*, *numeric-puzzle* (parallel plates) | application | ⬜ |
-| H6 | Spherical shell: outside acts like a point charge, zero inside | 1.14.3 (Ex 1.12) | Choose inside/outside formula; extend to solid uniform sphere | Field inside a charged shell is non-zero; enclosed charge ignores a smaller radius | *tune-to-target*: probe radius, with "inside/outside?" committed first | challenge | ⬜ |
+| H1 | Gauss's law: net flux = q_enclosed / ε₀ | 1.13 | Find flux from enclosed charge, ignoring surface shape and outside charges | Outside charges contribute to net flux; flux depends on the surface's shape | *predict-then-reveal*: deform the surface, does the flux change? | application | ✅ `gauss-flux-lab` L2 and L4 (Ex 1.18, 1.19) |
+| H2 | Flux through part of a surface using symmetry (e.g. one face of a cube, hemisphere) | 1.13 (Ex 1.10, 1.11) | Apply symmetry to split flux equally | – | *numeric-puzzle* | challenge | ✅ `gauss-flux-lab` L4 (Ex 1.17) |
+| H3 | Choosing a Gaussian surface | 1.14 | Match a charge distribution's symmetry to sphere, cylinder or pillbox | Any closed surface makes the calculation easy | *match-and-sort*: distribution → surface | application | ✅ `gauss-symmetry-lab` L1 |
+| H4 | Infinite line charge, E = λ/2πε₀r | 1.14.1 | Use the result; field ∝ 1/r | Same 1/r² as a point | *numeric-puzzle* | application | ✅ `gauss-symmetry-lab` L2 (Ex 1.22) |
+| H5 | Infinite plane sheet, E = σ/2ε₀ (independent of distance) | 1.14.2 | Use the result; superpose two sheets/plates | Field weakens with distance from a large sheet | *predict-then-reveal*, *numeric-puzzle* (parallel plates) | application | ✅ `gauss-symmetry-lab` L3 (Ex 1.23) |
+| H6 | Spherical shell: outside acts like a point charge, zero inside | 1.14.3 (Ex 1.12) | Choose inside/outside formula; extend to solid uniform sphere | Field inside a charged shell is non-zero; enclosed charge ignores a smaller radius | *tune-to-target*: probe radius, with "inside/outside?" committed first | challenge | ✅ `gauss-symmetry-lab` L4 and L5 (Ex 1.20, Example 1.12) |
 
 ## Skills that cut across all concepts
 
