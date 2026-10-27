@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "field-bench",
+  "title": "The Field Bench",
+  "summary": "Tune a probe in a field you can see drifting, add fields at a point, steer ink drops onto paper and read particle tracks.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": { "number": 1, "name": "Electric Charges and Fields" },
+  "ncertRef": "Section 1.7, Electric field",
+  "order": 1,
+  "concepts": ["Field of a point charge", "Force on a test charge, F = qE", "Field of two charges (superposition)", "Charged particle in a uniform field", "Reading particle tracks"],
+  "learningOutcome": "The student can find the field of one or two charges, the force on a test charge, how a charged particle moves in a uniform field, and read sign and charge-to-mass ratio from tracks.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Probe the field",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the field of a point charge, E = kQ/r², and the force F = qE on a test charge (Ex 1.8b).",
+      "hints": [
+        "E = k Q / r². Solve for r, with Q in coulombs and r in metres.",
+        "The field points away from a positive charge and towards a negative one.",
+        "A negative test charge feels a force opposite to the field."
+      ]
+    },
+    {
+      "title": "Two charges, one point",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: add the fields of two charges as vectors at a point, then find the test charge's force (Ex 1.8, Example 1.8).",
+      "hints": [
+        "Find the field of each charge at P on its own, with its direction, then add them as vectors.",
+        "At the midpoint between a + and a − charge the two fields point the same way and add.",
+        "Then F = qE: a positive test charge is pushed along the field, a negative one against it."
+      ]
+    },
+    {
+      "title": "Ink-jet printer",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: a charged drop in a uniform field has acceleration qE/m and bends sideways (Example 1.7).",
+      "hints": [
+        "Between the plates a = qE/m. The drop crosses them in t = L/v₀, starting with no sideways speed.",
+        "The sideways shift is y = ½ a t². Solve for E.",
+        "A positive drop moves along the field, a negative drop against it. Choose the direction to send it to the target side."
+      ]
+    },
+    {
+      "title": "Track chamber",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: read tracks. The bend direction gives the sign, the size of the bend gives the charge-to-mass ratio (Ex 1.13).",
+      "hints": [
+        "A positive particle bends the same way as the field; a negative one bends the opposite way.",
+        "All three enter at the same speed, so a bigger bend means a bigger q/m.",
+        "Fire all three and compare the tracks before you tag them."
+      ]
+    },
+    {
+      "title": "Long throw",
+      "tier": "challenge",
+      "kind": "complexity",
+      "adds": "Harder: the paper is beyond the plates, so the drop keeps moving sideways in a straight line after the field.",
+      "hints": [
+        "Inside the plates, y₁ = ½ a t². At the exit the drop has sideways speed a t.",
+        "Over the gap D the drop travels straight and shifts a further a t D/v₀.",
+        "Add the two: y = (qE/m)(L/v₀²)(L/2 + D). Solve for E."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The field depends on the test charge",
+    "A negative charge moves along the field",
+    "A charged drop moves in a straight line through the plates",
+    "A heavier or more highly charged particle always bends more"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

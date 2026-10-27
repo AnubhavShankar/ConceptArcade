@@ -1,0 +1,66 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "charge-conserved",
+  "title": "Share the Charge",
+  "summary": "Deliver exact charges to an experiment by touching identical metal spheres together, using as few touches as you can.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": { "number": 1, "name": "Electric Charges and Fields" },
+  "ncertRef": "Section 1.4.2, Charge is conserved",
+  "concepts": ["Conservation of charge", "Sharing between identical conductors", "Isolated systems", "Charge transfer"],
+  "learningOutcome": "After winning, the student can plan a sequence of contacts between identical conductors, knows the total charge is unchanged by touching, and knows it only changes when charge escapes to the ground.",
+  "mechanic": "other",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Share and share alike",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: three identical spheres on insulating stands. Touch pairs together to reach the goal charges.",
+      "hints": [
+        "When two identical spheres touch, what happens to their charges?",
+        "They share their combined charge equally, so each ends up with the average.",
+        "Work backwards from the goal: which touch could have produced those numbers?"
+      ]
+    },
+    {
+      "title": "Opposites meet",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: some spheres are negative. Touching a + and a − sphere cancels part of both before the rest is shared.",
+      "hints": [
+        "Add the two charges with their signs first, then halve.",
+        "The total in the lab never changes when spheres touch: check it before and after.",
+        "A neutral sphere is a handy way to split a charge in half."
+      ]
+    },
+    {
+      "title": "One eighth",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Harder: only one sphere has a goal, and it is a small fraction of the starting charge. Plan a chain of halvings.",
+      "hints": [
+        "Each touch with a neutral sphere halves a charge.",
+        "To get one eighth you need three halvings in a row.",
+        "Use the sphere you just charged as the one to touch next."
+      ]
+    },
+    {
+      "title": "The leaky lab",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: you can touch a sphere to the Earth. Charge flows away, so the lab's total is no longer conserved.",
+      "hints": [
+        "Compare the lab's total now with the total the goal needs.",
+        "Touching spheres together can never change the total, so something has to carry charge away.",
+        "Earthing a sphere sets it to zero: plan so only the charge you want to lose is on it."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Charge is used up or created when bodies touch",
+    "Touching moves ALL the charge onto the other sphere",
+    "Total charge is conserved even when a sphere is connected to the ground"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

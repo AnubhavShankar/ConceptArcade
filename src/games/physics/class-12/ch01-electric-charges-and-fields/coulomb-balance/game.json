@@ -1,25 +1,67 @@
 {
   "$schema": "../../../../../../schema/game.schema.json",
   "id": "coulomb-balance",
-  "title": "Coulomb Balance",
-  "summary": "Find the separation at which two charges push on each other with a given force.",
+  "title": "Coulomb's Levitator",
+  "summary": "Give a small ball just the right charge for the repulsion from a fixed charge to hold it floating at a marked height.",
   "subject": "physics",
   "classLevel": 12,
   "chapter": { "number": 1, "name": "Electric Charges and Fields" },
-  "ncertRef": "Section 1.4, Coulomb's Law",
-  "concepts": ["Coulomb's law", "Inverse-square dependence", "Unit conversion"],
-  "learningOutcome": "After winning, the student can rearrange Coulomb's law to find distance from force and charges, and knows force falls as 1/r².",
-  "mechanic": "numeric-puzzle",
-  "difficulty": "concept",
-  "estimatedMinutes": 3,
-  "hints": [
-    "Which law gives the force between two point charges at rest?",
-    "Force is proportional to 1/r². Doubling r does not halve the force.",
-    "Rearrange F = k q₁q₂ / r² to get r = √(k q₁q₂ / F). Convert μC to C first."
+  "ncertRef": "Section 1.5, Coulomb's Law",
+  "concepts": ["Coulomb's law", "Inverse-square dependence", "Balancing forces", "Attraction and repulsion"],
+  "learningOutcome": "After winning, the student can balance Coulomb's force against weight, solve for the charge from the height, handle small-scale units, and use signs to tell repulsion from attraction.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Raise the ball",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: give the ball a charge so it floats at the marked height. The height is shown, so you can experiment.",
+      "hints": [
+        "The ball hangs where the electric force pushing it up exactly equals its weight pulling it down.",
+        "Coulomb's force falls with the square of the distance, so more charge lifts the ball higher, but not in proportion.",
+        "Compare two tries: doubling the charge multiplies the height by about 1.41. So height squared is proportional to the charge."
+      ]
+    },
+    {
+      "title": "Work it out",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: there is no height readout. Calculate the charge from the balance k q Q / h² = m g before you release the ball.",
+      "hints": [
+        "Write the balance: electric force = weight, so k q Q / h² = m g.",
+        "Solve for q: q = m g h² / (k Q). Convert grams, centimetres and microcoulombs to kg, m and C first.",
+        "Use g = 9.8 m/s² and k = 9 × 10⁹ N m² C⁻²."
+      ]
+    },
+    {
+      "title": "Tiny scale",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Harder: milligrams, millimetres and nanocoulombs. The answer is a charge in picocoulombs.",
+      "hints": [
+        "Convert first: 1 mg = 10⁻⁶ kg, 1 mm = 10⁻³ m, 1 nC = 10⁻⁹ C.",
+        "The balance is the same: q = m g h² / (k Q).",
+        "1 pC = 10⁻¹² C, so a charge of 6.8 × 10⁻¹¹ C is 68 pC."
+      ]
+    },
+    {
+      "title": "Opposite base",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: the base may be negative. A ball with the opposite sign is attracted and falls, so choose the right sign as well as the right size.",
+      "hints": [
+        "Like charges repel and unlike charges attract. To float, the ball must be repelled.",
+        "Look at the sign of the base charge and give the ball the same sign.",
+        "Then find the size exactly as before: q = m g h² / (k Q), using the sizes (magnitudes) of the charges."
+      ]
+    }
   ],
   "misconceptions": [
     "Force varies linearly (1/r) with distance",
-    "Forgetting to convert μC to C or cm to m"
+    "Doubling the charge doubles the hover height",
+    "Forgetting to convert prefixes (mg, mm, nC) to SI units",
+    "A ball with the opposite charge can still float"
   ],
-  "author": { "name": "Concept Arcade maintainers", "github": "concept-arcade" }
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
 }

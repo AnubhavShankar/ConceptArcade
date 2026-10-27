@@ -1,0 +1,55 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "quantum-of-charge",
+  "title": "Millikan's Oil-Drop Lab",
+  "summary": "Tune the voltage until a charged oil drop hovers, measure its charge, and discover that charge comes in whole units of e.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": { "number": 1, "name": "Electric Charges and Fields" },
+  "ncertRef": "Section 1.4.3, Quantisation of charge",
+  "concepts": ["Quantisation of charge", "q = n e", "Electron count and charge", "Millikan's measurement"],
+  "learningOutcome": "After winning, the student can balance a drop to measure its charge, count its electrons, find the unit of charge from data, and tell a possible charge from an impossible one.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Hold the drop",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: tune each drop to hover, read its charge from the lab, and work out how many electrons it carries.",
+      "hints": [
+        "A drop hovers when the upward electric force equals its weight. Raise the voltage if it falls, lower it if it rises.",
+        "Fine-tune with the small buttons, then hold it steady for a second before you record.",
+        "Each electron carries e = 1.6 × 10⁻¹⁹ C, so the number of electrons is the drop's charge divided by e."
+      ]
+    },
+    {
+      "title": "Find the unit",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: e is not given. Measure several drops and find the unit that all the charges are whole multiples of.",
+      "hints": [
+        "Every measured charge is a whole number of the same basic unit, give or take your tuning error.",
+        "Compare the charges: look for the biggest value that goes into all of them a whole number of times.",
+        "If your drops could all be multiples of 2e, you have not yet measured one that rules that out. Measure another drop."
+      ]
+    },
+    {
+      "title": "Impure samples",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: with e known, spot the drops whose charge cannot be real, because charge only comes in whole multiples of e.",
+      "hints": [
+        "Divide each measured charge by e. A real drop gives a number very close to a whole number.",
+        "Your tuning is only accurate to a few percent, so allow a little slack around a whole number.",
+        "A reading near a half, like 2.5 or 4.5, cannot be a whole number of electrons: that sample is impure."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Charge can take any value at the atomic scale",
+    "The smallest measured charge must be the unit of charge",
+    "A measured value close to a half-integer is just noise"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

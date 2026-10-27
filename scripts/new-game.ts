@@ -56,15 +56,34 @@ const manifest: GameManifest = {
   subject: v.subject as GameManifest['subject'],
   classLevel: Number(v.class),
   chapter: { number: Number(v.chapter), name: chapterName },
-  ncertRef: 'Section X.Y, Topic name',
+  // Games are listed in textbook order, so this must start with the real section number. Fix it to the right one.
+  ncertRef: `Section ${Number(v.chapter)}.1, Replace with the topic name`,
   concepts: ['Replace with the concept(s) this game tests'],
   learningOutcome: 'After winning, the student can ... (be specific and testable).',
-  mechanic: 'tune-to-target',
-  difficulty: 'concept',
-  estimatedMinutes: 3,
-  hints: [
-    'Gentle nudge: which concept applies?',
-    'Stronger hint: state the formula or relationship.',
+  mechanic: 'numeric-puzzle',
+  estimatedMinutes: 8,
+  levels: [
+    {
+      title: 'Direct use',
+      tier: 'concept',
+      kind: 'foundation',
+      adds: 'Baseline: apply the idea once, with clean numbers.',
+      hints: ['Gentle nudge: which concept applies?', 'Stronger hint: state the formula or relationship.'],
+    },
+    {
+      title: 'Harder numbers',
+      tier: 'application',
+      kind: 'complexity',
+      adds: 'Same idea with units to convert or an extra step.',
+      hints: ['What do you need to convert first?', 'Write the formula, then substitute step by step.'],
+    },
+    {
+      title: 'A new twist',
+      tier: 'application',
+      kind: 'concept',
+      adds: 'Adds a second concept that must be combined with the first.',
+      hints: ['Which second idea is involved?', 'Work out the new quantity first, then use it.'],
+    },
   ],
   author: { name: v.name!, github: v.github! },
 };
@@ -82,22 +101,36 @@ write('game.json', JSON.stringify({ $schema: '../../../../../../schema/game.sche
 
 write(
   'logic.ts',
-  `// Pure functions only: no DOM, no randomness source other than the one passed in.
+  `// Pure functions only: no DOM. Build each level's questions from the seeded random passed in.
 // This is the part that must be *correct*, so it is what logic.test.ts covers.
+import { choice, type Question } from '@core/quiz';
 
-export interface Round {
-  // TODO: the numbers/choices that define one round
-  target: number;
-}
-
-/** Build one round from the shell's seeded random. */
-export function makeRound(random: () => number): Round {
-  return { target: 1 + Math.floor(random() * 9) };
-}
-
-/** Decide whether the student's answer is right. */
-export function isCorrect(round: Round, answer: number): boolean {
-  return answer === round.target;
+/** Level 1 = baseline; each later level either adds complexity or adds a concept (see game.json). */
+export function buildQuestions(level: number, random: () => number): Question[] {
+  const qs: Question[] = [];
+  for (let i = 0; i < 4; i++) {
+    const a = 2 + Math.floor(random() * 8);
+    const b = 2 + Math.floor(random() * 8);
+    if (level === 1) {
+      // TODO: foundation question
+      qs.push({ kind: 'number', prompt: \`What is \${a} × \${b}?\`, answer: a * b, tolerance: 0, explain: \`\${a} × \${b} = \${a * b}.\` });
+    } else if (level === 2) {
+      // TODO: same idea, harder (more steps, unit conversions, more bodies)
+      qs.push({ kind: 'number', prompt: \`What is \${a} × \${b} + \${a}?\`, answer: a * b + a, tolerance: 0, explain: \`\${a * b} + \${a} = \${a * b + a}.\` });
+    } else {
+      // TODO: add a NEW concept on top of the previous level
+      qs.push(
+        choice({
+          prompt: \`Is \${a} × \${b} greater than \${a} + \${b}?\`,
+          correct: a * b > a + b ? 'Yes' : 'No',
+          wrong: [a * b > a + b ? 'No' : 'Yes'],
+          random,
+          explain: \`\${a} × \${b} = \${a * b} and \${a} + \${b} = \${a + b}.\`,
+        }),
+      );
+    }
+  }
+  return qs;
 }
 `,
 );
@@ -105,17 +138,29 @@ export function isCorrect(round: Round, answer: number): boolean {
 write(
   'logic.test.ts',
   `import { describe, expect, it } from 'vitest';
-import { isCorrect, makeRound } from './logic';
+import { buildQuestions } from './logic';
 
 describe('${v.id}', () => {
-  it('makes the same round from the same random sequence', () => {
-    expect(makeRound(() => 0.5)).toEqual(makeRound(() => 0.5));
+  it('builds the same questions from the same random sequence', () => {
+    const seq = (s: number) => () => (s = (s * 9301 + 49297) % 233280) / 233280;
+    expect(JSON.stringify(buildQuestions(2, seq(7)))).toEqual(JSON.stringify(buildQuestions(2, seq(7))));
   });
 
-  it('accepts the right answer and rejects a wrong one', () => {
-    const round = makeRound(() => 0.5);
-    expect(isCorrect(round, round.target)).toBe(true);
-    expect(isCorrect(round, round.target + 1)).toBe(false);
+  it('gives every level questions with a correct, checkable answer', () => {
+    for (const level of [1, 2, 3]) {
+      const qs = buildQuestions(level, () => 0.5);
+      expect(qs.length).toBeGreaterThanOrEqual(3);
+      for (const q of qs) {
+        expect(q.explain.length).toBeGreaterThan(5);
+        if (q.kind === 'choice') expect(q.options[q.answer]).toBeDefined();
+        else expect(Number.isFinite(q.answer)).toBe(true);
+      }
+    }
+  });
+
+  it('makes later levels different from level 1', () => {
+    const rand = () => 0.5;
+    expect(JSON.stringify(buildQuestions(3, rand))).not.toEqual(JSON.stringify(buildQuestions(1, rand)));
   });
 });
 `,
@@ -124,36 +169,17 @@ describe('${v.id}', () => {
 write(
   'index.ts',
   `import { defineGame } from '@core/define';
-import { h } from '@core/dom';
-import { isCorrect, makeRound } from './logic';
+import { mountQuiz } from '@core/quiz';
+import { buildQuestions } from './logic';
 
 export default defineGame({
   mount(ctx) {
-    const round = makeRound(ctx.random);
-    let attempts = 0;
-
-    const input = h('input', { class: 'field', type: 'number', inputmode: 'decimal', id: 'answer' });
-    const feedback = h('p', { class: 'feedback', hidden: true });
-
-    const check = () => {
-      attempts++;
-      const ok = isCorrect(round, Number(input.value));
-      feedback.hidden = false;
-      feedback.className = ok ? 'feedback good' : 'feedback bad';
-      feedback.textContent = ok ? 'Correct!' : 'Not quite. Explain WHY it is wrong, not just that it is.';
-      if (ok) ctx.win({ stars: attempts === 1 ? 3 : attempts === 2 ? 2 : 1 });
-    };
-
-    ctx.root.append(
-      h('p', null, \`TODO: describe the problem. Target is hidden: \${round.target}\`),
-      h('label', { for: 'answer' }, 'Your answer'),
-      h('div', { class: 'row' }, input, h('button', { class: 'btn', onclick: check }, 'Check')),
-      feedback,
-    );
+    // ctx.level (1-based) decides which questions to build: that is what makes the levels incremental.
+    return mountQuiz(ctx, { questions: buildQuestions(ctx.level, ctx.random) });
   },
 });
 `,
 );
 
 console.log(`Created ${path.relative(process.cwd(), target)}\n`);
-console.log('Next: edit game.json, logic.ts, logic.test.ts, index.ts, then run `npm run check` and `npm run dev`.');
+console.log('Next: edit game.json (levels! and ncertRef, which must start with the textbook section so the game is listed in the right place), logic.ts, logic.test.ts, then run `npm run check` and `npm run dev`.');

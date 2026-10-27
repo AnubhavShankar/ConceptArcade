@@ -6,3 +6,7 @@ dist/
 # NCERT textbook PDFs are copyrighted reference material: never commit them.
 leph1dd/
 *.pdf
+
+# Agent notes stay local
+AGENTS.md
+CLAUDE.md

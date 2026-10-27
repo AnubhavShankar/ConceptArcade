@@ -12,13 +12,15 @@
     "validate": "tsx scripts/validate-games.ts",
     "new-game": "tsx scripts/new-game.ts",
     "schema": "tsx scripts/gen-schema.ts",
-    "check": "npm run validate && npm run typecheck && npm test && npm run build"
+    "check": "npm run validate && npm run typecheck && npm test && npm run build",
+    "images": "tsx scripts/gen-images.ts"
   },
   "dependencies": {
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "jsdom": "^30.1.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",

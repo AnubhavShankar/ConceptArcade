@@ -17,7 +17,7 @@
     },
     "summary": {
       "type": "string",
-      "minLength": 10,
+      "minLength": 60,
       "maxLength": 140
     },
     "subject": {
@@ -58,7 +58,14 @@
       "type": "string",
       "minLength": 3,
       "maxLength": 80,
-      "description": "Where the concept is taught, e.g. \"Section 1.4, Coulomb's Law\". Reference only; never copy text."
+      "pattern": "^Section \\d+(\\.\\d+)*(?![\\d.])",
+      "description": "Where the concept is taught, starting with the section number, e.g. \"Section 1.4, Coulomb's Law\". Games are listed in this textbook order. Reference only; never copy text."
+    },
+    "order": {
+      "description": "Position among games that share the same textbook section (lower comes first). Leave out if yours is the only one.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99
     },
     "concepts": {
       "minItems": 1,
@@ -85,32 +92,73 @@
         "fix-the-broken",
         "numeric-puzzle",
         "match-and-sort",
+        "deduce-the-hidden",
         "other"
-      ]
-    },
-    "difficulty": {
-      "type": "string",
-      "enum": [
-        "concept",
-        "application",
-        "challenge"
       ]
     },
     "estimatedMinutes": {
       "type": "integer",
       "minimum": 1,
-      "maximum": 30
+      "maximum": 60,
+      "description": "Total for all levels."
     },
-    "hints": {
-      "minItems": 2,
-      "maxItems": 4,
+    "levels": {
+      "minItems": 1,
+      "maxItems": 6,
       "type": "array",
       "items": {
-        "type": "string",
-        "minLength": 3,
-        "maxLength": 200
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 50
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "concept",
+              "application",
+              "challenge"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "foundation",
+              "complexity",
+              "concept"
+            ],
+            "description": "foundation = the first level; complexity = same idea, harder numbers/steps/more bodies; concept = adds a new idea on top of the previous level."
+          },
+          "adds": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 160,
+            "description": "Level 1: the baseline skill. Later levels: exactly what is new compared with the previous level."
+          },
+          "hints": {
+            "minItems": 2,
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 200
+            },
+            "description": "Ordered from gentlest nudge to most revealing. Each hint costs the student one star."
+          }
+        },
+        "required": [
+          "title",
+          "tier",
+          "kind",
+          "adds",
+          "hints"
+        ],
+        "additionalProperties": false
       },
-      "description": "Ordered from gentlest nudge to most revealing. Each hint costs the student one star."
+      "description": "One level is fine for a single-difficulty game. With 2 or more, each level must add complexity or a concept."
     },
     "misconceptions": {
       "maxItems": 5,
@@ -152,9 +200,8 @@
     "concepts",
     "learningOutcome",
     "mechanic",
-    "difficulty",
     "estimatedMinutes",
-    "hints",
+    "levels",
     "author"
   ],
   "additionalProperties": false

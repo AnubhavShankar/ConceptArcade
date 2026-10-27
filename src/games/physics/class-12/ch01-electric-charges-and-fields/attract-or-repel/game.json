@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "attract-or-repel",
+  "title": "The Curator's Spheres",
+  "summary": "Probe sealed spheres with charged rods, watch how they swing, and deduce which are positive, negative or neutral.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": { "number": 1, "name": "Electric Charges and Fields" },
+  "ncertRef": "Section 1.2, Electric Charge",
+  "order": 1,
+  "concepts": ["Two kinds of charge", "Like repel, unlike attract", "Sign convention", "Repulsion as the test of charge"],
+  "learningOutcome": "After winning, the student can plan probes to find unknown charges, knows attraction proves little (neutral bodies are pulled too) but repulsion proves like charges, and uses the rubbing convention.",
+  "mechanic": "deduce-the-hidden",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Three sealed spheres",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: one positive, one negative and one neutral sphere. Probe them with a + rod and a − rod.",
+      "hints": [
+        "Drag a rod close to a sphere and watch which way it swings.",
+        "Like charges repel and unlike attract. A push is the only result that proves anything.",
+        "A sphere pulled toward a + rod is negative or neutral. Try the − rod on it: a negative sphere will be pushed away."
+      ]
+    },
+    {
+      "title": "Who is neutral?",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: neutral spheres exist and the counts are unknown. Attraction can fool you, so look for a sphere pulled by BOTH rods.",
+      "hints": [
+        "Every reaction looks equally strong, so only the direction carries information.",
+        "A neutral body is attracted by a charged rod of either sign.",
+        "A sphere attracted by the + rod AND by the − rod must be neutral. A charged sphere is pushed away by one of the rods."
+      ]
+    },
+    {
+      "title": "Glass and plastic",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the rods are labelled by material, not sign. Use the rubbing convention to know which is which.",
+      "hints": [
+        "Recall which charge a glass rod gets when rubbed with silk, and which a plastic rod gets when rubbed with fur.",
+        "Glass rubbed with silk is positive; plastic rubbed with fur is negative.",
+        "Once you know each rod's sign, probe every sphere with both and apply the repulsion test."
+      ]
+    },
+    {
+      "title": "Mystery rods",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: you do not even know your rods' signs. Calibrate them on a reference sphere first, then identify the spheres and rod X.",
+      "hints": [
+        "One rod is positive and the other negative, but you do not know which.",
+        "The reference sphere is known to be positive. A rod it pushes away is positive too.",
+        "Once you know which rod is which, treat them like the + and − rods from level 1."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Attraction proves the bodies have opposite charges (a neutral body is attracted too)",
+    "A neutral body can't be affected by a charged one",
+    "The sign convention is arbitrary per experiment"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

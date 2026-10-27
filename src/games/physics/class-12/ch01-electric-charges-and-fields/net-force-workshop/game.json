@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "net-force-workshop",
+  "title": "The Net-Force Workshop",
+  "summary": "Set gaps, rescale experiments, cancel forces on a probe and find balance points: work with Coulomb forces the way exam questions ask.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": { "number": 1, "name": "Electric Charges and Fields" },
+  "ncertRef": "Section 1.6, Forces between multiple charges",
+  "order": 1,
+  "concepts": ["Coulomb force and its direction", "Scaling with charge and distance", "Sharing charge, then the force", "Superposition and symmetry", "Equilibrium of a charge"],
+  "learningOutcome": "The student can find a Coulomb force or gap, scale a force when charges or distance change, add forces by superposition and symmetry, and locate a point or set of charges in equilibrium.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Set the gap",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: solve F = kq₁q₂/r² for the gap (Ex 1.1, 1.2) and see that both charges feel equal, opposite forces.",
+      "hints": [
+        "Rearrange Coulomb's law for the distance: r = √(k q₁ q₂ / F). Convert µC and cm to SI first.",
+        "Unlike charges pull together, like charges push apart.",
+        "The force on B is the same size as the force on A and points the opposite way (Newton's third law)."
+      ]
+    },
+    {
+      "title": "Rescale",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: predict the new force when charges, the gap or sharing change (Ex 1.12, Example 1.4), without recalculating.",
+      "hints": [
+        "F depends on q₁ × q₂ ÷ r². Work out how each change multiplies the force, then multiply them.",
+        "Halving the gap multiplies the force by 4, because r is squared.",
+        "Touching with an identical neutral sphere shares the charge equally, so each sphere keeps half."
+      ]
+    },
+    {
+      "title": "Null the probe",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: add forces as vectors and use symmetry so they cancel at a point (Ex 1.6, Examples 1.5 and 1.6).",
+      "hints": [
+        "Each charge pulls or pushes the probe along the line joining them. Add those forces as vectors.",
+        "Charges at opposite corners are the same distance from the centre, so their forces lie on one line.",
+        "Two forces of the same size along one line cancel only if they point opposite ways."
+      ]
+    },
+    {
+      "title": "Rest on a line",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: find where two charges' forces cancel on a line, and which of three regions it must be in.",
+      "hints": [
+        "Between like charges the forces point opposite ways, so they can cancel there. Between unlike charges they point the same way.",
+        "Outside two unlike charges, the balance point is nearer the weaker charge.",
+        "At the balance point the distances from A and B are in the ratio √|qA| : √|qB|."
+      ]
+    },
+    {
+      "title": "Everyone at rest",
+      "tier": "challenge",
+      "kind": "complexity",
+      "adds": "Harder: choose where a third charge goes and what charge it has so all three charges are in equilibrium.",
+      "hints": [
+        "First find where the third charge itself feels no force, as in the previous level.",
+        "The held charges must also feel no net force. B pushes A away, so the third charge must pull A back: it needs the opposite sign.",
+        "Balance the forces on A: k qA qB / d² = k qA |q| / x². Solve for |q|."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Doubling the gap halves the force",
+    "The bigger charge pushes harder on the smaller one",
+    "Three equal charges around a point must pull it towards one of them",
+    "The balance point between two charges is the midpoint"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}
