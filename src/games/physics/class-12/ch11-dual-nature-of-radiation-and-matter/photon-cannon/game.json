@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "photon-cannon",
+  "title": "Photon Cannon",
+  "summary": "Fire photons at a metal: find the faintest light that frees an electron, the voltage that stops it, and h from a line.",
+  "chapter": {
+    "number": 11,
+    "name": "Dual Nature of Radiation and Matter"
+  },
+  "ncertRef": "Section 11.6, Einstein’s photoelectric equation: energy quantum of radiation",
+  "concepts": [
+    "Work function",
+    "Threshold wavelength",
+    "Einstein’s photoelectric equation",
+    "Stopping potential",
+    "The V₀–f line and Planck’s constant"
+  ],
+  "learningOutcome": "The student can find the threshold wavelength hc/φ, the maximum kinetic energy hf − φ and the stopping potential, and read h and φ from a straight V₀–f line.",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Zap’s threshold",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: one photon frees one electron only if hf is at least the work function, so the threshold wavelength is hc/φ (Ex 11.6 to 11.8).",
+      "hints": [
+        "An electron escapes only if one photon carries at least φ: hc/λ ≥ φ.",
+        "The faintest light that works has hc/λ = φ, so λ = 1240 eV nm / φ.",
+        "Brighter light of a longer wavelength still frees nothing."
+      ]
+    },
+    {
+      "title": "Volt’s stopping potential",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the fastest electron has K_max = hf − φ and is just stopped by eV₀ = K_max (Ex 11.2, 11.3, 11.9; Example 11.2).",
+      "hints": [
+        "Photon energy is 1240 eV nm divided by the wavelength in nm.",
+        "K_max = photon energy − work function, in eV.",
+        "The stopping potential in volts is the same number as K_max in eV."
+      ]
+    },
+    {
+      "title": "Ruler’s line",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "Apply it: V₀ = (h/e) f − φ/e is a straight line, so two points give both h (the slope) and φ (the intercept) (Ex 11.5).",
+      "hints": [
+        "The slope between the points is ΔV₀/Δf = h/e, so h = e × slope.",
+        "Convert the units: Δf is in 10¹⁴ Hz, so h comes out in units of 10⁻³⁴ J s once you use e = 1.6 × 10⁻¹⁹ C.",
+        "Then φ = hf₁ − eV₁ for either point."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Brighter light of any colour can free electrons from a metal",
+    "The stopping potential grows with the intensity of the light",
+    "The kinetic energy of the electrons is hf"
+  ]
+}
