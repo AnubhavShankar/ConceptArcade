@@ -11,6 +11,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // Importing the whole catalog and driving canvas games is slow on a busy or cold runner; fail on logic, not on load.
+    testTimeout: 30000,
+    hookTimeout: 60000,
     include: ['src/**/*.test.ts', 'tests/**/*.test.ts', 'scripts/**/*.test.ts'],
   },
 });
