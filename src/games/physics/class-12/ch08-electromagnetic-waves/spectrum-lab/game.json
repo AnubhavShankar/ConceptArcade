@@ -1,0 +1,78 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "spectrum-lab",
+  "title": "The Spectrum Lab",
+  "summary": "Order the electromagnetic spectrum, classify waves by wavelength and find frequencies and photon energies.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 8,
+    "name": "Electromagnetic Waves"
+  },
+  "ncertRef": "Section 8.4, Electromagnetic spectrum",
+  "order": 1,
+  "concepts": [
+    "Order of the spectrum",
+    "Frequency from wavelength",
+    "Photon energy hf in eV",
+    "Same speed in vacuum"
+  ],
+  "learningOutcome": "The student can order the bands of the electromagnetic spectrum, find the frequency and photon energy of a wave from its wavelength, and explain that all of them share the same speed in vacuum.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Put them in order",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the bands run from radio waves to gamma rays as wavelength falls and frequency rises (Section 8.4).",
+      "hints": [
+        "Radio waves have the longest wavelengths, gamma rays the shortest.",
+        "Visible light sits between infrared and ultraviolet.",
+        "Pick them from the longest wavelength down."
+      ]
+    },
+    {
+      "title": "Name that wave",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: place a wavelength in its band and use f = c/λ (Ex 8.3).",
+      "hints": [
+        "Compare the wavelength with the typical size of each band.",
+        "f = c/λ, with λ in metres.",
+        "You can type frequencies like 3e18."
+      ]
+    },
+    {
+      "title": "Photon energies",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the photon energy is E = hf = hc/λ, in eV (Ex 8.9).",
+      "hints": [
+        "E = hc/λ in joules, then divide by 1.6 × 10⁻¹⁹.",
+        "A shorter wavelength means a more energetic photon.",
+        "You can type tiny energies like 2.5e-9."
+      ]
+    },
+    {
+      "title": "The same speed",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: every electromagnetic wave travels at c in vacuum, whatever its wavelength (Ex 8.3).",
+      "hints": [
+        "Time = distance divided by c.",
+        "X-rays, light and radio waves differ in frequency, wavelength and photon energy.",
+        "Only one quantity is the same for all of them."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Radio waves travel more slowly than light",
+    "X-rays travel faster than visible light",
+    "All electromagnetic waves have the same frequency in vacuum"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
