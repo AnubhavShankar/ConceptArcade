@@ -26,7 +26,8 @@ export function magnifier(f: number, u: number): { kind: 'virtual' | 'infinity' 
 /** Where the object must be so that the image is at the near point: u = fD/(f + D). */
 export const nearPointU = (f: number) => (f * D) / (f + D);
 /** Can the eye focus on the image? The virtual image must be at least D away (or at infinity). */
-export const eyeSees = (v: number) => v >= D - 1e-9;
+/** The eye sees an image sharply from the near point out to infinity; half a centimetre inside it still counts, because the dials move in 0.1 cm steps. */
+export const eyeSees = (v: number) => v >= D - 0.5;
 
 export interface Compound {
   /** Objective's real image distance, cm (null when there is none). */
@@ -104,7 +105,7 @@ export function buildGame(level: number, random: () => number): Game {
       hero: {
         name: 'Mite',
         role: 'a tiny bug on a card, waiting for its photo',
-        story: `Mite is too small to see. A magnifying glass makes a virtual image of it, but your eye can only focus on an image at least ${D} cm away, so the picture is sharp only when the image sits at that near point or farther. The closer the image, the sharper it is not, and the bigger it looks.`,
+        story: `Mite is too small to see. A magnifying glass makes a virtual image of it, but your eye can only focus on an image at least ${D} cm away, so the picture is sharp only when the image sits at that near point or farther. Slide Mite nearer the lens and the picture looks bigger, but its virtual image comes nearer too, and once it is closer than that your eye cannot focus on it.`,
         objective: 'Slide Mite to the spot where the picture is as big as it can be while still sharp, in three rounds. A test shot costs a charge; the live eye view fades.',
       },
       rounds: fs.map((f, k) => ({ f, uSol: nearPointU(f), m: 1 + D / f, assist: assist(k) })),
@@ -127,9 +128,15 @@ export function buildGame(level: number, random: () => number): Game {
 // ---- judging --------------------------------------------------------------------------------------------------------------
 
 export const magRange = (f: number) => ({ min: SLIDERS.mag.min, max: Math.round((f - 0.1) * 10) / 10 });
+/**
+ * A setting wins when the eye can focus on the image AND Mite looks at least 98% as big as at the best spot
+ * (the apparent size is the angular magnification D/u, which grows as Mite moves nearer the lens).
+ */
 export function judgeMag(r: MagRound, u: number): { ok: boolean; v: number | null; sharp: boolean } {
   const o = magnifier(r.f, u);
-  return { ok: Math.abs(u - r.uSol) <= 0.05, v: o.kind === 'virtual' ? o.v : null, sharp: o.kind === 'virtual' ? eyeSees(o.v) : o.kind === 'infinity' };
+  const sharp = o.kind === 'virtual' ? eyeSees(o.v) : o.kind === 'infinity';
+  const ok = o.kind === 'virtual' && sharp && D / u >= 0.98 * (D / r.uSol);
+  return { ok, v: o.kind === 'virtual' ? o.v : null, sharp };
 }
 export function judgeScope(r: ScopeRound, uo: number, L: number): { ok: boolean; uOk: boolean; lOk: boolean } {
   const uOk = Math.abs(uo - r.uSol) <= 0.05;
@@ -142,7 +149,7 @@ export function magReading(f: number, u: number): string {
   const o = magnifier(f, u);
   if (o.kind === 'real') return `At ${fmt(u)} cm the lens makes a real image: you cannot look through it as a magnifier.`;
   if (o.kind === 'infinity') return `At ${fmt(u)} cm the image is at infinity: relaxed, but only ${fmt(o.M)}× big.`;
-  return `At ${fmt(u)} cm the virtual image is ${fmt(o.v)} cm away, ${fmt(o.m)} times the size${eyeSees(o.v) ? '' : ', but nearer than your eye can focus'}.`;
+  return `At ${fmt(u)} cm the virtual image is ${fmt(o.v)} cm away and looks ${fmt(o.M)}× bigger${eyeSees(o.v) ? '' : ', but it is nearer than your eye can focus'}.`;
 }
 export function scopeReading(r: ScopeRound, uo: number, L: number): string {
   const c = compound(r.fo, r.fe, L, uo);
@@ -176,7 +183,7 @@ export function missText(g: Game, k: number, tried: { u: number; L?: number }): 
     const o = magnifier(r.f, tried.u);
     if (o.kind === 'real') return 'Mite is outside the focal length: the lens makes a real image, so there is nothing to look at.';
     if (o.kind === 'infinity') return 'The image is at infinity: relaxed and sharp, but Mite could be bigger.';
-    return eyeSees(o.v) ? `Sharp, but only ${fmt(o.m)}× big: Mite could be bigger and still sharp.` : `The image is only ${fmt(o.v)} cm away, nearer than the eye can focus: it is a blur.`;
+    return eyeSees(o.v) ? `Sharp, but Mite only looks ${fmt(o.M)}× bigger: he could look bigger and still be sharp.` : `The image is only ${fmt(o.v)} cm away, nearer than the eye can focus: it is a blur.`;
   }
   const r = g.rounds[k];
   const c = compound(r.fo, r.fe, tried.L ?? 10, tried.u);

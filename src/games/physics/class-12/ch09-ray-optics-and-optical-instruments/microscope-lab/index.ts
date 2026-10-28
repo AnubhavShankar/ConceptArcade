@@ -100,7 +100,7 @@ export default defineGame({
         if (o.kind === 'real') {
           if (live || dim) text(g, 'no virtual image', 530, 170, PAL.red, 13);
         } else if (live || dim) {
-          const m = o.kind === 'virtual' ? o.m : 1;
+          const m = o.kind === 'virtual' ? o.M : 1;
           const rad = Math.min(92, 11 * m);
           const blur = sharp ? 0 : Math.min(20, (D - (o.kind === 'virtual' ? o.v : D)) * 0.9);
           g.save();

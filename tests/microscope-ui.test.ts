@@ -165,7 +165,7 @@ describe('level 1: bug safari', () => {
     setSlider(r1(r.uSol) + 0.3);
     click(FIRE[0]);
     advance(2.8);
-    expect(feedback()).toMatch(/Sharp, but only/);
+    expect(feedback()).toMatch(/Sharp, but Mite only looks/);
     expect(hearts()).toBe(1);
     expect(feedback()).not.toContain(`${r1(r.uSol)} cm`);
   });

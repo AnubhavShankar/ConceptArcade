@@ -71,7 +71,7 @@ describe('the numbers from the textbook', () => {
 });
 
 describe('every game has three solvable rounds', () => {
-  it('level 1: three different lenses, increasing; the near-point spot is the only 0.1 cm setting that wins', () => {
+  it('level 1: three different lenses, increasing; only the settings at the near point win', () => {
     for (const s of seeds) {
       const g = as(buildGame(1, lcg(s)), 'mag');
       expect(g.rounds.map((r) => r.assist)).toEqual([0, 1, 2]);
@@ -80,15 +80,20 @@ describe('every game has three solvable rounds', () => {
       for (const r of g.rounds) {
         const rg = magRange(r.f);
         const winners = grid(rg.min, rg.max, SLIDERS.mag.step).filter((u) => judgeMag(r, u).ok);
-        expect(winners).toHaveLength(1);
-        expect(Math.abs(winners[0] - r.uSol)).toBeLessThanOrEqual(0.05);
+        // only sharp settings that look within 2% as big as the best one win (one to three 0.1 cm steps)
+        expect(winners.length).toBeGreaterThanOrEqual(1);
+        expect(winners.length).toBeLessThanOrEqual(3);
+        for (const u of winners) {
+          expect(magnifier(r.f, u).v).toBeGreaterThanOrEqual(D - 0.5);
+          expect(D / u).toBeGreaterThanOrEqual(0.98 * (D / r.uSol));
+        }
         expect(r.uSol).toBeLessThan(r.f);
         expect(magnifier(r.f, r.uSol).v).toBeCloseTo(D, 6);
         expect(r.m).toBeCloseTo(1 + D / r.f, 9);
       }
     }
   });
-  it('level 1: every closer spot is bigger but blurs; every farther spot is sharp but smaller (so the near point is the optimum)', () => {
+  it('level 1: every closer spot looks bigger but blurs; every farther spot is sharp but looks smaller (so the near point is the optimum)', () => {
     for (const r of as(buildGame(1, lcg(3)), 'mag').rounds) {
       const near = magnifier(r.f, r.uSol);
       const closer = magnifier(r.f, r.uSol - 0.5);
@@ -96,6 +101,9 @@ describe('every game has three solvable rounds', () => {
       expect(closer.v).toBeLessThan(D);
       expect(eyeSees(closer.v)).toBe(false);
       expect(eyeSees(farther.v)).toBe(true);
+      // how big it LOOKS is the angular magnification D/u: it falls as Mite moves away, even though the linear magnification grows
+      expect(closer.M).toBeGreaterThan(near.M);
+      expect(farther.M).toBeLessThan(near.M);
       expect(farther.m).toBeGreaterThan(near.m);
     }
   });
@@ -162,7 +170,7 @@ describe('words: the working and the misses', () => {
     const g1 = buildGame(1, lcg(3));
     const r1 = as(g1, 'mag').rounds[0];
     expect(missText(g1, 0, { u: r1.uSol - 1 })).toMatch(/nearer than the eye can focus/);
-    expect(missText(g1, 0, { u: r1.uSol + 0.3 })).toMatch(/Sharp, but only/);
+    expect(missText(g1, 0, { u: r1.uSol + 0.3 })).toMatch(/Sharp, but Mite only looks/);
     expect(missText(g1, 0, { u: r1.f + 1 })).toMatch(/real image/);
     expect(missText(g1, 0, { u: r1.uSol - 1 })).not.toContain(`${r1.uSol.toFixed(1)}`);
     const g2 = buildGame(2, lcg(3));
