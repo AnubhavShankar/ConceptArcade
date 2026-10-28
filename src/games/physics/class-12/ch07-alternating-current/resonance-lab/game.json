@@ -1,0 +1,90 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "resonance-lab",
+  "title": "The Resonance Lab",
+  "summary": "Find the resonant frequency, current, power, voltages and Q of a series LCR circuit, and tune it.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 7,
+    "name": "Alternating Current"
+  },
+  "ncertRef": "Section 7.6.2, Resonance",
+  "order": 1,
+  "concepts": [
+    "Natural frequency 1/√LC",
+    "Impedance equals R at resonance",
+    "V_L = V_C at resonance",
+    "Quality factor Q",
+    "Tuning"
+  ],
+  "learningOutcome": "The student can find the resonant frequency of an LC circuit, the current and power at resonance, the voltages across the elements, the quality factor, and the capacitance that tunes a circuit.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "Natural frequency",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: ω₀ = 1/√(LC) for a capacitor across an inductor (Ex 7.6).",
+      "hints": [
+        "ω₀ = 1/√(LC) with L in henry and C in farad.",
+        "f₀ = ω₀/2π.",
+        "The resistance does not enter the natural frequency."
+      ]
+    },
+    {
+      "title": "At resonance",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: at resonance X_L = X_C, so Z = R, the current is maximum and P = V²/R (Ex 7.7, 7.8, Example 7.9).",
+      "hints": [
+        "The two reactances cancel, leaving Z = R.",
+        "I = V/R.",
+        "The power factor is 1, so P = V I."
+      ]
+    },
+    {
+      "title": "The voltages",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: V_L and V_C are equal and opposite, so the LC combination has no drop (Ex 7.8).",
+      "hints": [
+        "Find the resonant ω₀ and the current first.",
+        "V_L = I ω₀ L, which can exceed the source voltage.",
+        "V_C is equal and opposite in phase, so L and C together drop nothing."
+      ]
+    },
+    {
+      "title": "Quality factor",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: Q = ω₀L/R sets how sharp the resonance is and the voltage magnification (Section 7.6.2).",
+      "hints": [
+        "Q = ω₀L/R.",
+        "At resonance V_C = Q V.",
+        "A small resistance gives a large Q."
+      ]
+    },
+    {
+      "title": "Tune the circuit",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: choose C for a given frequency, and see how the resonance shifts when L changes (Example 7.10).",
+      "hints": [
+        "C = 1/(ω₀²L) with ω₀ = 2πf.",
+        "Give C in µF.",
+        "If L doubles, f₀ falls by a factor of √2."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The current at resonance is limited by the reactances",
+    "The voltage across L cannot exceed the source voltage",
+    "Resonance depends on the resistance of the circuit"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

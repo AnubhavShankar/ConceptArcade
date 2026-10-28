@@ -47,7 +47,7 @@
       "title": "Add the phasors",
       "tier": "application",
       "kind": "complexity",
-      "adds": "More steps: the three voltages add as phasors: V = √(V_R² + (V_L − V_C)²) (Section 6.1).",
+      "adds": "More steps: the three voltages add as phasors: V = √(V_R² + (V_L − V_C)²) (Section 7.6.1).",
       "hints": [
         "V_L and V_C are opposite in phase, so subtract them.",
         "V_R is a quarter cycle from the difference.",
