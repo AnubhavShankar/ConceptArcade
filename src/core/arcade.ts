@@ -68,11 +68,11 @@ export function createArcade(ctx: GameContext, hero: Hero, o: ArcadeOptions) {
     muteBtn.setAttribute('aria-pressed', String(muted));
   } }, '🔊');
   const hud = h('div', { class: 'hud', role: 'status' }, heartsEl, roundEl, scoreEl, comboEl, chargeEl, muteBtn);
-  const overlayTitle = h('p', { class: 'overlay-title' });
-  const overlaySub = h('p', { class: 'overlay-sub' });
+  const overlayTitle = h('p', { class: 'arcade-overlay-title' });
+  const overlaySub = h('p', { class: 'arcade-overlay-sub' });
   const retry = h('button', { class: 'btn', type: 'button', 'aria-label': 'Try this level again', onclick: () => ctx.restart() }, 'Try again');
-  const overlay = h('div', { class: 'overlay', hidden: true }, overlayTitle, overlaySub, retry);
-  const stage = h('div', { class: 'stage' }, canvas, overlay);
+  const overlay = h('div', { class: 'arcade-overlay', hidden: true }, overlayTitle, overlaySub, retry);
+  const screen = h('div', { class: 'arcade-screen' }, canvas, overlay);
   const feedback = h('p', { class: 'feedback', hidden: true, 'aria-live': 'polite' });
   const hint = h('p', { class: 'muted note' });
   const controls = h('div', { class: 'lab-controls' });
@@ -324,7 +324,7 @@ export function createArcade(ctx: GameContext, hero: Hero, o: ArcadeOptions) {
       drawScene = fn;
     },
     mountAll() {
-      ctx.root.append(banner, hud, stage, hint, controls, feedback);
+      ctx.root.append(banner, hud, screen, hint, controls, feedback);
       hudUpdate();
       syncControls();
     },

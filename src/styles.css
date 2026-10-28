@@ -218,11 +218,11 @@ h3 { margin: 18px 0 6px; font-size: 1rem; }
 .hud-combo { color: #5dff9a; }
 .hud-charges { color: #4de1ff; }
 .hud-mute { margin-left: auto; min-height: 36px; background: transparent; color: #f4f6ff; border: 1px solid #8f9bd6; }
-.stage { position: relative; line-height: 0; border-radius: 0 0 12px 12px; overflow: hidden; background: #0b1030; }
-.stage canvas { display: block; }
-.overlay { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 10px; padding: 16px; line-height: 1.4; text-align: center; color: #f4f6ff; background: rgba(5, 8, 25, 0.82); }
-.overlay-title { margin: 0; font-size: 1.8rem; font-weight: 800; color: #ffd23f; }
-.overlay-sub { margin: 0; }
+.arcade-screen { position: relative; line-height: 0; border-radius: 0 0 12px 12px; overflow: hidden; background: #0b1030; }
+.arcade-screen canvas { display: block; }
+.arcade-overlay { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 10px; padding: 16px; line-height: 1.4; text-align: center; color: #f4f6ff; background: rgba(5, 8, 25, 0.82); }
+.arcade-overlay-title { margin: 0; font-size: 1.8rem; font-weight: 800; color: #ffd23f; }
+.arcade-overlay-sub { margin: 0; }
 
 /* Oil-drop lab */
 .status-line { font-weight: 600; margin: 6px 0; min-height: 1.5em; }

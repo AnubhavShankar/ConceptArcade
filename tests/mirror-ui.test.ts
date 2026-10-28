@@ -152,8 +152,8 @@ describe('the arcade shell around every level', () => {
     }
     expect(phase()).toBe('over');
     expect(hearts()).toBe(0);
-    expect(($('.overlay') as HTMLElement).hidden).toBe(false);
-    expect($('.overlay')?.textContent).toMatch(/Out of hearts/);
+    expect(($('.arcade-overlay') as HTMLElement).hidden).toBe(false);
+    expect($('.arcade-overlay')?.textContent).toMatch(/Out of hearts/);
     click('Try this level again');
     expect(restarts).toBe(1);
     expect(wins).toEqual([]);

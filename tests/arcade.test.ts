@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { heartsToStars, roundScore } from '../src/core/arcade';
 
@@ -18,5 +19,29 @@ describe('arcade scoring', () => {
   });
   it('hearts left map to stars between 1 and 3', () => {
     expect([0, 1, 2, 3, 5].map(heartsToStars)).toEqual([1, 1, 2, 3, 3]);
+  });
+});
+
+/** Every CSS rule as [selector, body], ignoring media-query wrappers. */
+function rules(css: string): [string, string][] {
+  const out: [string, string][] = [];
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) out.push([m[1].trim(), m[2]]);
+  return out;
+}
+
+describe('arcade styles stay out of the shell’s way', () => {
+  const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
+  const all = rules(css);
+  it('no rule on a class the shell already owns (.stage wraps every game) sets line-height: 0', () => {
+    const bad = all.filter(([sel, body]) => /(^|,)\s*\.stage(\s|,|$)/.test(sel) && /line-height:\s*0/.test(body));
+    expect(bad).toEqual([]);
+  });
+  it('line-height 0 is confined to the arcade screen, so text elsewhere keeps its line height', () => {
+    const zero = all.filter(([, body]) => /line-height:\s*0\b/.test(body)).map(([sel]) => sel);
+    expect(zero).toEqual(['.arcade-screen']);
+  });
+  it('the hero banner and the HUD never set line-height at all', () => {
+    const touching = all.filter(([sel, body]) => /^\.(hero|hud)\b/.test(sel) && /line-height/.test(body));
+    expect(touching).toEqual([]);
   });
 });
