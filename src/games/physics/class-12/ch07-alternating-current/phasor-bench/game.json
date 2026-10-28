@@ -1,0 +1,78 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "phasor-bench",
+  "title": "The Phasor Bench",
+  "summary": "Convert rms and peak values, find bulb resistance and AC power in a resistor, and read a phasor.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 7,
+    "name": "Alternating Current"
+  },
+  "ncertRef": "Section 7.2, AC voltage applied to a resistor",
+  "order": 1,
+  "concepts": [
+    "rms and peak values",
+    "Rated power and resistance",
+    "Average power in a resistor",
+    "Phasors and phase"
+  ],
+  "learningOutcome": "The student can convert between rms and peak values, find the resistance and currents of a rated bulb, find the average and peak power in a resistor, and read an instantaneous value from a phasor.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "A rated bulb",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: ratings are rms values, P = V²/R, and the peak is √2 times the rms (Example 7.1).",
+      "hints": [
+        "The stated voltage is the rms value.",
+        "R = V²/P and I = P/V.",
+        "The peak voltage is √2 times the rms voltage."
+      ]
+    },
+    {
+      "title": "rms and peak",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: V_rms = v_m/√2 and i_m = √2 I_rms (Ex 7.2).",
+      "hints": [
+        "The rms value is the peak divided by √2.",
+        "The peak is the rms value times √2.",
+        "Check which one of the two you are given."
+      ]
+    },
+    {
+      "title": "Power over a cycle",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: power in a resistor never goes negative; the average is half the peak (Ex 7.1).",
+      "hints": [
+        "I_rms = V_rms/R.",
+        "The average power is V_rms I_rms.",
+        "The largest power at any instant is twice the average."
+      ]
+    },
+    {
+      "title": "Read the phasor",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: v = v_m sin ωt, and a resistor’s current is in phase with the voltage (Section 7.3).",
+      "hints": [
+        "v_m is √2 times the rms voltage.",
+        "v = v_m sin ωt at the given angle.",
+        "In a resistor, v and i rise and fall together."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The stated 220 V of the mains is the peak voltage",
+    "The average power in a resistor is zero over a cycle",
+    "The current in a resistor lags the voltage"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

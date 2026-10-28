@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "heating-wire",
+  "title": "The Heating Wire",
+  "summary": "Heat elements and thermometers to find how resistance changes with temperature, then power and energy bills.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 3,
+    "name": "Current Electricity"
+  },
+  "ncertRef": "Section 3.8, Temperature dependence of resistivity",
+  "order": 1,
+  "concepts": [
+    "R = R₀[1 + α(T − T₀)]",
+    "Steady temperature of a heating element",
+    "Resistance thermometer",
+    "Power P = VI = V²/R",
+    "Energy in kWh"
+  ],
+  "learningOutcome": "The student can use the temperature coefficient of resistance for heaters and thermometers, and find power, resistance and energy cost from P = VI = V²/R.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Hot and cold",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: R₂ = R₁[1 + α(T₂ − T₁)] forwards, and inverted to find the temperature from a steady current (Ex 3.3, Example 3.3).",
+      "hints": [
+        "The fractional rise in resistance is α times the rise in temperature.",
+        "If the temperature is the unknown, first get the hot resistance from V/I.",
+        "Then T₂ − T₁ = (R₂ − R₁)/(R₁α)."
+      ]
+    },
+    {
+      "title": "The toaster",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: the switch-on current gives the cold resistance, the steady current gives the hot one, and P = VI (Ex 3.6).",
+      "hints": [
+        "Cold resistance is V divided by the switch-on current; hot resistance is V divided by the steady current.",
+        "The steady temperature follows from the change in resistance and α.",
+        "Steady power uses the steady current."
+      ]
+    },
+    {
+      "title": "The platinum thermometer",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: temperature from fixed points, and α from the same two readings (Ex 3.5, Example 3.4).",
+      "hints": [
+        "The resistance rises linearly: t is 100 times the fraction of the way from R₀ to R₁₀₀.",
+        "α = (R₁₀₀ − R₀)/(R₀ × 100).",
+        "Give α in units of 10⁻³ per °C."
+      ]
+    },
+    {
+      "title": "A weak supply",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: R = V²/P from the rating, then the power at a lower voltage (Section 3.9).",
+      "hints": [
+        "The rating tells you the power at its working voltage: use P = V²/R to find R.",
+        "The resistance stays the same at the lower voltage.",
+        "The power then depends on the square of the voltage."
+      ]
+    },
+    {
+      "title": "The electricity bill",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: energy in kilowatt-hours is power in kW times the hours (Section 3.9).",
+      "hints": [
+        "Convert each power to kilowatts before multiplying by the hours.",
+        "Add up the kWh for every appliance.",
+        "The cost is the total kWh times the price of one kWh."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Resistance of a metal falls as it heats up",
+    "The current in a heater stays the same after switch-on",
+    "Power is proportional to voltage, not voltage squared",
+    "A kilowatt-hour is a unit of power"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

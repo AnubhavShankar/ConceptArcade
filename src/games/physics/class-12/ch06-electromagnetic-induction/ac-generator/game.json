@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "ac-generator",
+  "title": "The AC Generator",
+  "summary": "Turn a coil in a field: find the peak and instantaneous emf, timing, and how changes scale the output.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 6,
+    "name": "Electromagnetic Induction"
+  },
+  "ncertRef": "Section 6.8, AC generator",
+  "order": 1,
+  "concepts": [
+    "Peak emf NBAω",
+    "Instantaneous emf ε₀ sin ωt",
+    "Quarter-cycle timing",
+    "Scaling of the peak emf"
+  ],
+  "learningOutcome": "The student can find the peak and instantaneous emf of a rotating coil, the timing of the peak from the speed, and how the peak emf changes with turns, speed and field.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Peak and instant",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: ε = NB Aω sin ωt, with the peak NBAω (Example 6.10).",
+      "hints": [
+        "The peak emf is N B A ω, with A in m² and ω = 2πf.",
+        "The emf is zero when the plane of the coil is at right angles to the field.",
+        "At an angle θ from there, the emf is the peak times sin θ."
+      ]
+    },
+    {
+      "title": "Revolutions per minute",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: convert rev/min to rad/s, and the emf takes a quarter of a turn to go from zero to its peak.",
+      "hints": [
+        "ω = 2π × (rev/min)/60.",
+        "One turn takes 60/(rev/min) seconds.",
+        "Zero to peak is a quarter of that."
+      ]
+    },
+    {
+      "title": "Change the generator",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: the peak emf is proportional to N, B, A and ω, so the changes multiply.",
+      "hints": [
+        "The peak is proportional to each of the number of turns, the field and the speed.",
+        "Multiply the factors together, do not add them.",
+        "Start from the known peak emf."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The emf is greatest when the plane of the coil is at right angles to the field",
+    "Doubling both the speed and the field doubles the peak emf",
+    "The emf of a generator is constant"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

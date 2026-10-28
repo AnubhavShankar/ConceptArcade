@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "magnet-bench",
+  "title": "The Magnet Bench",
+  "summary": "Cut magnets in pieces, find the moment and poles of a solenoid, and match a bar magnet with a current.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 5,
+    "name": "Magnetism and Matter"
+  },
+  "ncertRef": "Section 5.2, The bar magnet",
+  "order": 1,
+  "concepts": [
+    "Poles come in pairs",
+    "Solenoid as a bar magnet",
+    "Magnetic moment m = NIA",
+    "Right-hand rule for the north pole"
+  ],
+  "learningOutcome": "The student can say what happens to the poles when a magnet is cut, find the magnetic moment of a solenoid and which end is north, and match a bar magnet with an equivalent solenoid.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Cut the magnet",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: cutting a magnet gives complete magnets, never a single isolated pole (Example 5.1).",
+      "hints": [
+        "Each piece is a complete magnet with a north pole and a south pole.",
+        "The pieces point the same way as the original.",
+        "Isolated magnetic poles (monopoles) do not exist."
+      ]
+    },
+    {
+      "title": "A solenoid is a magnet",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: a solenoid has m = NIA, and the right-hand rule gives its north pole (Ex 5.3).",
+      "hints": [
+        "m = N I A, with the area of one turn in m².",
+        "Curl the fingers of the right hand along the current in the windings.",
+        "The thumb points to the north pole."
+      ]
+    },
+    {
+      "title": "Match the magnet",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: choose the current so that a solenoid has the same magnetic moment as a bar magnet (Section 5.2).",
+      "hints": [
+        "Equal magnets have equal magnetic moments.",
+        "Rearrange m = N I A for the current.",
+        "Convert the area from cm² to m²."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Cutting a bar magnet separates the north and south poles",
+    "A solenoid has a magnetic moment only if it has an iron core",
+    "A thinner magnet cut along its length has a single pole"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

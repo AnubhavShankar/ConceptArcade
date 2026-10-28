@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "capacitor-bench",
+  "title": "The Capacitor Bench",
+  "summary": "Charge a capacitor, design a parallel plate and slide in a dielectric with the battery connected or not.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 2,
+    "name": "Electrostatic Potential and Capacitance"
+  },
+  "ncertRef": "Section 2.11, Capacitors and capacitance",
+  "order": 1,
+  "concepts": [
+    "Capacitance C = Q/V",
+    "Parallel-plate capacitor, C = ε₀A/d",
+    "Effect of a dielectric",
+    "Battery connected or disconnected"
+  ],
+  "learningOutcome": "The student can use C = Q/V, find the capacitance of parallel plates, and say how a dielectric changes C, V, Q and the field with the battery connected or disconnected.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Charge a capacitor",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: C = Q/V, so the charge on the plates is Q = CV, with one plate +Q and the other −Q (Ex 2.8).",
+      "hints": [
+        "Q = CV. With C in pF and V in volts, Q comes out in pC; divide by 1000 for nC.",
+        "To find the voltage instead, use V = Q/C.",
+        "One plate carries +Q and the other −Q."
+      ]
+    },
+    {
+      "title": "The parallel plate",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: C = ε₀A/d, so halving the gap doubles C, and a dielectric multiplies C by K (Ex 2.5, 2.8).",
+      "hints": [
+        "C = ε₀A/d, with A in m² and d in metres. Rearrange for d.",
+        "C is inversely proportional to the gap: half the gap, twice the capacitance.",
+        "A dielectric of constant K multiplies the capacitance by K."
+      ]
+    },
+    {
+      "title": "Slide in a dielectric",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: with the battery connected V stays fixed and Q rises by K; disconnected, Q stays fixed and V falls by K (Ex 2.9, Example 2.8).",
+      "hints": [
+        "The dielectric multiplies the capacitance by K in both cases.",
+        "Battery connected: V is fixed, so Q = CV grows by the factor K.",
+        "Disconnected: Q cannot change, so V = Q/C falls by the factor K."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The capacitance depends on the charge on the plates",
+    "Halving the gap halves the capacitance",
+    "A dielectric changes the charge whether or not the battery is connected",
+    "The potential difference rises when a dielectric is inserted"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

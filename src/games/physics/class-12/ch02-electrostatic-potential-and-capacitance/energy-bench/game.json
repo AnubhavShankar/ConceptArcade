@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "energy-bench",
+  "title": "The Energy Bench",
+  "summary": "Assemble charges and total the energy, carry a charge between points and turn a dipole in a field, tracking the work.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 2,
+    "name": "Electrostatic Potential and Capacitance"
+  },
+  "ncertRef": "Section 2.7, Potential energy of a system of charges",
+  "order": 1,
+  "concepts": [
+    "Potential energy of a system of charges",
+    "Work to move a charge, W = q(V_B − V_A)",
+    "Path independence",
+    "Potential energy of a dipole in a field"
+  ],
+  "learningOutcome": "The student can find the potential energy of a system of charges, the work to move a charge between two points, and the work to turn a dipole in a uniform field.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Assemble the system",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the potential energy of a system is the work to bring the charges in one by one: add kq₁q₂/r over every pair (Example 2.4).",
+      "hints": [
+        "Count each pair once: for three charges there are three pairs.",
+        "U = k(q₁q₂ + q₁q₃ + q₂q₃) / side for an equilateral triangle. Keep the signs.",
+        "Unlike charges attract, so bringing them together lowers the energy."
+      ]
+    },
+    {
+      "title": "Carry a charge",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: the work to carry a charge from A to B is q(V_B − V_A), and it does not depend on the route (Example 2.5).",
+      "hints": [
+        "Find the potential at A and at B from the fixed charges: V = Σ kq/r.",
+        "W = q₀(V_B − V_A) is the work done by the outside agent. Watch the sign of q₀.",
+        "The force is conservative: any route gives the same work."
+      ]
+    },
+    {
+      "title": "Turn the dipole",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: a dipole’s energy in a field is U = −pE cos θ, and turning it costs the change in U (Example 2.6).",
+      "hints": [
+        "U = −pE cos θ. Work for the agent = U(final) − U(initial).",
+        "U is lowest at θ = 0° and highest at θ = 180°, so turning towards the field gives negative work.",
+        "p = q × 2a in coulomb-metres, E in N/C, so U is in joules."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The energy of a system is the sum of kq/r for every charge on its own",
+    "A longer route takes more work in an electrostatic field",
+    "A dipole has its highest energy along the field",
+    "Each pair of charges is counted twice"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

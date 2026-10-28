@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "reactance-lab",
+  "title": "The Reactance Lab",
+  "summary": "Find the reactance and current of an inductor or capacitor, and see why they absorb no net power.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 7,
+    "name": "Alternating Current"
+  },
+  "ncertRef": "Section 7.4, AC voltage applied to an inductor",
+  "order": 1,
+  "concepts": [
+    "Inductive reactance X_L = ωL",
+    "Capacitive reactance X_C = 1/ωC",
+    "Frequency dependence",
+    "Phase of the current",
+    "No average power"
+  ],
+  "learningOutcome": "The student can find the reactance and rms current of an inductor or capacitor, predict what a change of frequency does, and explain why they absorb no net power with the current 90° out of phase.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "The inductor",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: X_L = ωL and I = V/X_L (Ex 7.3, Example 7.2).",
+      "hints": [
+        "ω = 2πf, with f in hertz.",
+        "X_L = ωL with L in henry (mH × 10⁻³).",
+        "I_rms = V_rms/X_L."
+      ]
+    },
+    {
+      "title": "The capacitor",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: X_C = 1/ωC, which falls as the frequency rises (Ex 7.4, Example 7.4).",
+      "hints": [
+        "X_C = 1/(2πfC) with C in farad (µF × 10⁻⁶).",
+        "I_rms = V_rms/X_C.",
+        "The capacitor opposes the current less at higher frequency."
+      ]
+    },
+    {
+      "title": "Change the frequency",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: an inductor’s reactance rises with frequency and a capacitor’s falls, changing the lamp’s brightness (Examples 7.3, 7.5).",
+      "hints": [
+        "X_L is proportional to f. X_C is proportional to 1/f.",
+        "A smaller reactance means a larger current.",
+        "A larger current makes the lamp glow brighter."
+      ]
+    },
+    {
+      "title": "No net power",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the current lags the voltage in an inductor and leads it in a capacitor, and the average power is zero (Ex 7.5).",
+      "hints": [
+        "The phase difference is 90°, so cos φ = 0.",
+        "Inductor: the current lags. Capacitor: the current leads.",
+        "The energy stored in a quarter cycle is returned in the next."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A capacitor blocks the current more at high frequency",
+    "An inductor absorbs power from an AC source",
+    "The current in an inductor leads the voltage"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

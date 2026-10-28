@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "galvanometer-bench",
+  "title": "The Galvanometer Bench",
+  "summary": "Turn a galvanometer into an ammeter or voltmeter, and compare how sensitive different coils are.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 4,
+    "name": "Moving Charges and Magnetism"
+  },
+  "ncertRef": "Section 4.10, The moving coil galvanometer",
+  "order": 1,
+  "concepts": [
+    "Deflection and current sensitivity",
+    "Galvanometer to ammeter, the shunt",
+    "Galvanometer to voltmeter, the series resistor",
+    "Comparing two meters",
+    "Current and voltage sensitivity of a coil"
+  ],
+  "learningOutcome": "The student can find the sensitivity and full-scale current of a galvanometer, design a shunt or series resistor for an ammeter or voltmeter, and compare current and voltage sensitivity.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "Pointer and spring",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: NIAB = kθ, so the deflection per unit current is NAB/k (Section 4.10).",
+      "hints": [
+        "Slide the current and read the deflection to see the sensitivity.",
+        "Calculate NAB/k with A in m² and k in N m/rad, then convert radians to degrees.",
+        "Full-scale current = full-scale deflection ÷ sensitivity."
+      ]
+    },
+    {
+      "title": "The ammeter",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: a shunt in parallel takes the rest of the current, and the ammeter must have a small resistance (Example 4.12).",
+      "hints": [
+        "At full range the shunt and the coil have the same voltage: I_g R_G = (I − I_g) r_s.",
+        "Convert amperes and milliamperes with care, and give r_s in mΩ.",
+        "The ammeter has a small resistance of its own, in series with the 3 Ω."
+      ]
+    },
+    {
+      "title": "The voltmeter",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: a large series resistor limits the current drawn, and R + R_G = V/I_g (Section 4.10).",
+      "hints": [
+        "At full range V drives I_g through the coil and the series resistor together.",
+        "R + R_G = V/I_g.",
+        "The voltmeter resistance is the whole of R + R_G."
+      ]
+    },
+    {
+      "title": "Two meters",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: current sensitivity is NAB/k and voltage sensitivity is NAB/kR (Ex 4.10).",
+      "hints": [
+        "The springs are the same, so the ratio of the current sensitivities is the ratio of NAB.",
+        "Voltage sensitivity has the coil resistance R in the denominator as well.",
+        "Take the ratio of each quantity, meter 2 over meter 1."
+      ]
+    },
+    {
+      "title": "More turns",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Misconception check: more turns raise the current sensitivity but leave the voltage sensitivity unchanged (Section 4.10).",
+      "hints": [
+        "The current sensitivity NAB/k is proportional to N.",
+        "The resistance of the coil is also proportional to N.",
+        "So NAB/kR does not change with N."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A galvanometer can measure large currents directly",
+    "A shunt is connected in series with the galvanometer",
+    "A voltmeter should have a small resistance",
+    "More turns always make a more sensitive voltmeter"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

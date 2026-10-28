@@ -1,0 +1,78 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "lcr-bench",
+  "title": "The LCR Bench",
+  "summary": "Combine R, L and C in series with phasors: impedance, current, phase and voltages that do not add up.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 7,
+    "name": "Alternating Current"
+  },
+  "ncertRef": "Section 7.6, AC voltage applied to a series LCR circuit",
+  "order": 1,
+  "concepts": [
+    "Impedance Z = √(R² + (X_L − X_C)²)",
+    "Phase angle tan φ",
+    "Phasor addition of voltages",
+    "Coil with resistance"
+  ],
+  "learningOutcome": "The student can find the impedance, current and phase of series RC, RL and LCR circuits, and add voltages as phasors instead of arithmetically.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Resistor and capacitor",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: in a series RC circuit Z = √(R² + X_C²), and V_R + V_C exceeds the source voltage (Example 7.6).",
+      "hints": [
+        "X_C = 1/(2πfC) with C in farad.",
+        "Z = √(R² + X_C²), not R + X_C.",
+        "Then I = V/Z and V_C = I X_C."
+      ]
+    },
+    {
+      "title": "Series LCR",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: Z = √(R² + (X_L − X_C)²) and tan φ = (X_L − X_C)/R (Example 7.8).",
+      "hints": [
+        "Subtract X_C from X_L before squaring.",
+        "tan φ = (X_L − X_C)/R.",
+        "If X_L is bigger the current lags; if X_C is bigger it leads."
+      ]
+    },
+    {
+      "title": "Add the phasors",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: the three voltages add as phasors: V = √(V_R² + (V_L − V_C)²) (Section 7.6.1).",
+      "hints": [
+        "V_L and V_C are opposite in phase, so subtract them.",
+        "V_R is a quarter cycle from the difference.",
+        "Combine with Pythagoras."
+      ]
+    },
+    {
+      "title": "A real coil",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: a coil is a resistor in series with an inductor, with power factor R/Z (Section 7.7).",
+      "hints": [
+        "X_L = 2πfL with L in henry.",
+        "Z = √(R² + X_L²) and I = V/Z.",
+        "The power factor is cos φ = R/Z."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Impedance is the sum R + X_L + X_C",
+    "The voltages across R, L and C add up arithmetically to the source voltage",
+    "The reactances of L and C add"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

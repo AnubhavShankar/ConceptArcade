@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Curriculum } from '../src/core/curriculum';
 import { renderHome, resetHomeState } from '../src/core/home';
 import { applyResult, type Store } from '../src/core/progress';
+import { catalog, curricula } from '../src/core/registry';
 import { entry } from './fixtures';
 
 let app: HTMLElement;
@@ -312,7 +313,11 @@ describe('the real catalog', () => {
     renderHome(app, { store: {}, last: null }); // real games and the real curriculum files
     expect($$('.game-card').length).toBeGreaterThanOrEqual(7);
     expect($('.chapter-head')?.textContent).toContain('Electric Charges and Fields');
-    expect($('details.coming summary')?.textContent).toBe('13 more chapters coming soon');
+    // Derived from the data, so building another chapter never breaks this test.
+    const real12 = curricula.find((c) => c.subject === 'physics' && c.classLevel === 12)!;
+    const built = new Set(catalog.filter((g) => g.manifest.subject === 'physics' && g.manifest.classLevel === 12).map((g) => g.manifest.chapter.number));
+    const planned = real12.chapters.filter((c) => !built.has(c.number)).length;
+    expect($('details.coming summary')?.textContent).toBe(`${planned} more chapter${planned === 1 ? '' : 's'} coming soon`);
     expect(err).not.toHaveBeenCalled();
   });
 

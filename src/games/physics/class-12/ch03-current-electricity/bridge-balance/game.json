@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "bridge-balance",
+  "title": "The Bridge Balance",
+  "summary": "Null a Wheatstone bridge, find the current in an unbalanced one and use a meter bridge.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 3,
+    "name": "Current Electricity"
+  },
+  "ncertRef": "Section 3.13, Wheatstone bridge",
+  "order": 1,
+  "concepts": [
+    "Wheatstone bridge balance condition",
+    "Galvanometer current in an unbalanced bridge",
+    "Meter bridge"
+  ],
+  "learningOutcome": "The student can find an unknown resistance from the null point of a Wheatstone bridge, find the galvanometer current when it is unbalanced, and use a meter bridge.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Find the null",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: at balance P/Q = R/X, so the unknown is X = RQ/P (Section 3.13).",
+      "hints": [
+        "Turn the rheostat until the needle rests at zero.",
+        "At that point no current flows through the galvanometer, so B and D are at the same potential.",
+        "Use the ratio P/Q = R/X to find X."
+      ]
+    },
+    {
+      "title": "An unbalanced bridge",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: with the bridge out of balance, find the galvanometer current by the junction rule (Example 3.7).",
+      "hints": [
+        "Take C as 0 V and A as the battery voltage.",
+        "Write the junction rule at B and at D, to find V_B and V_D.",
+        "The current is (V_B − V_D)/G, towards the lower potential. Give it in mA."
+      ]
+    },
+    {
+      "title": "The meter bridge",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: the unknown and known resistances are in the ratio of the wire lengths at balance (Section 3.13).",
+      "hints": [
+        "Slide the jockey until the needle rests at zero and read the length.",
+        "X/R = l/(100 − l).",
+        "Swapping X and R swaps the ratio of the lengths."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The bridge balance depends on the battery emf",
+    "A balanced bridge has equal currents in all four arms",
+    "The galvanometer current is zero only when all four resistances are equal",
+    "Swapping the known and unknown resistances leaves the balance point unchanged"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

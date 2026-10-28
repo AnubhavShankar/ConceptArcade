@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "force-lab",
+  "title": "The Force Lab",
+  "summary": "Steer charges and wires in magnetic fields: force direction, force on a wire, circles and helices.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 4,
+    "name": "Moving Charges and Magnetism"
+  },
+  "ncertRef": "Section 4.2, Magnetic force",
+  "order": 1,
+  "concepts": [
+    "Lorentz force F = qv × B",
+    "Force on a current-carrying wire",
+    "Circular motion in a magnetic field",
+    "Frequency independent of speed",
+    "Helical motion"
+  ],
+  "learningOutcome": "The student can find the direction and size of the force on a moving charge or a wire in a magnetic field, and the radius, frequency and pitch of the path of a charge in a uniform field.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "Which way is the push?",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the force F = qv × B is perpendicular to v and B and reverses for a negative charge (Example 4.2).",
+      "hints": [
+        "The force is perpendicular to both the velocity and the field.",
+        "Use the right-hand rule for a positive charge: fingers along v, curl towards B, thumb along F.",
+        "For an electron, reverse the direction. With v perpendicular to B, F = qvB."
+      ]
+    },
+    {
+      "title": "Force on a wire",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: F = BIl sin θ for a wire, and balancing it against weight (Ex 4.5, 4.6, Example 4.1).",
+      "hints": [
+        "Only the component of the field across the wire matters: B sin θ.",
+        "Change the length to metres and give the answer in the unit asked for.",
+        "To hold a wire up, the magnetic force BIl must equal mg."
+      ]
+    },
+    {
+      "title": "Round and round",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the force supplies the centripetal force, so r = mv/qB and f = qB/2πm (Ex 4.11, 4.12, Example 4.3).",
+      "hints": [
+        "qvB = mv²/r gives the radius.",
+        "The frequency is qB/2πm: speed does not appear.",
+        "1 G = 10⁻⁴ T. Give r in cm and f in MHz."
+      ]
+    },
+    {
+      "title": "Faster electron",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Misconception check: a faster electron circles on a bigger circle in the same time (Ex 4.12).",
+      "hints": [
+        "The radius is proportional to the speed.",
+        "Look at the formula for the frequency: is the speed in it?",
+        "A bigger circle at a higher speed takes the same time per circuit."
+      ]
+    },
+    {
+      "title": "The helix",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: split the velocity along and across the field; r from the cross part, pitch from the along part.",
+      "hints": [
+        "The component across the field is v sin θ and sets the radius.",
+        "The component along the field is v cos θ and carries the electron forward.",
+        "Pitch = v cos θ × the period T = 2πm/qB."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The magnetic force acts along the direction of the velocity",
+    "A faster charge takes less time to go round its circle",
+    "A magnetic field speeds the particle up",
+    "An electron and a proton are pushed the same way"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

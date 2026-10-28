@@ -27,18 +27,18 @@ Everything after Coulomb's law is a different way of asking "what does a charge 
 | A2 | Charging = transfer of electrons; none created | 1.2 | Decide which body gains or loses electrons and so its sign | "Positive charge moves" in solids | *match-and-sort*: assign signs after rubbing | concept | ✅ `electron-ledger` |
 | A3 | Conductors vs insulators | 1.3 | Predict where added charge goes and which objects hold a charge | A metal spoon can't be charged at all (it can, if insulated from the hand) | *match-and-sort*: classify materials and predict charge behaviour | concept | 🟡 `conduct-or-insulate` (discharge paths; not charge spreading on a conductor) |
 | A4 | Additivity (charge is a scalar, algebraic sum) | 1.4.1 | Sum signed charges of a system | Adding magnitudes ignores sign | *numeric-puzzle*: net charge of a cluster | concept | ✅ `net-charge` |
-| A5 | Conservation of charge | 1.4.2 | Find the unknown charge after contact/transfer | Charge is "used up" when neutralised | *fix-the-broken*: spot the reaction/transfer that breaks conservation | concept | 🟡 `charge-conserved` (sharing; no "spot the violation") |
-| A6 | Quantisation, q = ne | 1.4.3 | Convert between charge and number of electrons; test whether a value is allowed | Treating charge as continuous at the atomic scale | *numeric-puzzle*: Millikan-style "which of these charges are possible?" | application | 🟡 `quantum-of-charge` (not "why ignore at macro scale") |
+| A5 | Conservation of charge | 1.4.2 | Find the unknown charge after contact/transfer | Charge is "used up" when neutralised | *fix-the-broken*: spot the reaction/transfer that breaks conservation | concept | ✅ `charge-conserved` and `forces-of-nature` L5 (Ex 1.5) |
+| A6 | Quantisation, q = ne | 1.4.3 | Convert between charge and number of electrons; test whether a value is allowed | Treating charge as continuous at the atomic scale | *numeric-puzzle*: Millikan-style "which of these charges are possible?" | application | ✅ `quantum-of-charge` and `forces-of-nature` L3, L4 (Ex 1.4, 1.11, Example 1.1) |
 
 ## B. Coulomb's law and superposition (1.5–1.6)
 
 | ID | Concept | § | What the student must apply | Common misconception | Game idea | Tier | Status |
 |---|---|---|---|---|---|---|---|
-| B1 | Coulomb's law (magnitude), inverse square, k and ε₀ | 1.5 | Rearrange F = kq₁q₂/r² for any unknown | Force ∝ 1/r; forgetting unit conversion (μC, cm) | `coulomb-balance` solves for q from equilibrium; direct force and r not yet | concept | 🟡 `coulomb-balance` + `net-force-workshop` L1 (Ex 1.1, 1.2) |
+| B1 | Coulomb's law (magnitude), inverse square, k and ε₀ | 1.5 | Rearrange F = kq₁q₂/r² for any unknown | Force ∝ 1/r; forgetting unit conversion (μC, cm) | `coulomb-balance` solves for q from equilibrium; direct force and r not yet | concept | ✅ `forces-of-nature` L1 (Ex 1.1, 1.2), `net-force-workshop` L1, `coulomb-balance` |
 | B2 | Same law, solving for charge, and scaling | 1.5 | Predict F after changing q or r (×2, ×½, ×3) without recalculating | Doubling r halves F | *predict-then-reveal* scaling quiz | concept | ✅ `net-force-workshop` L2 (Ex 1.12) |
 | B3 | Vector form: direction and sign of force | 1.5 | Give the direction of F on each charge from the signs | Attraction/repulsion reversed; force on q₁ ≠ force on q₂ in direction | *build-the-setup*: drag charges so the force arrow points a given way | concept | 🟡 `net-force-workshop` L1 (direction, equal and opposite); vector components not yet |
 | B4 | Sharing of charge between identical conducting spheres | 1.5 (Ex 1.4) | Charge splits equally on contact, then re-apply Coulomb | Charge doesn't change the force after contact | *numeric-puzzle*: touch spheres, predict the new force | application | ✅ `net-force-workshop` L2 (Example 1.4 sharing, then force) |
-| B5 | Electric vs gravitational force | 1.5 | Compare magnitudes; explain why gravity wins at large scale | "Gravity is stronger" (it is far weaker; electric forces cancel) | *predict-then-reveal*: which force dominates? | application | ⬜ |
+| B5 | Electric vs gravitational force | 1.5 | Compare magnitudes; explain why gravity wins at large scale | "Gravity is stronger" (it is far weaker; electric forces cancel) | *predict-then-reveal*: which force dominates? | application | ✅ `forces-of-nature` L2 (Ex 1.3, Example 1.3) |
 | B6 | Superposition principle (several charges) | 1.6 | Vector-add pairwise forces on one charge | Superposition is just "adding numbers"; ignoring direction | *build-the-setup*: arrange charges for a target net force | application | ✅ `net-force-workshop` L3 (Ex 1.6, Examples 1.5 and 1.6) |
 | B7 | Equilibrium of a charge under several forces | 1.6 | Locate the point where net force is zero (on a line or triangle) | Equilibrium point is always the midpoint | *tune-to-target*: place a third charge so it is balanced (needs a computed prediction first) | challenge | ✅ `net-force-workshop` L4 and L5 |
 
@@ -56,44 +56,44 @@ Everything after Coulomb's law is a different way of asking "what does a charge 
 
 | ID | Concept | § | What the student must apply | Common misconception | Game idea | Tier | Status |
 |---|---|---|---|---|---|---|---|
-| D1 | Properties of field lines (tangent = direction; density = strength; never cross; start on +, end on −; no closed loops) | 1.8 | Judge whether a drawn pattern is physically possible | Lines are physical paths; lines can cross where fields "meet" | *fix-the-broken*: find the invalid field-line diagram | concept | ⬜ |
-| D2 | Reading a field-line picture | 1.8 | From line density and direction, compare field strength and charge signs/magnitudes | More lines = more charge only in one diagram, not across diagrams | *predict-then-reveal*: infer charges from a pattern | application | ⬜ |
-| D3 | Motion of a charge vs field lines | 1.8 | Path of a released charge does not generally follow a line | A released charge always moves along the field line | *predict-then-reveal* | challenge | ⬜ |
+| D1 | Properties of field lines (tangent = direction; density = strength; never cross; start on +, end on −; no closed loops) | 1.8 | Judge whether a drawn pattern is physically possible | Lines are physical paths; lines can cross where fields "meet" | *fix-the-broken*: find the invalid field-line diagram | concept | ✅ `field-line-detective` L1 (Ex 1.7) |
+| D2 | Reading a field-line picture | 1.8 | From line density and direction, compare field strength and charge signs/magnitudes | More lines = more charge only in one diagram, not across diagrams | *predict-then-reveal*: infer charges from a pattern | application | ✅ `field-line-detective` L2 and L3 |
+| D3 | Motion of a charge vs field lines | 1.8 | Path of a released charge does not generally follow a line | A released charge always moves along the field line | *predict-then-reveal* | challenge | ✅ `field-line-detective` L4 |
 
 ## E. Electric flux (1.9)
 
 | ID | Concept | § | What the student must apply | Common misconception | Game idea | Tier | Status |
 |---|---|---|---|---|---|---|---|
-| E1 | Flux through a flat area, E·ΔS = EΔS cosθ | 1.9 | Compute flux for any orientation; zero when E ∥ surface | Flux is largest when E is parallel to the surface | *tune-to-target*: rotate a loop for a target flux | concept | ⬜ |
-| E2 | Outward normal convention and sign of flux | 1.9 | Sign of flux through each face of a closed surface | Sign depends on the field only | *numeric-puzzle*: net flux through a box in a uniform field (Ex 1.10, 1.11) | application | ⬜ |
-| E3 | Units and dimensions of E and flux | 1.9 | Check dimensional consistency | – | *match-and-sort*: units to quantities | concept | ⬜ |
+| E1 | Flux through a flat area, E·ΔS = EΔS cosθ | 1.9 | Compute flux for any orientation; zero when E ∥ surface | Flux is largest when E is parallel to the surface | *tune-to-target*: rotate a loop for a target flux | concept | ✅ `flux-gate` L1 and L3 (Ex 1.14) |
+| E2 | Outward normal convention and sign of flux | 1.9 | Sign of flux through each face of a closed surface | Sign depends on the field only | *numeric-puzzle*: net flux through a box in a uniform field (Ex 1.10, 1.11) | application | ✅ `flux-gate` L2 and L4 (Ex 1.15, Example 1.10) |
+| E3 | Units and dimensions of E and flux | 1.9 | Check dimensional consistency | – | *match-and-sort*: units to quantities | concept | 🟡 `flux-gate` (N m²/C used throughout; no unit-sorting task) |
 
 ## F. Electric dipole (1.10–1.11)
 
 | ID | Concept | § | What the student must apply | Common misconception | Game idea | Tier | Status |
 |---|---|---|---|---|---|---|---|
-| F1 | Dipole and dipole moment, p = 2qa, direction −→+ | 1.10 | Compute p; give its direction | p points + to − | *numeric-puzzle* | concept | ⬜ |
-| F2 | Field on the axis and on the equatorial plane | 1.10.1 | Choose the right formula; far-field limits; axis ≈ 2 × equator at large r | Same direction on axis and equator | *numeric-puzzle*; *predict-then-reveal* directions | application | ⬜ |
-| F3 | Dipole field falls as 1/r³, faster than a point charge | 1.10.1–1.10.2 | Compare how fields change when distance doubles | Net-zero charge means zero field | *predict-then-reveal*: "double the distance, what happens?" | application | ⬜ |
-| F4 | Torque on a dipole in a uniform field, τ = pE sinθ; net force zero | 1.11 | Compute torque; predict rotation and equilibrium orientation | A dipole in a uniform field accelerates sideways | *tune-to-target*: choose angle/field for a target torque | application | ⬜ |
-| F5 | Stable vs unstable equilibrium of a dipole | 1.11 | Identify θ = 0 vs θ = 180° and what happens after a small push | Both orientations are equally stable | *predict-then-reveal* | challenge | ⬜ |
+| F1 | Dipole and dipole moment, p = 2qa, direction −→+ | 1.10 | Compute p; give its direction | p points + to − | *numeric-puzzle* | concept | ✅ `dipole-bench` L1 (Ex 1.9) |
+| F2 | Field on the axis and on the equatorial plane | 1.10.1 | Choose the right formula; far-field limits; axis ≈ 2 × equator at large r | Same direction on axis and equator | *numeric-puzzle*; *predict-then-reveal* directions | application | ✅ `dipole-bench` L4 (Example 1.9) |
+| F3 | Dipole field falls as 1/r³, faster than a point charge | 1.10.1–1.10.2 | Compare how fields change when distance doubles | Net-zero charge means zero field | *predict-then-reveal*: "double the distance, what happens?" | application | ✅ `dipole-bench` L5 (and L1: zero total charge) |
+| F4 | Torque on a dipole in a uniform field, τ = pE sinθ; net force zero | 1.11 | Compute torque; predict rotation and equilibrium orientation | A dipole in a uniform field accelerates sideways | *tune-to-target*: choose angle/field for a target torque | application | ✅ `dipole-bench` L2 (Ex 1.10) |
+| F5 | Stable vs unstable equilibrium of a dipole | 1.11 | Identify θ = 0 vs θ = 180° and what happens after a small push | Both orientations are equally stable | *predict-then-reveal* | challenge | ✅ `dipole-bench` L3 |
 
 ## G. Continuous charge distributions (1.12)
 
 | ID | Concept | § | What the student must apply | Common misconception | Game idea | Tier | Status |
 |---|---|---|---|---|---|---|---|
-| G1 | Linear, surface and volume charge density (λ, σ, ρ) | 1.12 | Pick the right density and compute total charge; use units | Mixing C/m, C/m², C/m³ | *match-and-sort*: pick the density for a geometry; *numeric-puzzle*: total charge | concept | ⬜ |
+| G1 | Linear, surface and volume charge density (λ, σ, ρ) | 1.12 | Pick the right density and compute total charge; use units | Mixing C/m, C/m², C/m³ | *match-and-sort*: pick the density for a geometry; *numeric-puzzle*: total charge | concept | ✅ `gauss-flux-lab` L1 (Ex 1.21a) |
 
 ## H. Gauss's law (1.13–1.14)
 
 | ID | Concept | § | What the student must apply | Common misconception | Game idea | Tier | Status |
 |---|---|---|---|---|---|---|---|
-| H1 | Gauss's law: net flux = q_enclosed / ε₀ | 1.13 | Find flux from enclosed charge, ignoring surface shape and outside charges | Outside charges contribute to net flux; flux depends on the surface's shape | *predict-then-reveal*: deform the surface, does the flux change? | application | ⬜ |
-| H2 | Flux through part of a surface using symmetry (e.g. one face of a cube, hemisphere) | 1.13 (Ex 1.10, 1.11) | Apply symmetry to split flux equally | – | *numeric-puzzle* | challenge | ⬜ |
-| H3 | Choosing a Gaussian surface | 1.14 | Match a charge distribution's symmetry to sphere, cylinder or pillbox | Any closed surface makes the calculation easy | *match-and-sort*: distribution → surface | application | ⬜ |
-| H4 | Infinite line charge, E = λ/2πε₀r | 1.14.1 | Use the result; field ∝ 1/r | Same 1/r² as a point | *numeric-puzzle* | application | ⬜ |
-| H5 | Infinite plane sheet, E = σ/2ε₀ (independent of distance) | 1.14.2 | Use the result; superpose two sheets/plates | Field weakens with distance from a large sheet | *predict-then-reveal*, *numeric-puzzle* (parallel plates) | application | ⬜ |
-| H6 | Spherical shell: outside acts like a point charge, zero inside | 1.14.3 (Ex 1.12) | Choose inside/outside formula; extend to solid uniform sphere | Field inside a charged shell is non-zero; enclosed charge ignores a smaller radius | *tune-to-target*: probe radius, with "inside/outside?" committed first | challenge | ⬜ |
+| H1 | Gauss's law: net flux = q_enclosed / ε₀ | 1.13 | Find flux from enclosed charge, ignoring surface shape and outside charges | Outside charges contribute to net flux; flux depends on the surface's shape | *predict-then-reveal*: deform the surface, does the flux change? | application | ✅ `gauss-flux-lab` L2 and L4 (Ex 1.18, 1.19) |
+| H2 | Flux through part of a surface using symmetry (e.g. one face of a cube, hemisphere) | 1.13 (Ex 1.10, 1.11) | Apply symmetry to split flux equally | – | *numeric-puzzle* | challenge | ✅ `gauss-flux-lab` L4 (Ex 1.17) |
+| H3 | Choosing a Gaussian surface | 1.14 | Match a charge distribution's symmetry to sphere, cylinder or pillbox | Any closed surface makes the calculation easy | *match-and-sort*: distribution → surface | application | ✅ `gauss-symmetry-lab` L1 |
+| H4 | Infinite line charge, E = λ/2πε₀r | 1.14.1 | Use the result; field ∝ 1/r | Same 1/r² as a point | *numeric-puzzle* | application | ✅ `gauss-symmetry-lab` L2 (Ex 1.22) |
+| H5 | Infinite plane sheet, E = σ/2ε₀ (independent of distance) | 1.14.2 | Use the result; superpose two sheets/plates | Field weakens with distance from a large sheet | *predict-then-reveal*, *numeric-puzzle* (parallel plates) | application | ✅ `gauss-symmetry-lab` L3 (Ex 1.23) |
+| H6 | Spherical shell: outside acts like a point charge, zero inside | 1.14.3 (Ex 1.12) | Choose inside/outside formula; extend to solid uniform sphere | Field inside a charged shell is non-zero; enclosed charge ignores a smaller radius | *tune-to-target*: probe radius, with "inside/outside?" committed first | challenge | ✅ `gauss-symmetry-lab` L4 and L5 (Ex 1.20, Example 1.12) |
 
 ## Skills that cut across all concepts
 

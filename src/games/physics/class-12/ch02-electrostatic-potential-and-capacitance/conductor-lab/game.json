@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "conductor-lab",
+  "title": "The Conductor Lab",
+  "summary": "Probe a charged metal sphere, test which set-ups a hollow conductor shields, and reduce a field with a dielectric slab.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 2,
+    "name": "Electrostatic Potential and Capacitance"
+  },
+  "ncertRef": "Section 2.9, Electrostatics of conductors",
+  "order": 1,
+  "concepts": [
+    "Field and potential of a charged conductor",
+    "Electrostatic shielding",
+    "Dielectrics and polarisation",
+    "Polar and non-polar molecules"
+  ],
+  "learningOutcome": "The student can give the field inside, at and outside a charged conductor, say when a cavity is shielded, and find the field inside a dielectric.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "The charged sphere",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: inside a conductor E = 0, just outside E = kq/R², and the potential is constant throughout (Ex 2.4).",
+      "hints": [
+        "All the charge sits on the surface, so a Gaussian sphere inside encloses none: E = 0 inside.",
+        "Outside the sphere acts like a point charge at its centre: E = kq/r², with r from the centre.",
+        "The field jumps at the surface, but the potential kq/R is continuous and constant inside."
+      ]
+    },
+    {
+      "title": "Shielding",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: an empty cavity is shielded from charges outside, but a charge inside a cavity still gives a field outside (Example 2.7).",
+      "hints": [
+        "Charges outside induce surface charge that cancels their field in the conductor and in an empty cavity.",
+        "A charge inside the cavity induces charge on the walls and the outer surface, so there is a field outside.",
+        "Shielding works one way only."
+      ]
+    },
+    {
+      "title": "A dielectric slab",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the polarised molecules reduce the field inside a dielectric by the factor K.",
+      "hints": [
+        "The molecules line up with the field, giving induced surface charges that oppose the applied field.",
+        "The net field inside is E = E₀ / K.",
+        "Polar molecules (such as water) have permanent dipoles; non-polar ones get induced dipoles in a field."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "There is a field inside a charged conductor",
+    "The potential inside a charged conductor is zero",
+    "Shielding works from the inside out as well",
+    "A dielectric increases the field inside it"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

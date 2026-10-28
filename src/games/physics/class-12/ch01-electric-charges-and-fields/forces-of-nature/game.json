@@ -1,0 +1,92 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "forces-of-nature",
+  "title": "Forces of Nature",
+  "summary": "Work out Coulomb forces, weigh electric against gravity, count the electrons in a coulomb and test charge conservation.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 1,
+    "name": "Electric Charges and Fields"
+  },
+  "ncertRef": "Section 1.5, Coulomb’s law",
+  "order": 1,
+  "concepts": [
+    "Coulomb force and distance",
+    "Electric versus gravitational force",
+    "The size of a coulomb and quantisation",
+    "Mass moved when charging",
+    "Conservation of charge"
+  ],
+  "learningOutcome": "The student can find a Coulomb force or distance, compare electric and gravitational forces, count electrons in a charge, show the mass moved is negligible, and test charge conservation.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Force between two charges",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: F = kq₁q₂/r² for the force or the distance, and equal and opposite forces on the two charges (Ex 1.1, 1.2).",
+      "hints": [
+        "Convert µC to coulombs and cm to metres before using k = 9 × 10⁹ N m²/C².",
+        "To find the distance, rearrange: r = √(k q₁ q₂ / F).",
+        "The two spheres push on each other with forces of equal size and opposite direction."
+      ]
+    },
+    {
+      "title": "Electric against gravity",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: the electric force between particles is about 10³⁶ times the gravitational force (Ex 1.3, Example 1.3).",
+      "hints": [
+        "Divide k q² / r² by G m₁ m₂ / r²: the distance cancels.",
+        "Use the proton mass 1.67 × 10⁻²⁷ kg and electron mass 9.11 × 10⁻³¹ kg.",
+        "Gravity still rules planets because electric forces cancel: charges come in both signs."
+      ]
+    },
+    {
+      "title": "How big is a coulomb?",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: a coulomb is about 6 × 10¹⁸ electrons, so charge looks continuous at ordinary scales (Example 1.1, Ex 1.4b).",
+      "hints": [
+        "The number of electrons is N = q / e with e = 1.6 × 10⁻¹⁹ C.",
+        "Charge gathered each second = rate × e. Divide 1 C by it for the time in seconds.",
+        "One electron is a tiny step compared with the whole charge, so quantisation is invisible."
+      ]
+    },
+    {
+      "title": "The mass of charging",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: charging moves electrons, from one body to the other, and the mass they carry is negligible (Ex 1.11).",
+      "hints": [
+        "N = q / e, and the mass moved is N times the mass of one electron.",
+        "A body that ends up negative has gained electrons; one that ends up positive has lost them.",
+        "The mass is far too small to ever measure."
+      ]
+    },
+    {
+      "title": "Conservation checker",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: charge is conserved in every process: the total before equals the total after (Ex 1.5).",
+      "hints": [
+        "Add up the charges on each side of every collision, in units of e.",
+        "Neutral particles (neutron, neutrino, photon) carry zero charge.",
+        "If the two totals differ, charge would be created or destroyed: forbidden."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The force on the lighter charge is smaller",
+    "Gravity is stronger than the electric force",
+    "Charge is not quantised for big objects",
+    "Charging a body makes it measurably heavier",
+    "Charge can be created in a collision"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

@@ -5,9 +5,17 @@
   "summary": "Give a small ball just the right charge for the repulsion from a fixed charge to hold it floating at a marked height.",
   "subject": "physics",
   "classLevel": 12,
-  "chapter": { "number": 1, "name": "Electric Charges and Fields" },
+  "chapter": {
+    "number": 1,
+    "name": "Electric Charges and Fields"
+  },
   "ncertRef": "Section 1.5, Coulomb's Law",
-  "concepts": ["Coulomb's law", "Inverse-square dependence", "Balancing forces", "Attraction and repulsion"],
+  "concepts": [
+    "Coulomb's law",
+    "Inverse-square dependence",
+    "Balancing forces",
+    "Attraction and repulsion"
+  ],
   "learningOutcome": "After winning, the student can balance Coulomb's force against weight, solve for the charge from the height, handle small-scale units, and use signs to tell repulsion from attraction.",
   "mechanic": "tune-to-target",
   "estimatedMinutes": 15,
@@ -63,5 +71,9 @@
     "Forgetting to convert prefixes (mg, mm, nC) to SI units",
     "A ball with the opposite charge can still float"
   ],
-  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "order": 2
 }

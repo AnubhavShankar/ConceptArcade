@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "parallel-wires",
+  "title": "The Parallel Wires",
+  "summary": "Find the force between parallel currents, balance a floating wire and use the definition of the ampere.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 4,
+    "name": "Moving Charges and Magnetism"
+  },
+  "ncertRef": "Section 4.8, Force between two parallel currents, the ampere",
+  "order": 1,
+  "concepts": [
+    "Force between parallel currents",
+    "Attraction and repulsion",
+    "Definition of the ampere",
+    "Net force from several wires",
+    "Force on a loop near a wire"
+  ],
+  "learningOutcome": "The student can find the force between parallel currents and whether it attracts or repels, balance a wire against its weight, use the definition of the ampere, and add forces from several wires.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Pull or push?",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: F = (μ₀/2π) I₁I₂L/d, and parallel currents attract while antiparallel ones repel (Ex 4.7).",
+      "hints": [
+        "F = 2 × 10⁻⁷ I₁I₂ L/d with the lengths in metres.",
+        "Give the force in µN: multiply the newtons by 10⁶.",
+        "Parallel currents attract, antiparallel currents repel."
+      ]
+    },
+    {
+      "title": "The floating wire",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: the repulsion between antiparallel wires can balance a weight (Section 4.8).",
+      "hints": [
+        "Balance the repulsive force per metre against the weight per metre λg.",
+        "Rearrange 2 × 10⁻⁷ I₁I₂/d = λg for d.",
+        "Closer than the balance, the force wins and the wire rises."
+      ]
+    },
+    {
+      "title": "The ampere",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the ampere is defined through the force between wires, 2 × 10⁻⁷ N/m at 1 A and 1 m (Section 4.8).",
+      "hints": [
+        "For equal currents F/L = 2 × 10⁻⁷ I²/d.",
+        "Find I by rearranging.",
+        "Doubling both currents multiplies the force by 2 × 2."
+      ]
+    },
+    {
+      "title": "Three wires",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: add the signed forces from two outer wires on the middle one.",
+      "hints": [
+        "Take the direction towards wire 1 as positive.",
+        "A wire with a parallel current pulls the middle wire towards itself, an antiparallel one pushes it away.",
+        "Add the two as signed quantities, not as magnitudes."
+      ]
+    },
+    {
+      "title": "A loop near a wire",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: the near and far sides of a rectangular loop feel opposite forces, and the side arms cancel.",
+      "hints": [
+        "The near side and the far side carry opposite currents and feel opposite forces.",
+        "The near side is closer, so its force is larger.",
+        "The side arms feel equal and opposite forces which cancel."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Parallel currents in the same direction repel",
+    "The force between two wires does not depend on both currents",
+    "Newton’s third law fails for the force between two wires",
+    "A loop next to a wire feels no net force"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

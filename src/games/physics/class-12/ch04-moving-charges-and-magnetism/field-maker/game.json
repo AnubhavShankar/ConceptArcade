@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "field-maker",
+  "title": "The Field Maker",
+  "summary": "Find the field of a current element, a coil, an arc and two loops, with its direction.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 4,
+    "name": "Moving Charges and Magnetism"
+  },
+  "ncertRef": "Section 4.4, Magnetic field due to a current element, Biot-Savart law",
+  "order": 1,
+  "concepts": [
+    "Biot–Savart law",
+    "Field at the centre of a coil",
+    "Field of an arc",
+    "Field on the axis of a coil",
+    "Superposition of loops"
+  ],
+  "learningOutcome": "The student can find the size and direction of the field of a current element, a coil, an arc and concentric loops, and compare the field on the axis with the field at the centre.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "A current element",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: dB = (μ₀/4π) I dl sin θ / r² with the direction from dl × r (Example 4.4).",
+      "hints": [
+        "μ₀/4π = 10⁻⁷ T m/A. Change dl to metres.",
+        "Only the part of dl across the line to the point counts: sin θ.",
+        "The direction is that of dl × r: curl the fingers of the right hand from dl towards r."
+      ]
+    },
+    {
+      "title": "A coil",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: every turn of a tightly wound coil adds μ₀I/2R at the centre (Ex 4.1, Example 4.6).",
+      "hints": [
+        "B = μ₀NI/2R at the centre. Change R to metres.",
+        "Each turn adds its own field in the same direction.",
+        "Curl the fingers along the current: the thumb gives the field."
+      ]
+    },
+    {
+      "title": "An arc",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: an arc gives the same fraction of the loop field as its angle, and straight leads in line with the centre give none (Example 4.5).",
+      "hints": [
+        "For a straight lead in line with the centre dl × r = 0.",
+        "The arc gives its fraction of μ₀I/2R.",
+        "The direction follows the same right-hand rule as for a full loop."
+      ]
+    },
+    {
+      "title": "Along the axis",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the field on the axis falls off from its value at the centre as R³/(R² + x²)^(3/2) (Section 4.5).",
+      "hints": [
+        "B = μ₀NIR² / [2(R² + x²)^(3/2)]. Keep every length in metres.",
+        "At x = 0 it is the centre value μ₀NI/2R.",
+        "The fraction is the axis field divided by the centre field."
+      ]
+    },
+    {
+      "title": "Two loops",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: loops with a common centre add their fields if the currents go the same way and subtract if opposite.",
+      "hints": [
+        "Find the field of each loop at the centre separately.",
+        "Same sense: add. Opposite senses: subtract.",
+        "The loop with the larger field decides the direction."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The field of a coil at its centre does not depend on the number of turns",
+    "A straight wire section in line with the point contributes the most",
+    "The field on the axis of a coil is the same everywhere along the axis",
+    "Currents in opposite senses in two loops add their fields"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

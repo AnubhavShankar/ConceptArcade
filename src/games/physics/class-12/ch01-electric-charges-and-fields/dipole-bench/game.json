@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "dipole-bench",
+  "title": "The Dipole Bench",
+  "summary": "Build dipoles, hold them against a field, test their stability and measure how their field fades with distance.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 1,
+    "name": "Electric Charges and Fields"
+  },
+  "ncertRef": "Section 1.10, Electric dipole",
+  "order": 1,
+  "concepts": [
+    "Dipole moment p = q × 2a",
+    "Torque on a dipole in a uniform field",
+    "Stable and unstable equilibrium",
+    "Field on the axis and the equatorial plane",
+    "The 1/r³ fall-off"
+  ],
+  "learningOutcome": "The student can find a dipole moment, the torque on a dipole in a field, which orientation is stable, the axis and equatorial fields, and how the field falls with distance.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Build a dipole",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the dipole moment is p = q × 2a, pointing from − to +, and a dipole has zero total charge (Ex 1.9).",
+      "hints": [
+        "p = q × 2a. Convert nC to coulombs and cm to metres.",
+        "The moment points from the negative charge to the positive charge.",
+        "The two charges are equal and opposite, so the total charge is zero."
+      ]
+    },
+    {
+      "title": "Hold it still",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: a uniform field gives a dipole no net force but a torque τ = pE sin θ (Ex 1.10).",
+      "hints": [
+        "The field pulls +q and −q with equal and opposite forces qE, so the net force is zero.",
+        "The torque is τ = p E sin θ, where θ is the angle between p and E.",
+        "The torque turns the dipole towards the field."
+      ]
+    },
+    {
+      "title": "Which way is stable?",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: a dipole is in stable equilibrium along the field and in unstable equilibrium against it.",
+      "hints": [
+        "The torque is zero when p is along the field or against it.",
+        "Nudge it: if the torque turns it back, the equilibrium is stable.",
+        "Along the field a nudge is corrected; against it a nudge grows until the dipole flips round."
+      ]
+    },
+    {
+      "title": "Axis or equator?",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: far away the field is 2kp/r³ along p on the axis and kp/r³ against p on the equator (Example 1.9).",
+      "hints": [
+        "On the axis (the line through both charges) E = 2kp/r³, along the moment.",
+        "On the equatorial plane E = kp/r³, pointing against the moment.",
+        "Use r in metres and p = q × 2a in C m."
+      ]
+    },
+    {
+      "title": "How fast it fades",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: a dipole’s field falls as 1/r³, faster than the 1/r² of a single charge.",
+      "hints": [
+        "Far away E ∝ 1/r³, so doubling the distance divides the field by 8.",
+        "To fall to a fraction f the distance must grow by k = (1/f)^(1/3).",
+        "A single charge needs k = (1/f)^(1/2): the dipole fades faster."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A dipole has no field because its total charge is zero",
+    "A dipole in a uniform field is pulled sideways",
+    "A dipole is stable in any orientation",
+    "The field of a dipole falls as 1/r²"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "gauss-flux-lab",
+  "title": "Gauss Lab: Charge and Flux",
+  "summary": "Weigh charged objects, count the flux through closed surfaces and use symmetry to find the flux through one face.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 1,
+    "name": "Electric Charges and Fields"
+  },
+  "ncertRef": "Section 1.13, Gauss’s law",
+  "order": 1,
+  "concepts": [
+    "Linear, surface and volume charge density",
+    "Gauss’s law: flux = q / ε₀",
+    "Zero net flux does not mean no charge",
+    "Flux through part of a surface by symmetry"
+  ],
+  "learningOutcome": "The student can find total charge from a density, the net flux from the enclosed charge, the charge from a flux, and the flux through one face of a cube using symmetry.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Charge from density",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: choose λ, σ or ρ for the shape and find the total charge (Ex 1.21a).",
+      "hints": [
+        "A line carries charge per length (λ), a surface carries charge per area (σ), a volume carries charge per volume (ρ).",
+        "Total charge = density × length, area or volume.",
+        "A sphere has area 4πr² and volume (4/3)πr³."
+      ]
+    },
+    {
+      "title": "Flux through a closed surface",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: net flux = enclosed charge / ε₀, whatever the surface, and charges outside do not count (Ex 1.18, 1.19).",
+      "hints": [
+        "Add up only the charges inside the surface, with their signs.",
+        "Φ = q / ε₀ with ε₀ = 8.854 × 10⁻¹² C²/(N m²). Convert µC to C.",
+        "Resizing the surface changes the answer only if it passes over a charge."
+      ]
+    },
+    {
+      "title": "The black box",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: find the charge from a measured flux, and see that zero net flux does not mean no charge (Ex 1.16).",
+      "hints": [
+        "q = ε₀ Φ. A flux that points inwards means a negative charge.",
+        "Zero net flux means the net charge is zero, not that there is none.",
+        "Equal and opposite charges inside give zero net flux."
+      ]
+    },
+    {
+      "title": "A face of the cube",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: use symmetry to share the flux between the faces of a cube (Ex 1.17).",
+      "hints": [
+        "First find the flux through the whole cube, or the share of it, from Gauss’s law.",
+        "A charge at the centre sends equal flux through all six faces.",
+        "A charge at a corner is shared by eight cubes. Faces that touch the corner have zero flux; the other three share the rest."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Charges outside a closed surface add to its net flux",
+    "The flux depends on the size or shape of the surface",
+    "Zero net flux means there is no charge inside",
+    "A cube around a charge at a corner has the same flux as one around a charge at its centre"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

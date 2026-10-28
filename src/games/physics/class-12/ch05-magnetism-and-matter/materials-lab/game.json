@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "materials-lab",
+  "title": "The Materials Lab",
+  "summary": "Find H, M and B in a core, classify materials by susceptibility, and apply Curie’s law.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 5,
+    "name": "Magnetism and Matter"
+  },
+  "ncertRef": "Section 5.4, Magnetisation and magnetic intensity",
+  "order": 1,
+  "concepts": [
+    "Magnetisation and magnetic intensity",
+    "B = μ₀(H + M)",
+    "Susceptibility and relative permeability",
+    "Dia-, para- and ferromagnetism",
+    "Curie’s law"
+  ],
+  "learningOutcome": "The student can find H, M and B in a filled solenoid, relate susceptibility and permeability, classify materials, and say how paramagnetic susceptibility changes with temperature.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "A filled solenoid",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: H = nI, M = χH, and B = μ₀(H + M) = μ₀μᵣH (Section 5.4).",
+      "hints": [
+        "H depends only on the turns per metre and the current.",
+        "M = χH and χ = μᵣ − 1.",
+        "B = μ₀(H + M)."
+      ]
+    },
+    {
+      "title": "Which kind?",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: μᵣ = 1 + χ, and the sign and size of χ tell the kind of material (Table 5.2).",
+      "hints": [
+        "χ = μᵣ − 1, with its sign.",
+        "A small negative χ is diamagnetic, a small positive χ paramagnetic.",
+        "A large positive χ is ferromagnetic."
+      ]
+    },
+    {
+      "title": "Hot and cold",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: for a paramagnet χ is proportional to 1/T, as thermal motion fights the alignment (Section 5.5.2).",
+      "hints": [
+        "χ ∝ 1/T.",
+        "Cooling raises χ; heating lowers it.",
+        "Use the ratio of the temperatures in kelvin."
+      ]
+    },
+    {
+      "title": "Near a magnet",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: diamagnetic samples are repelled, paramagnetic ones weakly attracted and ferromagnetic ones strongly attracted (Section 5.5).",
+      "hints": [
+        "Diamagnetic materials move from strong to weak field.",
+        "Paramagnetic atoms have permanent moments that only partly line up.",
+        "Ferromagnetic materials have domains."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Only iron is affected by a magnet",
+    "The susceptibility of a paramagnet does not depend on temperature",
+    "A diamagnetic material is attracted to a magnet",
+    "H and B are the same thing"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "cell-bench",
+  "title": "The Cell Bench",
+  "summary": "Find terminal voltage, internal resistance and charging current, and combine cells in series and parallel.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 3,
+    "name": "Current Electricity"
+  },
+  "ncertRef": "Section 3.10, Cells, emf, internal resistance",
+  "order": 1,
+  "concepts": [
+    "emf and internal resistance",
+    "Terminal voltage V = ε − Ir",
+    "Measuring internal resistance",
+    "Charging a battery, V = ε + Ir",
+    "Cells in series and in parallel"
+  ],
+  "learningOutcome": "The student can find the current and terminal voltage of a real cell, measure its internal resistance, analyse charging, and combine cells in series and in parallel.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "A real cell",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: I = ε/(R + r) and V = ε − Ir, the terminal voltage is less than the emf (Ex 3.2).",
+      "hints": [
+        "The cell's internal resistance is in series with the resistor.",
+        "Current is the emf divided by the total resistance.",
+        "The terminal voltage is the emf minus the voltage lost inside, Ir."
+      ]
+    },
+    {
+      "title": "Hidden resistance",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: measure r from a reading, r = (ε − V)/I, and the short-circuit current is ε/r (Ex 3.1).",
+      "hints": [
+        "Slide the load and read both meters.",
+        "The voltage missing from the emf is the volts lost inside the cell.",
+        "The largest current flows when the load resistance is zero."
+      ]
+    },
+    {
+      "title": "Charging a battery",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: while charging V = ε + Ir, and a series resistor limits the current (Ex 3.8).",
+      "hints": [
+        "The supply and the battery's emf oppose, so I = (V − ε)/(R + r).",
+        "The current now enters the positive terminal, so the terminal voltage exceeds the emf.",
+        "Think about the current if there were no series resistor."
+      ]
+    },
+    {
+      "title": "Cells in series",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: series emfs add or subtract depending on the way round, and resistances add (Section 3.11).",
+      "hints": [
+        "If the cells help each other, add the emfs. If they oppose, subtract.",
+        "The current passes through both cells, so their internal resistances add.",
+        "The equivalent emf stays positive: the larger cell wins."
+      ]
+    },
+    {
+      "title": "Cells in parallel",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: ε = (ε₁r₂ + ε₂r₁)/(r₁ + r₂) and 1/r = 1/r₁ + 1/r₂, then I = ε/(R + r) (Section 3.11).",
+      "hints": [
+        "The equivalent emf lies between the two emfs.",
+        "The cell with the smaller internal resistance counts for more.",
+        "Treat the pair as one cell and find the current in the resistor."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The terminal voltage of a cell equals its emf",
+    "The terminal voltage is the same while charging as while discharging",
+    "Cells in series always add their emfs",
+    "Two cells in parallel give twice the emf"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
