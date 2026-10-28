@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "bohr-orbits",
+  "title": "Bohr Orbits",
+  "summary": "Put an electron on the right Bohr ring, set its speed and lap time, and count the zeros in a planet’s quantum number.",
+  "chapter": {
+    "number": 12,
+    "name": "Atoms"
+  },
+  "ncertRef": "Section 12.4, Bohr model of the hydrogen atom",
+  "concepts": [
+    "Bohr orbit radii rₙ = n²a₀",
+    "Orbital speed v₁/n",
+    "Orbital period grows as n³",
+    "Quantisation mvr = nħ",
+    "The quantum number of a planet"
+  ],
+  "learningOutcome": "The student can find the radius, speed and period of a Bohr orbit from n, and use mvr = nħ to find the huge quantum number of a planet.",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Hop’s ring",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the allowed Bohr orbits have radius rₙ = n²a₀ with a₀ = 0.53 Å (Ex 12.7; Example 12.3).",
+      "hints": [
+        "The radius of level n is n² times the radius of the first orbit.",
+        "a₀ = 0.53 Å = 5.3 × 10⁻¹¹ m, so r₂ = 4a₀ and r₃ = 9a₀.",
+        "Give the radius in units of 10⁻¹¹ m."
+      ]
+    },
+    {
+      "title": "Lap’s race",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: on level n the speed is v₁/n and the period T = 2πr/v grows as n³ (Ex 12.6).",
+      "hints": [
+        "The speed on level n is v₁/n, with v₁ = 2.19 × 10⁶ m/s.",
+        "One lap is 2πr, with r = n²a₀, so T = 2πr/v.",
+        "The period is 1.52 × 10⁻¹⁶ s × n³."
+      ]
+    },
+    {
+      "title": "Giga’s zeros",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "Apply it: mvr = nħ, so a planet’s orbit has a quantum number with dozens of zeros (Ex 12.9).",
+      "hints": [
+        "n = mvr/ħ, with ħ = 1.055 × 10⁻³⁴ J s.",
+        "Multiply m, v and r first, then divide by ħ.",
+        "Give log₁₀ n: the exponent of ten."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Bohr’s rule only works for hydrogen and never for a planet",
+    "The electron moves faster on higher levels",
+    "The radius of level n is n times the radius of the first orbit"
+  ]
+}

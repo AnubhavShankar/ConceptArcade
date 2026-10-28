@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "energy-ladder",
+  "title": "Energy Ladder",
+  "summary": "Lift an electron up the rungs of hydrogen with exactly the right photon, open its doors with a beam, and balance its energy.",
+  "chapter": {
+    "number": 12,
+    "name": "Atoms"
+  },
+  "ncertRef": "Section 12.4, Bohr model of the hydrogen atom",
+  "concepts": [
+    "Bohr energy levels",
+    "Photon energy of a transition",
+    "Spectral series and the number of lines",
+    "Kinetic and potential energy in an orbit"
+  ],
+  "learningOutcome": "The student can find the wavelength of the photon for a transition in hydrogen, count the spectral lines a given excitation can give, and split a level’s energy into K = −E and U = 2E.",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Hop’s jump",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: a photon is absorbed only if hf = Eₙ₂ − Eₙ₁, with Eₙ = −13.6/n² eV, so λ = hc/ΔE (Ex 12.5; Example 12.3).",
+      "hints": [
+        "The gap is ΔE = 13.6 (1/n₁² − 1/n₂²) eV.",
+        "The wavelength is λ = hc/ΔE = 1240 eV nm / ΔE.",
+        "A photon that does not match any gap passes through, however bright."
+      ]
+    },
+    {
+      "title": "Key’s doors",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: a beam lifts the atom to level n only if E ≥ 13.6(1 − 1/n²), and up to level n the gas can show n(n − 1)/2 lines (Ex 12.8).",
+      "hints": [
+        "To reach level n from the ground state the beam needs 13.6 (1 − 1/n²) eV.",
+        "If the highest level reached is n, the atom can make every jump between the levels up to n.",
+        "The number of lines is n(n − 1)/2."
+      ]
+    },
+    {
+      "title": "Orbit’s budget",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "Apply it: for a circular orbit under the electric force K = −E and U = 2E, so K + U = E (Ex 12.4).",
+      "hints": [
+        "First find the energy of the level, E = −13.6/n² eV.",
+        "The kinetic energy is minus that: K = +13.6/n² eV.",
+        "The potential energy is twice the total: U = −27.2/n² eV."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Any photon with enough energy lifts the electron to a higher rung",
+    "The electron’s potential energy in the ground state is −13.6 eV",
+    "A brighter beam of the wrong colour can excite the atom"
+  ]
+}

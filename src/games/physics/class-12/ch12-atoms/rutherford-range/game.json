@@ -1,0 +1,56 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "rutherford-range",
+  "title": "Rutherford Range",
+  "summary": "Fire an alpha particle at a nucleus to a marked distance, then name the element from where it turns back.",
+  "chapter": {
+    "number": 12,
+    "name": "Atoms"
+  },
+  "ncertRef": "Section 12.2, Alpha-particle scattering and Rutherford’s nuclear model of atom",
+  "concepts": [
+    "Rutherford scattering",
+    "Distance of closest approach",
+    "Energy conservation in a repulsive field",
+    "Nuclear charge from the turning point"
+  ],
+  "learningOutcome": "The student can find the distance of closest approach d = 2Ze²/(4πε₀K) of an alpha particle, and use it to find the energy needed or the charge of the nucleus.",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Alpha’s closest approach",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: at the turning point K = (2e)(Ze)/(4πε₀d), so d = 2Ze²/(4πε₀K) (Example 12.2).",
+      "hints": [
+        "All the kinetic energy has become electric potential energy at the closest point.",
+        "d = 2Z × 1.44 MeV fm / K, with K in MeV and d in fm.",
+        "So K = 2 × 1.44 × Z / d."
+      ]
+    },
+    {
+      "title": "Sonar’s foil",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: with the energy fixed, d grows with Z, so a measured turning point gives the nuclear charge (Ex 12.2; Example 12.1).",
+      "hints": [
+        "For one fixed energy, d is proportional to Z.",
+        "Z = dK / (2 × 1.44 MeV fm).",
+        "Round to the nearest whole number: Z is an integer."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The α-particle is stopped by hitting the surface of the nucleus",
+    "Heavier nuclei always turn the α-particle back closer to the nucleus",
+    "The positive charge of the atom is spread through its whole volume"
+  ]
+}
