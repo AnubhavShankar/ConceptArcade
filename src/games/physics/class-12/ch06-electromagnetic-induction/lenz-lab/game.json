@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "lenz-lab",
+  "title": "The Lenz Lab",
+  "summary": "Use Lenz’s law to find the direction of induced currents and the work done against them.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 6,
+    "name": "Electromagnetic Induction"
+  },
+  "ncertRef": "Section 6.5, Lenz’s law and conservation of energy",
+  "order": 1,
+  "concepts": [
+    "Lenz’s law",
+    "Direction of induced current",
+    "No change of flux, no emf",
+    "Work done against the induced current"
+  ],
+  "learningOutcome": "The student can use Lenz’s law to find the direction of an induced current for a magnet, a loop and a changing field, spot cases with no induced emf, and link the induced force to conservation of energy.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Magnet and coil",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the induced current opposes the change in flux, so a coil repels an approaching magnet and attracts a receding one (Section 6.5).",
+      "hints": [
+        "An approaching pole increases the flux through the coil, so the coil makes the same pole face it.",
+        "Use the right-hand rule to turn that pole into a direction of current.",
+        "The coil always opposes the motion, to conserve energy."
+      ]
+    },
+    {
+      "title": "Loop in a field",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: decide if the flux increases, decreases or stays the same, then oppose it (Ex 6.1, 6.2, Examples 6.4, 6.5).",
+      "hints": [
+        "Moving out of a field, squeezing, or a fading field all decrease the flux.",
+        "The induced current makes a field in the same direction as the original to prop it up, or opposite to oppose an increase.",
+        "If the flux does not change, there is no current at all."
+      ]
+    },
+    {
+      "title": "Pulling a rod",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: the induced current feels a force opposing the motion, and the work done becomes heat (Section 6.5).",
+      "hints": [
+        "The motional emf is Blv, and I = emf/R.",
+        "The force on the rod is BIl, opposing the motion.",
+        "The power supplied is F v, which equals I²R."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The induced current helps the change in flux",
+    "A strong magnetic field alone induces a current in a loop",
+    "A coil attracts an approaching magnet"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
