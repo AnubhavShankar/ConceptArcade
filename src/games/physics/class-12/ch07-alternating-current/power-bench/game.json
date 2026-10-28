@@ -1,0 +1,90 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "power-bench",
+  "title": "The Power Bench",
+  "summary": "Find AC power and power factor, correct a lagging load, and see why transformers cut line losses.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 7,
+    "name": "Alternating Current"
+  },
+  "ncertRef": "Section 7.7, Power in an AC circuit, the power factor",
+  "order": 1,
+  "concepts": [
+    "P = V I cos φ",
+    "Wattless current",
+    "Power factor correction",
+    "Transformer turns ratio",
+    "Power transmission losses"
+  ],
+  "learningOutcome": "The student can find the average power and wattless current of an AC circuit, correct a power factor with a capacitor, and use a transformer and high voltage to cut the loss in a transmission line.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "Power and phase",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: P = V I cos φ, with I sin φ the wattless component (Section 7.7).",
+      "hints": [
+        "P = V_rms I_rms cos φ.",
+        "The component of I along V delivers the power.",
+        "The wattless component is I sin φ."
+      ]
+    },
+    {
+      "title": "Power in a circuit",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: in a series LCR circuit only R dissipates power, so P = I²R and cos φ = R/Z (Example 7.8).",
+      "hints": [
+        "Find Z, then the rms current from the peak voltage.",
+        "P = I²R.",
+        "The power factor is R/Z."
+      ]
+    },
+    {
+      "title": "Correct the power factor",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: a parallel capacitor supplies the wattless current, so the supply current falls (Example 7.7).",
+      "hints": [
+        "The wattless current of the load is V X_L/Z².",
+        "The capacitor current is ωCV and leads by 90°.",
+        "What remains is the power component, V R/Z²."
+      ]
+    },
+    {
+      "title": "The transformer",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: V_s/V_p = N_s/N_p and, with no loss, I_p V_p = I_s V_s (Section 7.8).",
+      "hints": [
+        "The voltages are in the ratio of the turns.",
+        "An ideal transformer takes in as much power as it delivers.",
+        "More turns on the secondary means a higher voltage and a lower current."
+      ]
+    },
+    {
+      "title": "Power lines",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Apply it: stepping the voltage up by k cuts the line current by k and the loss by k² (Example 7.7).",
+      "hints": [
+        "The line current is P/V.",
+        "The loss is I²R.",
+        "Divide the current by k and square."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The power in an AC circuit is always V I",
+    "A transformer increases power as well as voltage",
+    "Power is sent at high voltage to make the current larger"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
