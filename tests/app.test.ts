@@ -43,6 +43,8 @@ describe('the game page header shows the game number', () => {
 
   it('the number on the game page matches the number on its home card, for every game', () => {
     const numbers = numberGames(catalog);
+    // Only the header is checked, so skip loading every game module (slow, and it grows with every game added).
+    for (const g of catalog) vi.spyOn(g, 'load').mockReturnValue(new Promise(() => undefined));
     for (const g of catalog) {
       const n = numbers.get(g.manifest.id)!;
       const app = open(g.manifest.id);
