@@ -205,6 +205,12 @@ h3 { margin: 18px 0 6px; font-size: 1rem; }
 .pip.on { background: var(--good); border-color: var(--good); }
 @media (max-width: 560px) { .chapter-head { grid-template-columns: 1fr 24px; } .chapter-meta { display: none; } }
 
+/* Hero banner (chapter 9 onward): who the hero is, and the one thing they must achieve */
+.hero { border-left: 6px solid var(--accent); }
+.hero p { margin: 4px 0; }
+.hero .hero-name { font-weight: 700; color: var(--accent); }
+.hero .objective { padding-top: 6px; }
+
 /* Oil-drop lab */
 .status-line { font-weight: 600; margin: 6px 0; min-height: 1.5em; }
 .formula { padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--bg); border-radius: 6px; }

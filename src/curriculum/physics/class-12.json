@@ -1,7 +1,7 @@
 {
   "subject": "physics",
   "classLevel": 12,
-  "source": "NCERT Physics Class XII. Ch 1-8 checked against Part 1; ch 9-14 titles not yet checked.",
+  "source": "NCERT Physics Class XII. Ch 1-8 checked against Part 1; ch 9-14 checked against Part 2 (leph201 to leph206).",
   "chapters": [
     { "number": 1, "name": "Electric Charges and Fields" },
     { "number": 2, "name": "Electrostatic Potential and Capacitance" },
