@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "displacement-bench",
+  "title": "The Displacement Bench",
+  "summary": "Charge a capacitor and find its displacement current and the magnetic field it makes between the plates.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 8,
+    "name": "Electromagnetic Waves"
+  },
+  "ncertRef": "Section 8.2, Displacement current",
+  "order": 1,
+  "concepts": [
+    "Charging a capacitor",
+    "Displacement current",
+    "Junction rule with displacement current",
+    "Field between the plates"
+  ],
+  "learningOutcome": "The student can find the capacitance and charging rate of a plate capacitor, the displacement current from a changing field, and the magnetic field it produces between the plates.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Charging a capacitor",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: C = ε₀A/d and I = C dV/dt (Ex 8.1).",
+      "hints": [
+        "The plate area is π times the radius squared, in m².",
+        "C = ε₀A/d.",
+        "dV/dt = I/C."
+      ]
+    },
+    {
+      "title": "Displacement current",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: a changing electric flux is a current, I_d = ε₀ dflux/dt, which keeps the current continuous (Section 8.2).",
+      "hints": [
+        "I_d = ε₀ A dE/dt, with A in m².",
+        "Between the plates the displacement current equals the conduction current in the wires.",
+        "So the total current has no break at the plates."
+      ]
+    },
+    {
+      "title": "An AC capacitor",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: find the rms current, then the field made by the peak displacement current (Ex 8.2).",
+      "hints": [
+        "I_rms = V ω C.",
+        "The peak current is √2 times the rms current.",
+        "Inside the plates B = μ₀ r I_d/(2πR²)."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "No current flows between the plates, so Kirchhoff’s rule fails there",
+    "A magnetic field needs a moving charge, never a changing electric field",
+    "The conduction and displacement currents differ in an AC capacitor"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
