@@ -1,0 +1,101 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "em-wave-bench",
+  "title": "The EM Wave Bench",
+  "summary": "Find E and B, their directions, wavelength, wave number and energy density of an electromagnetic wave.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 8,
+    "name": "Electromagnetic Waves"
+  },
+  "ncertRef": "Section 8.3, Electromagnetic waves",
+  "order": 1,
+  "concepts": [
+    "E = cB",
+    "E × B along the direction of travel",
+    "c = fλ",
+    "Reading a wave equation",
+    "Equal energy in E and B"
+  ],
+  "learningOutcome": "The student can find the amplitude and direction of E and B in a plane wave, the wavelength, wave number and frequency, read a wave equation, and show that the two fields carry equal energy.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "E and B",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: in vacuum E₀ = cB₀, in phase (Ex 8.7, Example 8.1).",
+      "hints": [
+        "E = cB in vacuum, with c = 3 × 10⁸ m/s.",
+        "1 nT = 10⁻⁹ T.",
+        "The fields rise and fall together."
+      ]
+    },
+    {
+      "title": "Which way is B?",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: the wave is transverse, and E × B points along the direction of travel (Ex 8.4).",
+      "hints": [
+        "B is at right angles to both E and the direction of travel.",
+        "E × B must point the way the wave moves.",
+        "Try the right-hand rule for E × B with each choice."
+      ]
+    },
+    {
+      "title": "Wavelengths",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: λ = c/f for any frequency (Ex 8.4, 8.5, 8.6).",
+      "hints": [
+        "λ = c/f, with f in hertz.",
+        "1 MHz = 10⁶ Hz.",
+        "Higher frequency, shorter wavelength."
+      ]
+    },
+    {
+      "title": "A plane wave",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "More steps: from E₀ and f find B₀, k and λ (Ex 8.8).",
+      "hints": [
+        "B₀ = E₀/c.",
+        "λ = c/f.",
+        "k = 2π/λ."
+      ]
+    },
+    {
+      "title": "Read the equation",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: read k and ω from B = B₀ sin(kx + ωt) (Example 8.2).",
+      "hints": [
+        "The coefficient of x is k = 2π/λ.",
+        "The coefficient of t is ω = 2πf.",
+        "E₀ = cB₀."
+      ]
+    },
+    {
+      "title": "Energy in the fields",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: the average energy densities of E and B are equal (Ex 8.10).",
+      "hints": [
+        "B₀ = E₀/c and λ = c/f.",
+        "The average magnetic energy density is B₀²/4μ₀.",
+        "Compare it with ¼ε₀E₀²."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The electric and magnetic fields of a wave are out of phase",
+    "An electromagnetic wave is longitudinal",
+    "Most of the energy of a wave is in its electric field"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
