@@ -17,7 +17,7 @@
     "No change of flux, no emf",
     "Work done against the induced current"
   ],
-  "learningOutcome": "The student can use Lenz’s law to find the direction of an induced current for a magnet, a loop and a changing field, spot cases with no induced emf, and link the induced force to conservation of energy.",
+  "learningOutcome": "The student can use Lenz’s law to find the direction of an induced current, spot cases with no induced emf, and link the induced force to conservation of energy.",
   "mechanic": "tune-to-target",
   "estimatedMinutes": 25,
   "levels": [
