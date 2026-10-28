@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "junction-run",
+  "title": "Junction Run",
+  "summary": "Bias a p–n junction to the barrier you need, match a rectifier’s output frequency and read a diode’s resistance off its V–I curve.",
+  "chapter": {
+    "number": 14,
+    "name": "Semiconductor Electronics: Materials, Devices and Simple Circuits"
+  },
+  "ncertRef": "Section 14.6, p–n junction diode",
+  "concepts": [
+    "The p–n junction and its barrier",
+    "Forward and reverse bias",
+    "Half-wave and full-wave rectifiers",
+    "The diode V–I characteristic",
+    "Dynamic resistance ΔV/ΔI"
+  ],
+  "learningOutcome": "The student can bias a junction to a given barrier, give the output frequency of half-wave and full-wave rectifiers, and find a diode’s forward and reverse resistance from its V–I curve.",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Hopper’s barrier",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: forward bias lowers the junction’s barrier V₀ by the battery voltage, reverse bias raises it by the same amount (Ex 14.4, 14.5; Example 14.3).",
+      "hints": [
+        "Silicon V₀ ≈ 0.7 V, germanium ≈ 0.3 V.",
+        "Forward bias: barrier = V₀ − V. Reverse bias: barrier = V₀ + V.",
+        "If the target is lower than V₀ you need forward bias; if it is higher, reverse."
+      ]
+    },
+    {
+      "title": "Beat’s rhythm",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: a half-wave rectifier gives one pulse per supply cycle, a full-wave rectifier gives two, so the output is twice the supply frequency (Ex 14.6).",
+      "hints": [
+        "Count how many half-cycles the diodes let through in one full cycle.",
+        "One diode: one pulse per cycle. Two diodes: one pulse per half-cycle.",
+        "The period of the supply is 1/f."
+      ]
+    },
+    {
+      "title": "Slope’s resistance",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "Apply it: the forward resistance is the slope ΔV/ΔI between two points on the curve, and the reverse resistance is V/I at the point (Example 14.4).",
+      "hints": [
+        "Forward bias: divide the change in voltage by the change in current, in amps.",
+        "Reverse bias: divide the voltage by the current, with µA = 10⁻⁶ A.",
+        "The dial is a power of ten: 10 Ω is 1.0 and 10⁷ Ω is 7.0."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A diode obeys Ohm’s law with one fixed resistance",
+    "A full-wave rectifier gives the same frequency as the supply",
+    "Reverse bias lowers the barrier"
+  ]
+}

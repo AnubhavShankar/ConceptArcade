@@ -1,0 +1,57 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "gap-jump",
+  "title": "Gap Jump",
+  "summary": "Lift an electron across the band gap of Ge, Si and carbon, then dope a silicon crystal and count its electrons and holes.",
+  "chapter": {
+    "number": 14,
+    "name": "Semiconductor Electronics: Materials, Devices and Simple Circuits"
+  },
+  "ncertRef": "Section 14.2, Classification of metals, conductors and semiconductors",
+  "concepts": [
+    "Energy bands and the band gap",
+    "Conductors, insulators and semiconductors",
+    "n-type and p-type doping",
+    "Majority and minority carriers",
+    "The relation n_e n_h = n_i²"
+  ],
+  "learningOutcome": "The student can find the longest wavelength that lifts an electron across a band gap with hc/E_g, and the electron and hole counts of a doped crystal from the dopant and n_e n_h = n_i².",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Sparky’s jump",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: an electron crosses the gap only if the photon carries at least E_g, so the longest useful wavelength is hc/E_g (Ex 14.3; Example 14.1).",
+      "hints": [
+        "Germanium 0.7 eV, silicon 1.1 eV, carbon 5.4 eV.",
+        "The photon energy is hc/λ with hc = 1240 eV nm.",
+        "A bigger gap needs a shorter wavelength."
+      ]
+    },
+    {
+      "title": "Doper’s crystal",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: each dopant atom adds one carrier, which sets the majority count; the minority count follows from n_e n_h = n_i² (Ex 14.1, 14.2; Example 14.2).",
+      "hints": [
+        "1 ppm means one atom in a million: multiply the 5 × 10²⁸ atoms by 10⁻⁶.",
+        "5 valence electrons make electrons the majority; 3 make holes the majority.",
+        "The scarce carrier is n_i² divided by the common one; with powers of ten, the two exponents add up to 2 × log n_i."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A semiconductor has no band gap",
+    "A p-type crystal is positively charged",
+    "Doping creates more carriers of both kinds"
+  ]
+}
