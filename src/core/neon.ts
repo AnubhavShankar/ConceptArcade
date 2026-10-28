@@ -94,3 +94,18 @@ export function orb(g: G, x: number, y: number, r: number, color: string, t: num
   else g.arc(x, y + R * 0.25, R * 0.3, 0.15 * Math.PI, 0.85 * Math.PI);
   g.stroke();
 }
+
+/** An approximate sRGB colour for a visible wavelength in nm. */
+export function wavelengthRgb(nm: number): [number, number, number] {
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  if (nm < 440) { r = (440 - nm) / 60; b = 1; } else if (nm < 490) { g = (nm - 440) / 50; b = 1; } else if (nm < 510) { g = 1; b = (510 - nm) / 20; } else if (nm < 580) { r = (nm - 510) / 70; g = 1; } else if (nm < 645) { r = 1; g = (645 - nm) / 65; } else r = 1;
+  const f = nm < 420 ? 0.4 + (0.6 * (nm - 380)) / 40 : nm > 700 ? 0.4 + (0.6 * (760 - nm)) / 60 : 1;
+  return [Math.round(255 * r * f), Math.round(255 * g * f), Math.round(255 * b * f)];
+}
+/** A CSS colour string for a wavelength, with an optional alpha. */
+export function waveColor(nm: number, alpha = 1): string {
+  const [r, g, b] = wavelengthRgb(nm);
+  return `rgba(${r},${g},${b},${alpha})`;
+}

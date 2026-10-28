@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "slit-dash",
+  "title": "Slit Dash",
+  "summary": "Aim a laser so a bright stripe hits the target, find where two colours meet and set a meter for two waves.",
+  "chapter": {
+    "number": 10,
+    "name": "Wave Optics"
+  },
+  "ncertRef": "Section 10.5, Interference of light waves and Young’s experiment",
+  "concepts": [
+    "Young’s double slit",
+    "Fringe positions x = nλD/d",
+    "Fringe width",
+    "Fringes of two colours coinciding",
+    "Intensity from path difference"
+  ],
+  "learningOutcome": "The student can use x = nλD/d to find a wavelength or a fringe position, find where bright fringes of two colours coincide, and find the intensity from the path difference.",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Hawkeye’s range",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the n-th bright fringe is at x = nλD/d, so the colour of the light decides where a stripe lands (Ex 10.4).",
+      "hints": [
+        "Bright fringes are at x = nλD/d, so λ = xd/(nD).",
+        "Keep every length in the same unit before you divide; mm to m or nm to m.",
+        "A test shot tells you where the fringe lands for the colour you have chosen."
+      ]
+    },
+    {
+      "title": "The double lock",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: two colours have bright fringes at the same place when n₁λ₁ = n₂λ₂ with the smallest whole numbers (Ex 10.6).",
+      "hints": [
+        "Both colours need a whole number of wavelengths: n₁λ₁ = n₂λ₂.",
+        "Reduce λ₁ : λ₂ to the smallest whole numbers to get n₂ : n₁.",
+        "Then x = n₁λ₁D/d for the nearest place to the centre."
+      ]
+    },
+    {
+      "title": "The power meter",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: for a path difference Δ the brightness is cos²(πΔ/λ) times the maximum K (Ex 10.5).",
+      "hints": [
+        "The phase difference is φ = 2πΔ/λ, and I = 4I₀cos²(φ/2).",
+        "At Δ = λ the brightness is K = 4I₀, the maximum.",
+        "So I/K = cos²(πΔ/λ). Work in degrees: π × Δ/λ is 180° × Δ/λ."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Bright fringes get wider the further they are from the centre",
+    "Two different colours always make the same fringes",
+    "Brightness at a path difference of λ/2 is half the maximum"
+  ]
+}
