@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "line-inspector",
+  "title": "The Field-Line Inspector",
+  "summary": "Spot impossible magnetic field lines and use zero net flux through closed surfaces.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 5,
+    "name": "Magnetism and Matter"
+  },
+  "ncertRef": "Section 5.3, Magnetism and Gauss’s law",
+  "order": 1,
+  "concepts": [
+    "Magnetic field lines are closed loops",
+    "Gauss’s law for magnetism",
+    "No magnetic monopoles",
+    "Lines continue inside a magnet"
+  ],
+  "learningOutcome": "The student can tell magnetic field line diagrams from electrostatic ones and from impossible ones, and use zero net magnetic flux through any closed surface.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Spot the flaw",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: magnetic lines are closed loops that never cross or end, unlike electric lines (Example 5.3).",
+      "hints": [
+        "Magnetic lines have no beginning or end: look for closed loops.",
+        "Lines that start or end on a single point or charge are electrostatic.",
+        "Lines that cross, or stop in empty space, are impossible for any field."
+      ]
+    },
+    {
+      "title": "Closed surface",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: the net magnetic flux through any closed surface is zero (Section 5.3).",
+      "hints": [
+        "Add the fluxes through the known faces, outward positive.",
+        "The total through all five faces must be zero.",
+        "Keep the sign: the answer can be negative."
+      ]
+    },
+    {
+      "title": "Through the magnet",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: put the surface round one pole, and the lines must carry on inside the magnet (Example 5.4).",
+      "hints": [
+        "The surface is closed, so the total flux is zero.",
+        "The lines that leave the outside part must come back in across the cut.",
+        "Choose the sign: outward is positive."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Magnetic field lines start on the north pole and end on the south pole",
+    "Flux through a closed surface around one pole is not zero",
+    "A magnet can be cut to leave a single pole"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
