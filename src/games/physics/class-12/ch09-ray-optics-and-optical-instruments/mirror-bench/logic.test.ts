@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { buildLevel, explainSolution, imageV, judgeFocus, judgePin, judgeShave, judgeSpot, magnify, shaveResult, starsFor, tanDeg, type LevelFocus, type LevelPin, type LevelShave, type LevelSpot } from './logic';
+import { buildGame, explainRound, flashText, imageV, judgeDrive, judgeLaser, judgeSelfie, judgeWall, magnify, missText, mirrorImage, resultLine, tanDeg, type Game } from './logic';
 
 const lcg = (seed: number) => {
   let s = seed >>> 0;
   return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32);
 };
 const seeds = Array.from({ length: 100 }, (_, i) => i * 7919 + 13);
-const twoDecimals = (x: number) => Math.abs(x * 100 - Math.round(x * 100)) < 1e-6;
+const as = <K extends Game['kind']>(g: Game, _kind: K) => g as Extract<Game, { kind: K }>;
 
 describe('the numbers from the textbook', () => {
   it('Exercise 9.1: a candle 27 cm from a concave mirror of R = 36 cm has its image 54 cm away, twice the size', () => {
@@ -25,103 +25,149 @@ describe('the numbers from the textbook', () => {
   });
   it('an object at the focus makes no image', () => {
     expect(imageV(-10, -10)).toBe(Infinity);
-    expect(shaveResult(10, 10).m).toBeNull();
+    expect(mirrorImage(10, true, 10).kind).toBe('none');
   });
   it('Exercise 9.30: a mirror turned by 3.5° moves the spot 1.5 m away by about 18.4 cm', () => {
     expect(150 * tanDeg(7)).toBeCloseTo(18.4, 1);
   });
+  it('mirrorImage names the kind of image for each side of the focus', () => {
+    expect(mirrorImage(12, true, 18).kind).toBe('real');
+    expect(mirrorImage(12, true, 6).kind).toBe('virtual');
+    expect(mirrorImage(12, false, 30).kind).toBe('virtual');
+  });
 });
 
-describe('every level is solvable and clean', () => {
-  it('level 1: a real image, in front of the mirror, with a 2-decimal height', () => {
+describe('every game has three solvable rounds', () => {
+  it('level 1: Flicker’s solution spot puts a real image exactly on the wall, and one flash gives the focal length', () => {
     for (const s of seeds) {
-      const l = buildLevel(1, lcg(s)) as LevelFocus;
-      expect(l.screen).toBeGreaterThan(0);
-      expect(l.screen).toBeLessThanOrEqual(100);
-      expect(Number.isInteger(Math.round(l.screen * 1e6) / 1e6)).toBe(true);
-      expect(twoDecimals(l.imgH)).toBe(true);
-      expect(l.imgH).toBeLessThan(0);
-      expect(l.d).toBeGreaterThan(l.F);
+      const g = as(buildGame(1, lcg(s)), 'wall');
+      expect(g.rounds).toHaveLength(3);
+      expect(g.charges).toEqual([2, 1, 1]);
+      for (const r of g.rounds) {
+        expect(judgeWall(r, r.uSol).ok).toBe(true);
+        expect(r.uStart).toBeLessThanOrEqual(100);
+        expect(r.uStart).not.toBe(r.uSol);
+        expect(r.wall).toBeLessThanOrEqual(100);
+        expect(Number.isInteger(Math.round(r.wall * 1e6) / 1e6)).toBe(true);
+        // working it out from the start position's flash recovers f
+        const img = mirrorImage(r.F, true, r.uStart);
+        expect(img.kind).toBe('real');
+        expect((r.uStart * img.dist) / (r.uStart + img.dist)).toBeCloseTo(r.F, 6);
+      }
+      expect(g.rounds.map((r) => r.wall)).toEqual([...g.rounds.map((r) => r.wall)].sort((a, b) => a - b));
+      expect(new Set(g.rounds.map((r) => `${r.F}/${r.uSol}`)).size).toBe(3);
     }
   });
-  it('level 2: a virtual, upright, smaller image behind the mirror', () => {
+  it('level 2: the catch-bar answer is a whole number of cm inside the slider range', () => {
     for (const s of seeds) {
-      const l = buildLevel(2, lcg(s)) as LevelPin;
-      expect(l.behind).toBeGreaterThan(0);
-      expect(l.behind).toBeLessThan(l.F);
-      expect(l.imgH).toBeGreaterThan(0);
-      expect(l.imgH).toBeLessThan(l.objH);
-      expect(twoDecimals(l.imgH)).toBe(true);
+      const g = as(buildGame(2, lcg(s)), 'drive');
+      for (const r of g.rounds) {
+        expect(Number.isInteger(Math.round(r.behind * 1e6) / 1e6)).toBe(true);
+        expect(r.behind).toBeGreaterThanOrEqual(1);
+        expect(r.behind).toBeLessThanOrEqual(20);
+        expect(r.behind).toBeLessThan(r.F);
+        expect(judgeDrive(r, r.behind).ok).toBe(true);
+      }
     }
   });
-  it('level 3: the wanted magnification is reached by an exact distance inside the focus', () => {
+  it('level 3: the exact distance gives the wanted magnification, and the aids fade across rounds', () => {
     for (const s of seeds) {
-      const l = buildLevel(3, lcg(s)) as LevelShave;
-      expect(l.d).toBeLessThan(l.F);
-      const r = shaveResult(l.F, l.d);
-      expect(r.real).toBe(false);
-      expect(r.m).toBeCloseTo(l.want, 9);
-      expect(Number.isInteger(l.d)).toBe(true);
+      const g = as(buildGame(3, lcg(s)), 'selfie');
+      expect(g.rounds.map((r) => r.assist)).toEqual([0, 1, 2]);
+      expect(g.rounds.map((r) => r.want)).toEqual([...g.rounds.map((r) => r.want)].sort((a, b) => a - b));
+      for (const r of g.rounds) {
+        expect(r.d).toBeLessThan(r.F);
+        expect(r.d).toBeLessThanOrEqual(3 * r.F);
+        expect(Number.isInteger(r.d)).toBe(true);
+        expect(judgeSelfie(r, r.d).ok).toBe(true);
+      }
     }
   });
-  it('level 4: the spot shift is L tan 2θ and is between 10 and 25 cm so it fits the scale', () => {
+  it('level 4: the dial angle is a multiple of 0.5° and the target fits the wall scale', () => {
     for (const s of seeds) {
-      const l = buildLevel(4, lcg(s)) as LevelSpot;
-      expect(l.shift).toBeCloseTo(l.L * tanDeg(2 * l.theta), 9);
-      expect(l.shift).toBeGreaterThan(10);
-      expect(l.shift).toBeLessThan(25);
+      const g = as(buildGame(4, lcg(s)), 'laser');
+      expect(g.rounds.map((r) => r.assist)).toEqual([0, 1, 2]);
+      for (const r of g.rounds) {
+        expect(r.theta * 2).toBe(Math.round(r.theta * 2));
+        expect(r.shift).toBeGreaterThan(10);
+        expect(r.shift).toBeLessThan(25);
+        expect(judgeLaser(r, r.theta).ok).toBe(true);
+      }
     }
   });
-  it('every level has a hero with a name, a story and an objective', () => {
+  it('every game has a hero with a name, a story and an objective', () => {
     for (const lv of [1, 2, 3, 4]) {
-      const l = buildLevel(lv, lcg(5));
-      expect(l.hero.name.length).toBeGreaterThan(2);
-      expect(l.hero.story.length).toBeGreaterThan(40);
-      expect(l.hero.objective.length).toBeGreaterThan(20);
+      const g = buildGame(lv, lcg(5));
+      expect(g.hero.name.length).toBeGreaterThan(2);
+      expect(g.hero.story.length).toBeGreaterThan(60);
+      expect(g.hero.objective.length).toBeGreaterThan(30);
     }
   });
 });
 
-describe('judging: right answers win, near misses and lucky guesses do not', () => {
-  it('level 1 needs both the screen distance and the signed height', () => {
-    const l = buildLevel(1, lcg(3)) as LevelFocus;
-    expect(judgeFocus(l, l.screen, l.imgH).ok).toBe(true);
-    expect(judgeFocus(l, l.screen * 1.02, l.imgH * 0.98).ok).toBe(true);
-    expect(judgeFocus(l, l.screen, -l.imgH)).toMatchObject({ ok: false, sOk: true, hOk: false });
-    expect(judgeFocus(l, l.screen * 1.3, l.imgH)).toMatchObject({ ok: false, sOk: false, hOk: true });
+describe('judging: lucky guesses and classic mistakes do not win', () => {
+  it('level 1 rejects the start position, a virtual image and the focus', () => {
+    const r = as(buildGame(1, lcg(3)), 'wall').rounds[0];
+    expect(judgeWall(r, r.uStart).ok).toBe(false);
+    expect(judgeWall(r, r.F / 2)).toMatchObject({ ok: false });
+    expect(judgeWall(r, r.F).image.kind).toBe('none');
+    expect(judgeWall(r, r.F).ok).toBe(false);
   });
-  it('level 2 needs the pin position and the height', () => {
-    const l = buildLevel(2, lcg(3)) as LevelPin;
-    expect(judgePin(l, l.behind, l.imgH).ok).toBe(true);
-    expect(judgePin(l, l.d, l.imgH).ok).toBe(false);
-    expect(judgePin(l, l.behind, l.objH).ok).toBe(false);
+  it('level 1: every other spot on the rail fails (only one whole-cm spot works per round)', () => {
+    for (const s of seeds.slice(0, 30)) {
+      for (const r of as(buildGame(1, lcg(s)), 'wall').rounds) {
+        const winners = Array.from({ length: 96 }, (_, i) => i + 5).filter((u) => judgeWall(r, u).ok);
+        expect(winners).toEqual([r.uSol]);
+      }
+    }
   });
-  it('level 3 judges the magnification the typed distance actually gives, and refuses a real image', () => {
-    const l = buildLevel(3, lcg(3)) as LevelShave;
-    expect(judgeShave(l, l.d).ok).toBe(true);
-    expect(judgeShave(l, l.F).ok).toBe(false);
-    expect(judgeShave(l, l.F * 1.5)).toMatchObject({ ok: false, real: true });
-    expect(judgeShave(l, l.d * 0.5).ok).toBe(false);
+  it('level 2 rejects the focal length and the object distance as the bar position', () => {
+    const r = as(buildGame(2, lcg(3)), 'drive').rounds[0];
+    expect(judgeDrive(r, r.F).ok).toBe(false);
+    expect(judgeDrive(r, r.line).ok).toBe(false);
   });
-  it('level 4 rejects the shift for a mirror turn of θ instead of 2θ', () => {
-    const l = buildLevel(4, lcg(3)) as LevelSpot;
-    expect(judgeSpot(l, l.shift).ok).toBe(true);
-    expect(judgeSpot(l, l.L * tanDeg(l.theta)).ok).toBe(false);
+  it('level 3: only one whole-cm distance per round fits, and a real (inverted) image never does', () => {
+    for (const s of seeds.slice(0, 30)) {
+      for (const r of as(buildGame(3, lcg(s)), 'selfie').rounds) {
+        const winners = Array.from({ length: 3 * r.F }, (_, i) => i + 1).filter((d) => judgeSelfie(r, d).ok);
+        expect(winners).toEqual([r.d]);
+      }
+    }
+  });
+  it('level 4 rejects the single-angle answer (θ read as the ray turn) and an unturned mirror', () => {
+    const r = as(buildGame(4, lcg(3)), 'laser').rounds[0];
+    expect(judgeLaser(r, r.theta * 2).ok).toBe(false);
+    expect(judgeLaser(r, r.theta / 2).ok).toBe(false);
+    expect(judgeLaser(r, 0).ok).toBe(false);
   });
 });
 
-describe('stars and the working', () => {
-  it('free misses cost nothing, then a star each, never below one', () => {
-    expect(starsFor(0, 1)).toBe(3);
-    expect(starsFor(1, 1)).toBe(3);
-    expect(starsFor(2, 1)).toBe(2);
-    expect(starsFor(9, 1)).toBe(1);
-  });
-  it('every level explains itself with the formula and never an empty line', () => {
+describe('words: the working and the misses', () => {
+  it('every round explains itself with the formula', () => {
     for (const lv of [1, 2, 3, 4]) {
-      const lines = explainSolution(buildLevel(lv, lcg(11)));
-      expect(lines.length).toBeGreaterThanOrEqual(2);
-      lines.forEach((t) => expect(t.length).toBeGreaterThan(20));
+      const g = buildGame(lv, lcg(11));
+      for (let i = 0; i < 3; i++) {
+        const lines = explainRound(g, i);
+        expect(lines).toHaveLength(2);
+        lines.forEach((t) => expect(t.length).toBeGreaterThan(30));
+        expect(resultLine(g, i).length).toBeGreaterThan(20);
+      }
     }
+  });
+  it('a miss describes the effect and never gives the answer', () => {
+    const g1 = as(buildGame(1, lcg(3)), 'wall');
+    const r = g1.rounds[0];
+    expect(missText(g1, 0, r.uStart)).toMatch(/blurred/);
+    expect(missText(g1, 0, r.uStart)).not.toMatch(/should|must|stand at/);
+    expect(missText(g1, 0, r.F)).toMatch(/no image/);
+    expect(missText(g1, 0, r.F / 2)).toMatch(/virtual/);
+    const g3 = as(buildGame(3, lcg(3)), 'selfie');
+    expect(missText(g3, 0, 3 * g3.rounds[0].F)).toMatch(/real and upside down/);
+    expect(missText(g3, 0, g3.rounds[0].d - 1)).toMatch(/does not fit the frame/);
+  });
+  it('a flash reads out the image in words', () => {
+    expect(flashText(30, mirrorImage(10, true, 30))).toMatch(/real image 15 cm in front of the mirror/);
+    expect(flashText(5, mirrorImage(10, true, 5))).toMatch(/virtual image 10 cm behind/);
+    expect(flashText(10, mirrorImage(10, true, 10))).toMatch(/no image/);
   });
 });

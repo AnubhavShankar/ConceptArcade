@@ -1,8 +1,8 @@
 {
   "$schema": "../../../../../../schema/game.schema.json",
   "id": "mirror-bench",
-  "title": "The Mirror Bench",
-  "summary": "Use concave, convex and plane mirrors to land a flame on a screen, place a pin on an image and aim a spot of light.",
+  "title": "The Mirror Arcade",
+  "summary": "Light a wall with a flame, race a toy car to a catch-bar, fit a selfie to a ring and fire a laser off a turning mirror.",
   "subject": "physics",
   "classLevel": 12,
   "chapter": {
@@ -13,65 +13,65 @@
   "order": 1,
   "concepts": [
     "Mirror equation and sign convention",
-    "Magnification of a mirror",
-    "Real and virtual images",
+    "Finding the focal length from one image",
+    "Magnification and real or virtual images",
     "Image in a convex mirror",
     "Object inside the focus of a concave mirror",
     "Turning a plane mirror"
   ],
-  "learningOutcome": "The student can use the mirror equation and m = −v/u to place and size the image in concave and convex mirrors, and knows a plane mirror turned by θ turns the reflected ray by 2θ.",
+  "learningOutcome": "The student can find a mirror’s focal length from one image, place and size images with 1/v + 1/u = 1/f and m = −v/u, and knows a plane mirror turned by θ turns the ray by 2θ.",
   "mechanic": "build-the-setup",
-  "estimatedMinutes": 20,
+  "estimatedMinutes": 25,
   "levels": [
     {
-      "title": "Flicker’s image on the wall",
+      "title": "Flicker lights the wall",
       "tier": "concept",
       "kind": "foundation",
-      "adds": "Baseline: a concave mirror makes a real, inverted image on a screen; place the screen with 1/v + 1/u = 1/f and size the image with m = −v/u (Ex 9.1).",
+      "adds": "Baseline: one flash gives u and v, so the focal length follows; then place the object so the real image lands on the wall (Ex 9.1).",
       "hints": [
-        "Use the Cartesian convention: u and f are negative for a concave mirror and a real object.",
-        "1/v = 1/f − 1/u, and a negative v means the image is in front of the mirror, where a screen can catch it.",
-        "m = −v/u, and the image height is m times the flame’s height; a negative height means upside down."
+        "A flash tells you u (where Flicker stands) and v (where the image lands). Use the mirror equation 1/v + 1/u = 1/f in magnitudes: f = uv/(u + v).",
+        "Now ask for the image at the wall: 1/u = 1/f − 1/v for a real image, in magnitudes.",
+        "A real image is in front of the mirror, so a wall can catch it; a virtual one is behind."
       ]
     },
     {
-      "title": "Dash in the wing mirror",
+      "title": "Dash and the catch-bar",
       "tier": "application",
       "kind": "complexity",
-      "adds": "New idea: a convex mirror has f > 0 and gives a virtual, upright, smaller image behind the mirror, found with the same equation (Ex 9.2, Example 9.4).",
+      "adds": "New idea: a convex mirror (f > 0) gives a virtual, upright, smaller image behind it; place the bar where it will be at the line (Ex 9.2, Example 9.4).",
       "hints": [
-        "For a convex mirror f is positive and the object still has u negative.",
-        "A positive v means the image is behind the mirror, so no screen can catch it.",
-        "m = −v/u is positive and below 1, so the image is upright and smaller."
+        "Convex mirror: f is positive and u is negative. 1/v = 1/f − 1/u.",
+        "v is positive, so the image is behind the mirror, between the pole and the focus.",
+        "Use the distance of the finish line as u, not Dash’s starting distance."
       ]
     },
     {
-      "title": "Zoya’s shaving mirror",
+      "title": "The selfie ring",
       "tier": "application",
       "kind": "concept",
-      "adds": "New idea: inside the focus a concave mirror gives a virtual, upright, enlarged image; work backwards from the wanted m to the distance (Ex 9.15d, Example 9.3).",
+      "adds": "New idea: inside the focus a concave mirror gives an upright, enlarged image, and m = f/(f − u) steepens near the focus (Ex 9.15d, Example 9.3).",
       "hints": [
-        "For an object inside f the image is virtual and upright, so m is positive and above 1.",
-        "From the mirror equation, m = f/(f − u) with f = −F and u = −d.",
-        "Solve m = F/(F − d) for d, and check that d is smaller than F."
+        "For an object inside the focus the image is virtual, upright and larger.",
+        "With f = −F and u = −d: m = F/(F − d). Make m equal the ring’s multiple.",
+        "Solve for d: d = F(1 − 1/m). The answer is smaller than F."
       ]
     },
     {
-      "title": "Beam on the galvanometer scale",
+      "title": "The laser gallery",
       "tier": "challenge",
       "kind": "concept",
-      "adds": "New idea: when a plane mirror turns by θ the reflected ray turns by 2θ, so the spot moves L tan 2θ along a wall L away (Ex 9.30).",
+      "adds": "New idea: when a plane mirror turns by θ the reflected ray turns by 2θ, so the spot moves L tan 2θ along the wall (Ex 9.30).",
       "hints": [
-        "Draw the ray before and after the turn: the angle of incidence changes by θ, and so does the angle of reflection.",
-        "The reflected ray turns through twice the angle of the mirror.",
-        "The spot moves a distance L tan(2θ) on the wall; use a calculator in degrees."
+        "Compare the ray before and after the turn: the angle of incidence changes by θ, and so does the angle of reflection.",
+        "The reflected ray turns through 2θ, twice the dial angle.",
+        "tan 2θ = (height of the target) / (distance to the wall). Halve the angle you find."
       ]
     }
   ],
   "misconceptions": [
     "A convex mirror can form a real image on a screen",
-    "Covering half of a mirror removes half of the image",
-    "A plane mirror turned by θ turns the reflected ray by θ"
+    "A plane mirror turned by θ turns the reflected ray by θ",
+    "An object closer than the focus of a concave mirror gives an upside-down image"
   ],
   "author": {
     "name": "Concept Arcade maintainers",
