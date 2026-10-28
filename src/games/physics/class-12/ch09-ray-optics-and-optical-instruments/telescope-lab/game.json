@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "telescope-lab",
+  "title": "The Telescope Lab",
+  "summary": "Fill a scope’s ring, fit the Moon on a photo plate and set a telescope for a relaxed or a near-point view.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 9,
+    "name": "Ray Optics and Optical Instruments"
+  },
+  "ncertRef": "Section 9.7.2, Telescope",
+  "order": 1,
+  "concepts": [
+    "Refracting telescope",
+    "Angular magnification f_o/f_e",
+    "Normal adjustment and tube length",
+    "Image size from the focal length",
+    "Final image at the near point"
+  ],
+  "learningOutcome": "The student can use M = f_o/f_e and L = f_o + f_e in normal adjustment, find the size of the real image from f_o × θ, and set a telescope for a final image at the near point.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "The scout’s scope",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: in normal adjustment M = f_o/f_e and the tube is f_o + f_e long, with the final image at infinity (Ex 9.13, 9.14a, 9.27a).",
+      "hints": [
+        "Angular magnification in normal adjustment is M = f_o/f_e, so f_e = f_o/M.",
+        "The objective’s image of a far object is at its focus, so the eyepiece sits f_e beyond that point: L = f_o + f_e.",
+        "Set the eyepiece focal length first, then the tube length."
+      ]
+    },
+    {
+      "title": "The photo plate",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the objective alone forms a real image of size f_o × θ, so the focal length decides how much of the plate the target fills (Ex 9.14b, 9.28b).",
+      "hints": [
+        "The real image of a far object has size f_o × θ, where θ is the angle it covers in radians.",
+        "For the Moon θ = 3.48 × 10⁶ / 3.8 × 10⁸ ≈ 0.0092 rad. For the tower, θ = 100/3000 = 1/30 rad.",
+        "So f_o = plate size ÷ θ. Round to the nearest 10 cm."
+      ]
+    },
+    {
+      "title": "Orion’s near-point view",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: with the final image at the near point, M = (f_o/f_e)(1 + f_e/D) and the tube is f_o + f_eD/(f_e + D) long (Ex 9.27b).",
+      "hints": [
+        "The eyepiece’s object must be at u_e = f_eD/(f_e + D) from it so its image falls at D = 25 cm.",
+        "Then L = f_o + u_e, and M = f_o/u_e.",
+        "Solve M = f_o/f_e + f_o/D for f_e, then find L."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A telescope magnifies by making a bigger real image on the retina side of the eyepiece",
+    "The tube length of a telescope is always f_o + f_e, whatever the final image distance",
+    "A longer objective focal length makes the image of a far object smaller"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

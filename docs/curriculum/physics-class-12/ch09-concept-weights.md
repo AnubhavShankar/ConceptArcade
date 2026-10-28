@@ -16,7 +16,7 @@ From this chapter on every game follows the owner's rule of 2026-10-28: **a hero
 
 | Concepts | Total weight | Covered by games |
 |---|---|---|
-| 14 | 155 | 84% (waves 1 to 5 done; telescope next) |
+| 14 | 155 | 94% (all six waves done; left out on purpose: R4 and the Cassegrain exercise 9.29) |
 
 ## Every concept, heaviest first
 
@@ -46,7 +46,7 @@ From this chapter on every game follows the owner's rule of 2026-10-28: **a hero
 | 3 (done) | Lens Lab (§9.5): lens formula, lens maker, power and combinations | L1, L2, L3 | 46 (29.7%) | Ex 9.7 to 9.10, 9.18 to 9.20, 9.31; Examples 9.6 to 9.8 |
 | 4 (done) | Prism Lab (§9.6) | P1 | 10 (6.5%) | Ex 9.6, 9.21 |
 | 5 (done) | Microscope Lab (§9.7.1): magnifier and compound microscope | I1, I2 | 25 (16.1%) | Ex 9.11, 9.12, 9.22 to 9.26 |
-| 6 | Telescope lab (§9.7.2) | I3 | 16 (10.3%) | Ex 9.13, 9.14, 9.27 to 9.29 |
+| 6 (done) | Telescope Lab (§9.7.2) | I3 | 16 (10.3%) | Ex 9.13, 9.14, 9.27 to 9.29 |
 
 R4 (refraction at one spherical surface, weight 3) is left out on purpose: it is a stepping stone to the lens formula and carries almost no questions.
 
@@ -56,3 +56,7 @@ R4 (refraction at one spherical surface, weight 3) is left out on purpose: it is
 - Use `src/core/arcade.ts` (hero banner, HUD, hearts, rounds, score, charges, drag handles, juice) and `src/core/neon.ts`, and keep the rules in `logic.ts`. See AGENTS.md section 5, items 13 and 14.
 - Cartesian sign convention throughout (distances measured from the pole or optical centre, positive in the direction of the incident light): u is negative for a real object. For mirrors f = R/2, negative for a concave mirror and positive for a convex one. For lenses f is positive for a convex lens and negative for a concave lens.
 - Units to drill: cm and m, dioptre (1 D = 1 m⁻¹), degrees, magnification as a signed number.
+
+## Status
+
+All six games are built, in the arcade style (hearts, rounds, score, charges, fading aids, drag handles), each borrowing a famous game's loop. Exercise 9.29 (the Cassegrain telescope) is not covered: the textbook answer gives 315 mm from the smaller mirror without saying on which side the image forms, and I could not verify the sign convention. R4 (refraction at a single surface, weight 3) is also left out.
