@@ -1,0 +1,58 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "microscope-lab",
+  "title": "The Microscope Lab",
+  "summary": "Snap a sharp, enlarged photo of a bug with a magnifier, then crack the two dials of a compound microscope.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 9,
+    "name": "Ray Optics and Optical Instruments"
+  },
+  "ncertRef": "Section 9.7, Optical instruments",
+  "order": 1,
+  "concepts": [
+    "Simple microscope",
+    "Magnifying power",
+    "The near point of the eye",
+    "Compound microscope",
+    "Objective and eyepiece magnification",
+    "Tube length"
+  ],
+  "learningOutcome": "The student can place an object for a magnifier so the image is at the near point, find m = 1 + D/f, and set a compound microscope’s object distance and tube length for a wanted magnification.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Bug safari",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: put the object inside f so the image sits at the near point: u = fD/(f + D) and m = 1 + D/f (Ex 9.22 to 9.24).",
+      "hints": [
+        "The most magnified sharp picture has its virtual image exactly at the near point, 25 cm from the lens.",
+        "With v = −25 cm use 1/u = 1/v − 1/f, or u = fD/(f + D).",
+        "The magnification there is m = 1 + D/f, which is also the magnifying power."
+      ]
+    },
+    {
+      "title": "Cracking the microscope",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: total magnification is m_o × (1 + D/f_e) at the near point; two dials set u_o and the tube length (Ex 9.11, 9.12, 9.26).",
+      "hints": [
+        "The eyepiece alone gives 1 + D/f_e, so the objective must give m_o = M ÷ (1 + D/f_e).",
+        "For the objective, u_o = f_o(1 + 1/m_o) and v_o = m_o u_o.",
+        "The eyepiece’s object is at u_e = f_e D/(f_e + D) from it, so the tube length is L = v_o + u_e."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The magnifying power of a magnifier is the same thing as its linear magnification in every position",
+    "A magnifying glass of very short focal length can magnify without limit",
+    "The eyepiece of a microscope makes a real image on the retina side of the lens"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
