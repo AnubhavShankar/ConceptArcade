@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "nucleus-builder",
+  "title": "Nucleus Builder",
+  "summary": "Grow a nucleus to its true radius, set the Coulomb hill two nuclei must climb and balance a radioactive decay.",
+  "chapter": {
+    "number": 13,
+    "name": "Nuclei"
+  },
+  "ncertRef": "Section 13.3, Size of the nucleus",
+  "concepts": [
+    "Nuclear radius R = R₀A^⅓",
+    "Constant nuclear density",
+    "The Coulomb barrier",
+    "Radioactive decays",
+    "Conservation of mass number and charge"
+  ],
+  "learningOutcome": "The student can find a nuclear radius from R₀A^⅓, find the Coulomb barrier Z₁Z₂e²/(4πε₀d) for two touching nuclei, and balance α and β decays with A and Z conserved.",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Katamari’s radius",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: R = R₀A^⅓ with R₀ = 1.2 fm, so the volume is proportional to A and the density is the same for every nucleus (Ex 13.4, 13.10; Example 13.1).",
+      "hints": [
+        "Take the cube root of A, then multiply by 1.2 fm.",
+        "Doubling A multiplies the radius by only 2^⅓ = 1.26.",
+        "The radius ratio of two nuclei is the cube root of the ratio of their mass numbers."
+      ]
+    },
+    {
+      "title": "Climber’s hill",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: at touching the Coulomb energy is Z₁Z₂e²/(4πε₀d), which fixes the hill nuclei must climb to fuse (Ex 13.9).",
+      "hints": [
+        "The centres are a distance d apart when the nuclei touch: add the two radii.",
+        "U = Z₁Z₂ × 1.44 MeV fm / d.",
+        "Give the answer in keV: multiply the MeV by 1000."
+      ]
+    },
+    {
+      "title": "Evo’s decay",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "Apply it: in a decay the mass number and the charge are both the same before and after, so the daughter follows from the particle that leaves (Example 13.4).",
+      "hints": [
+        "An α-particle takes away A = 4 and Z = 2.",
+        "A β⁻ decay sends out an electron: A does not change, and Z goes up by 1. For β⁺, Z goes down by 1.",
+        "Check both sums: A_parent = A_daughter + A_particle and the same for Z."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Bigger nuclei are less dense than smaller ones",
+    "A nuclear reaction must have the same number of atoms of each element on both sides",
+    "A β decay changes the mass number"
+  ]
+}
