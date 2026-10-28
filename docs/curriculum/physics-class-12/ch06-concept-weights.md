@@ -14,13 +14,13 @@ Class 12 Physics, Chapter 6: Electromagnetic Induction (NCERT 2026-27 reprint, r
 
 | Concepts | Total weight | Covered by games |
 |---|---|---|
-| 9 | 84 | 44% |
+| 9 | 84 | 63% |
 
 ## Every concept, heaviest first
 
 | Rank | ID | Concept | § | Exercises | Examples | Tier | Score | Share | Games |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | E5 | Motional emf ε = Blv, rotating rod ε = ½Bωl², polarity | 6.6 | 6.4, 6.5, 6.6 | 6.6, 6.7 | A | 16 | 19.0% | ⬜ |
+| 1 | E5 | Motional emf ε = Blv, rotating rod ε = ½Bωl², polarity | 6.6 | 6.4, 6.5, 6.6 | 6.6, 6.7 | A | 16 | 19.0% | ✅ |
 | 2 | E2 | Faraday’s law: ε = −N dΦ/dt, emf and current in a coil | 6.4 | 6.3 | 6.2, 6.3 | A | 12 | 14.3% | ✅ |
 | 3 | E3 | Lenz’s law: direction of the induced current | 6.5 | 6.1, 6.2 | 6.4 | A | 12 | 14.3% | ✅ |
 | 4 | E7 | Mutual inductance: ε = −M dI/dt and flux linkage NΦ = MI | 6.7.1 | 6.8 | 6.8 | A | 10 | 11.9% | ⬜ |
@@ -36,7 +36,7 @@ Class 12 Physics, Chapter 6: Electromagnetic Induction (NCERT 2026-27 reprint, r
 |---|---|---|---|---|
 | 1 (done) | Faraday bench (§6.2 to 6.4): flux, rate of change of flux, emf and current | E1, E2 | 20 (23.8%) | Ex 6.3; Examples 6.1, 6.2, 6.3 |
 | 2 (done) | Lenz lab (§6.5): direction of the induced current, energy and no-emf cases | E3, E4 | 17 (20.2%) | Ex 6.1, 6.2; Examples 6.4, 6.5 |
-| 3 | Motional emf (§6.6): sliding and rotating rods and loops leaving a field | E5 | 16 (19.0%) | Ex 6.4, 6.5, 6.6; Examples 6.6, 6.7 |
+| 3 (done) | Motional emf (§6.6): sliding and rotating rods and loops leaving a field | E5 | 16 (19.0%) | Ex 6.4, 6.5, 6.6; Examples 6.6, 6.7 |
 | 4 | Inductance bench (§6.7): self, mutual, solenoid, energy | E6, E7, E8 | 23 (27.4%) | Ex 6.7, 6.8; Examples 6.8, 6.9 |
 | 5 | AC generator (§6.8): rotating coil, peak emf | E9 | 8 (9.5%) | Example 6.10 |
 

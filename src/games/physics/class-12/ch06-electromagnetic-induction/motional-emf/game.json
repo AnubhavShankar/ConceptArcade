@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "motional-emf",
+  "title": "The Motional Emf Bench",
+  "summary": "Find the emf of falling wires, loops leaving a field, spinning rods and wheels, with polarity.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 6,
+    "name": "Electromagnetic Induction"
+  },
+  "ncertRef": "Section 6.6, Motional electromotive force",
+  "order": 1,
+  "concepts": [
+    "Motional emf Blv",
+    "Polarity from the Lorentz force",
+    "Loop leaving a field",
+    "Rotating rod, ½Bωl²",
+    "Wheel with spokes"
+  ],
+  "learningOutcome": "The student can find the motional emf of a moving wire and its polarity, the emf and duration for a loop leaving a field, and the emf of a rotating rod or wheel.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "A falling wire",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: ε = Blv, with the polarity from the force q v × B on positive charge (Ex 6.6).",
+      "hints": [
+        "ε = B l v, with B in tesla.",
+        "Find the direction of v × B: that is the way positive charge is pushed.",
+        "The end the positive charge is pushed towards is at the higher potential."
+      ]
+    },
+    {
+      "title": "A loop leaving the field",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: only the edge parallel to the boundary cuts field lines, and the emf lasts while the loop leaves (Ex 6.4).",
+      "hints": [
+        "Decide which edge is parallel to the boundary: it is perpendicular to the motion.",
+        "ε = B l v for that edge, with lengths in metres.",
+        "The time is the distance the loop must travel divided by the speed."
+      ]
+    },
+    {
+      "title": "A spinning rod",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the speed along a rotating rod rises from zero, so ε = ½Bωl² (Ex 6.5, Example 6.6).",
+      "hints": [
+        "ε = ½ B ω l².",
+        "ω must be in rad/s: multiply revolutions per second by 2π.",
+        "The two ends of the rod are the two terminals."
+      ]
+    },
+    {
+      "title": "The wheel",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: spokes in parallel do not add, and the units need converting (Example 6.7).",
+      "hints": [
+        "Each spoke is a rotating rod: ½Bωl².",
+        "All the spokes join the same axle and rim, so they are in parallel.",
+        "Convert rev/min to rad/s and gauss to tesla."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The emf of a rotating rod is Blωl, using the speed of the tip",
+    "Each extra spoke adds its emf",
+    "A loop wholly inside a uniform field has an emf as it moves"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
