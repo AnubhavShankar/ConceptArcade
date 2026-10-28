@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "faraday-bench",
+  "title": "The Faraday Bench",
+  "summary": "Find magnetic flux and its change, then the emf induced in loops, coils and graphs of flux.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 6,
+    "name": "Electromagnetic Induction"
+  },
+  "ncertRef": "Section 6.3, Magnetic flux",
+  "order": 1,
+  "concepts": [
+    "Magnetic flux BA cos θ",
+    "Faraday’s law",
+    "Induced emf in a loop in a solenoid",
+    "Average emf of a turning coil",
+    "Emf from a flux graph"
+  ],
+  "learningOutcome": "The student can find the flux through a coil and its change, and use the rate of change of flux to find the emf and current induced in loops, rotating coils and flux graphs.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Flux through a coil",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: Φ = BA cos θ, and the change in flux when the coil turns (Section 6.3).",
+      "hints": [
+        "Φ = B A cos θ, with the area in m².",
+        "θ is the angle between the field and the normal to the coil.",
+        "A change is final minus initial, with its sign."
+      ]
+    },
+    {
+      "title": "Loop in a solenoid",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: the emf is the rate of change of flux, here μ₀nA ΔI/Δt (Ex 6.3).",
+      "hints": [
+        "B = μ₀nI inside the solenoid, with n in turns per metre.",
+        "The flux through the loop is BA.",
+        "The emf is the change in flux divided by the time."
+      ]
+    },
+    {
+      "title": "Turning a coil",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: turning through 180° changes the flux by 2BA, for N turns (Example 6.3).",
+      "hints": [
+        "The flux goes from +BA to −BA.",
+        "Multiply by the number of turns.",
+        "The current is the emf over the resistance."
+      ]
+    },
+    {
+      "title": "Read the graph",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: the emf is the slope of the flux graph, up or down (Section 6.4).",
+      "hints": [
+        "Take the change in flux over the time in the segment.",
+        "1 mWb per second is 1 mV.",
+        "The steepest segment has the largest emf, whichever way it slopes."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The emf depends on the flux itself, not on how fast it changes",
+    "A steady flux through a coil induces a steady emf",
+    "Turning a coil through 180° gives no change in flux"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
