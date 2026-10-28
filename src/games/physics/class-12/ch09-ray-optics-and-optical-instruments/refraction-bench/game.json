@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "refraction-bench",
+  "title": "The Refraction Bench",
+  "summary": "Bend light through water and glass, refocus a microscope, size a pool escape circle and guide a pulse down a fibre.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 9,
+    "name": "Ray Optics and Optical Instruments"
+  },
+  "ncertRef": "Section 9.3, Refraction",
+  "order": 1,
+  "concepts": [
+    "Snell’s law",
+    "Apparent depth",
+    "Shift through a glass slab",
+    "Critical angle",
+    "Total internal reflection",
+    "Optical fibre"
+  ],
+  "learningOutcome": "The student can use Snell’s law, apparent depth H/n, the slab shift t(1 − 1/n) and the critical angle sin θc = 1/n to reach each objective, and can say when light is totally reflected in a fibre.",
+  "mechanic": "build-the-setup",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Ray from water to glass",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: n₁ sin i = n₂ sin r, and indices found from photographs taken in air tell you the angle between two other media (Ex 9.4).",
+      "hints": [
+        "From each photograph, n = sin 60° divided by the sine of the refracted angle.",
+        "At the water–glass boundary use n(water) × sin(incidence) = n(glass) × sin(refraction).",
+        "Take the inverse sine on your calculator in degrees."
+      ]
+    },
+    {
+      "title": "Refocusing on Needle",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: a liquid of index n makes an object at depth H appear at H/n; refocus by the change in apparent depth (Ex 9.3).",
+      "hints": [
+        "Apparent depth = real depth divided by the index of the liquid.",
+        "Work out the apparent depth for each liquid and take the difference.",
+        "A larger index makes the needle look nearer the surface, so the microscope must rise."
+      ]
+    },
+    {
+      "title": "Pin under a glass slab",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Apply it: a slab of thickness t and index n makes an object look t(1 − 1/n) nearer, wherever the slab sits (Ex 9.16).",
+      "hints": [
+        "Each thickness t of glass looks like t/n, so the saving is t − t/n.",
+        "Slide the slab in your head: the thickness and the index do not change.",
+        "Give the raise in cm and say whether the position of the slab matters."
+      ]
+    },
+    {
+      "title": "The disc over Glow",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: light leaves a surface only within the critical angle, sin θc = 1/n, so a source at depth d lights a circle of radius d tan θc (Ex 9.5).",
+      "hints": [
+        "Light is totally reflected at the surface when the angle of incidence exceeds θc.",
+        "sin θc = 1/n, so tan θc = 1/√(n² − 1).",
+        "The radius of the circle is the depth times tan θc."
+      ]
+    },
+    {
+      "title": "Pulse in the fibre",
+      "tier": "challenge",
+      "kind": "complexity",
+      "adds": "Apply it: a ray is guided only if it meets the core–cladding wall beyond the critical angle, which limits the entry angle (Ex 9.17).",
+      "hints": [
+        "Inside the core the ray makes an angle of 90° − r with the wall, where sin i = n₁ sin r.",
+        "Total reflection needs cos r ≥ n₂/n₁ at the wall.",
+        "The widest entry angle satisfies sin i = √(n₁² − n₂²); if that is above 1, every angle is guided."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A glass slab shifts the image by an amount that depends on where the slab is held",
+    "Total internal reflection happens when light goes from a rarer to a denser medium",
+    "An object under water appears deeper than it is"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
