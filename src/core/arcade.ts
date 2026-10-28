@@ -22,6 +22,8 @@ export const PAL = { bg0: '#0b1030', bg1: '#222a66', grid: 'rgba(130,160,255,0.1
 /** Seconds the consequence of an attempt plays. */
 export const RESOLVE = 2.4;
 const BETWEEN = 0.9;
+/** Extra points for clearing a round at the first try. */
+export const PERFECT_BONUS = 50;
 
 /** One heart left is 1 star, two is 2, three or more is 3. */
 export function heartsToStars(hearts: number): 1 | 2 | 3 {
@@ -100,6 +102,7 @@ export function createArcade(ctx: GameContext, hero: Hero, o: ArcadeOptions) {
   let winSent = false;
   let shakeAmt = 0;
   let lastPoints = 0;
+  let roundMisses = 0;
   let pending: { ok: boolean; text: string; x: number; y: number; delay: number } | null = null;
   function applyPending() {
     if (!pending) return;
@@ -108,6 +111,10 @@ export function createArcade(ctx: GameContext, hero: Hero, o: ArcadeOptions) {
     api.say(text, ok);
     if (ok) {
       lastPoints = roundScore({ chargesLeft: charges, seconds: roundT, streak });
+      if (roundMisses === 0) {
+        lastPoints += PERFECT_BONUS;
+        float('PERFECT!', px, py - 46, PAL.pink);
+      }
       score += lastPoints;
       streak++;
       burst(px, py, PAL.green, 40, 220);
@@ -116,6 +123,7 @@ export function createArcade(ctx: GameContext, hero: Hero, o: ArcadeOptions) {
       sound('ok');
     } else {
       hearts--;
+      roundMisses++;
       streak = 0;
       shake(9);
       burst(px, py, PAL.red, 22, 120);
@@ -164,10 +172,11 @@ export function createArcade(ctx: GameContext, hero: Hero, o: ArcadeOptions) {
     }
   }
 
+  const isBoss = () => o.rounds > 1 && round === o.rounds - 1;
   function hudUpdate() {
     heartsEl.textContent = '♥'.repeat(Math.max(0, hearts)) + '♡'.repeat(Math.max(0, (o.hearts ?? 3) - hearts));
     heartsEl.setAttribute('aria-label', `Hearts left: ${hearts}`);
-    roundEl.textContent = `Round ${Math.min(round + 1, o.rounds)} of ${o.rounds}`;
+    roundEl.textContent = `Round ${Math.min(round + 1, o.rounds)} of ${o.rounds}${isBoss() ? ' · BOSS' : ''}`;
     scoreEl.textContent = `Score ${score}`;
     comboEl.textContent = streak >= 2 ? `Streak ×${1 + 0.25 * Math.min(4, streak)}` : '';
     chargeEl.textContent = chargesFor(round) > 0 ? `Charges ${'⚡'.repeat(charges)}${'·'.repeat(Math.max(0, chargesFor(round) - charges))}` : '';
@@ -206,9 +215,14 @@ export function createArcade(ctx: GameContext, hero: Hero, o: ArcadeOptions) {
   function startRound() {
     charges = chargesFor(round);
     roundT = 0;
+    roundMisses = 0;
     setPhase('play');
     hudUpdate();
     o.onRound(round);
+    if (isBoss()) {
+      float('BOSS ROUND', o.W / 2, 44, PAL.red);
+      shake(5);
+    }
   }
 
   const api = {
@@ -350,7 +364,7 @@ export function createArcade(ctx: GameContext, hero: Hero, o: ArcadeOptions) {
           if (resolveOk) {
             if (round + 1 < o.rounds) {
               round++;
-              roundEl.textContent = `Round ${round + 1} of ${o.rounds}`;
+              roundEl.textContent = `Round ${round + 1} of ${o.rounds}${isBoss() ? ' · BOSS' : ''}`;
               setPhase('between');
               float(`Round ${round + 1}`, o.W / 2, o.H / 2, PAL.white);
             } else {

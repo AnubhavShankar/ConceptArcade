@@ -16,7 +16,7 @@ From this chapter on every game follows the owner's rule of 2026-10-28: **a hero
 
 | Concepts | Total weight | Covered by games |
 |---|---|---|
-| 14 | 155 | 0% (building) |
+| 14 | 155 | 59% (waves 1 to 3 done; prism, microscope and telescope next) |
 
 ## Every concept, heaviest first
 
@@ -41,9 +41,9 @@ From this chapter on every game follows the owner's rule of 2026-10-28: **a hero
 
 | Wave | Game (working title) | Concepts | Cluster weight | Exercises and examples it must test |
 |---|---|---|---|---|
-| 1 | Mirror bench (§9.2): hero projects, reflects and magnifies with mirrors | M1, M2, M3 | 28 (18.1%) | Ex 9.1, 9.2, 9.15, 9.30; Examples 9.1 to 9.4 |
-| 2 | Refraction bench (§9.3 to 9.4): apparent depth, light pipe, critical angle | R1, R2, R3 | 27 (17.4%) | Ex 9.3, 9.4, 9.5, 9.16, 9.17 |
-| 3 | Lens bench (§9.5): lens formula, lens maker, power and combinations | L1, L2, L3 | 46 (29.7%) | Ex 9.7 to 9.10, 9.18 to 9.20, 9.31; Examples 9.6 to 9.8 |
+| 1 (done) | Mirror Arcade (§9.2): hero projects, reflects and magnifies with mirrors | M1, M2, M3 | 28 (18.1%) | Ex 9.1, 9.2, 9.15, 9.30; Examples 9.1 to 9.4 |
+| 2 (done) | Refraction Arcade (§9.3 to 9.4): apparent depth, light pipe, critical angle | R1, R2, R3 | 27 (17.4%) | Ex 9.3, 9.4, 9.5, 9.16, 9.17 |
+| 3 (done) | Lens Lab (§9.5): lens formula, lens maker, power and combinations | L1, L2, L3 | 46 (29.7%) | Ex 9.7 to 9.10, 9.18 to 9.20, 9.31; Examples 9.6 to 9.8 |
 | 4 | Prism lab (§9.6) | P1 | 10 (6.5%) | Ex 9.6, 9.21 |
 | 5 | Microscope lab (§9.7.1): magnifier and compound microscope | I1, I2 | 25 (16.1%) | Ex 9.11, 9.12, 9.22 to 9.26 |
 | 6 | Telescope lab (§9.7.2) | I3 | 16 (10.3%) | Ex 9.13, 9.14, 9.27 to 9.29 |
