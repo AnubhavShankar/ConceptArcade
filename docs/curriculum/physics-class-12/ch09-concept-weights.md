@@ -53,6 +53,6 @@ R4 (refraction at one spherical surface, weight 3) is left out on purpose: it is
 ## Notes for the builders
 
 - Games live in `src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/<id>/`. The chapter name must match `src/curriculum/physics/class-12.json`.
-- Use `src/core/labkit.ts` (hero banner, controls, verdict flash, win) and keep the rules in `logic.ts`.
+- Use `src/core/arcade.ts` (hero banner, HUD, hearts, rounds, score, charges, drag handles, juice) and `src/core/neon.ts`, and keep the rules in `logic.ts`. See AGENTS.md section 5, items 13 and 14.
 - Cartesian sign convention throughout (distances measured from the pole or optical centre, positive in the direction of the incident light): u is negative for a real object. For mirrors f = R/2, negative for a concave mirror and positive for a convex one. For lenses f is positive for a convex lens and negative for a concave lens.
 - Units to drill: cm and m, dioptre (1 D = 1 m⁻¹), degrees, magnification as a signed number.

@@ -1,6 +1,7 @@
 import { createArcade, PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { fmt } from '@core/judge';
+import { trace } from '@core/neon';
 import { car, face, flame, glow, line, mirror, ruler, target, text, type Mood } from './art';
 import { RAIL_MAX, buildGame, explainRound, flashText, judgeDrive, judgeLaser, judgeSelfie, judgeWall, mirrorImage, missText, resultLine, tanDeg, type Image } from './logic';
 
@@ -8,27 +9,6 @@ const W = 640;
 const H = 340;
 const RAD = Math.PI / 180;
 const DRIVE_T = 1.7;
-
-type G = CanvasRenderingContext2D;
-/** Draw the first fraction f of a polyline. */
-function trace(g: G, pts: [number, number][], f: number, color: string, w = 2.5) {
-  let total = 0;
-  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-  let left = total * Math.max(0, Math.min(1, f));
-  glow(g, color, 8, () => {
-    g.strokeStyle = color;
-    g.lineWidth = w;
-    g.beginPath();
-    g.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length && left > 0; i++) {
-      const len = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-      const k = Math.min(1, left / len);
-      g.lineTo(pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * k, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * k);
-      left -= len;
-    }
-    g.stroke();
-  });
-}
 
 export default defineGame({
   mount(ctx) {

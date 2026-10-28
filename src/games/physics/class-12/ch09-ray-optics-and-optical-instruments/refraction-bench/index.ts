@@ -1,347 +1,419 @@
+import { createArcade, PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
-import { label } from '@core/draw';
-import { createLab } from '@core/labkit';
 import { fmt } from '@core/judge';
-import { startLoop } from '@core/sim';
-import { asinD, buildLevel, criticalDeg, explainSolution, judgeCone, judgeDepth, judgePipe, judgeSlab, judgeSnell, sinD } from './logic';
+import { along, glow, line, orb, text, trace } from '@core/neon';
+import { CONE_MIN, PROBE_DEG, SLIDER, buildGame, coneMax, criticalDeg, explainRound, judgeCone, judgeDepth, judgePipe, judgeSlab, judgeSnell, missText, pipeGuided, probeText, resultLine, sinD, type PipeRound } from './logic';
+import { pinCharacter, target } from './art';
 
 const W = 640;
-const H = 300;
-const ease = (t: number) => t * t * (3 - 2 * t);
+const H = 340;
 const RAD = Math.PI / 180;
+
+/** The zigzag path of a ray entering the fibre at `i`, and whether it leaks at the first wall. */
+function pipePath(r: PipeRound, i: number, x0: number, x1: number, y0: number, half: number): { pts: [number, number][]; leaks: boolean } {
+  const sinR = sinD(i) / r.n1;
+  const slope = Math.tan(Math.asin(Math.min(1, sinR)));
+  const leaks = !pipeGuided(r, i);
+  const pts: [number, number][] = [[x0, y0]];
+  if (slope < 1e-6) return { pts: [[x0, y0], [x1, y0]], leaks: false };
+  let x = x0;
+  let y = y0;
+  let dir = -1;
+  let run = half / slope;
+  for (let k = 0; k < 80 && x < x1; k++) {
+    const nx = Math.min(x1, x + run);
+    y += dir * slope * (nx - x);
+    x = nx;
+    pts.push([x, y]);
+    if (leaks) break;
+    dir = -dir;
+    run = (2 * half) / slope;
+  }
+  return { pts, leaks };
+}
 
 export default defineGame({
   mount(ctx) {
-    const lvl = buildLevel(ctx.level, ctx.random);
-    const lab = createLab(ctx, lvl.hero, { W, H, aria: 'A side view of light bending, bouncing or escaping at the boundary between two materials.', free: lvl.freeTests });
-    const { g, col } = lab;
-    let tryA: number | null = null;
-    let started = false;
-    let dirUp = true;
-    let sameQ: 'changes' | 'same' | null = null;
-
-    const go = (text: string, run: () => void) => lab.button(text, text, () => {
-      if (lab.finished || lab.busy()) return;
-      run();
-    });
-    const need = (v: number | null, what: string, unit: string) => {
-      if (v === null || v <= 0) {
-        lab.freeNote(`Enter ${what} as a positive number of ${unit}.`);
-        return false;
-      }
-      return true;
+    const game = buildGame(ctx.level, ctx.random);
+    let onRound: (i: number) => void = () => undefined;
+    const A = createArcade(ctx, game.hero, { W, H, aria: 'An arcade screen: a glowing hero, light rays bending or bouncing at the edge between two materials, and a target.', rounds: 3, charges: game.charges, onRound: (i) => onRound(i) });
+    const clearSay = () => {
+      A.feedback.hidden = true;
     };
-    const finish = (ok: boolean, win: string, miss: string) => {
-      started = true;
-      lab.verdict(ok);
-      if (ok) lab.succeed(win, explainSolution(lvl));
-      else lab.miss(miss);
-    };
+    const ri = () => Math.min(A.round, 2);
 
-    if (lvl.kind === 'snell') {
-      const aIn = lab.field('Detector angle from the normal in degrees', 'r = ? °');
-      lab.controls.append(
-        lab.row('Detector angle', aIn, '°'),
-        go('Send the ray', () => {
-          const a = lab.num(aIn);
-          if (!need(a, 'the angle', 'degrees')) return;
-          if (a! >= 90) return lab.freeNote('The angle from the normal must be less than 90°.');
-          tryA = a;
-          const ok = judgeSnell(lvl, a!).ok;
-          finish(ok, `Ray hits the detector at ${fmt(lvl.answer)}° in the glass.`, 'Ray lands away from the detector.');
+    // ================= level 1: Ray and the detector ====================================================
+    if (game.kind === 'snell') {
+      const rounds = game.rounds;
+      const CX = 320;
+      const BY = 175;
+      const R = 140;
+      const S = SLIDER.snell;
+      let inc: number = S.start;
+      let shot: { ok: boolean; r: number } | null = null;
+      let notes: string[] = [];
+      let inset: { which: 'A' | 'B'; born: number } | null = null;
+      const slider = A.slider({ aria: 'Angle of incidence in the first material in degrees', label: 'Ray’s angle in medium A', min: S.min, max: S.max, step: S.step, value: inc, unit: '°', onInput: (v) => (inc = v) });
+      A.handle({ x: () => CX - R * sinD(inc), y: () => BY - R * Math.cos(inc * RAD), r: 24, drag: (px, py) => slider.set(Math.atan2(CX - px, BY - py) / RAD) });
+      const probe = (which: 'A' | 'B') => () => {
+        const r = rounds[ri()];
+        if (which === 'A' && r.probeA === null) return A.freeNote('Medium A is air: a probe from air goes straight on, and its index is 1.');
+        if (!A.spend()) return;
+        notes.push(`probe ${which}: ${PROBE_DEG}° in air → ${fmt((which === 'A' ? r.probeA : r.probeB) ?? 0)}°`);
+        notes = notes.slice(-3);
+        inset = { which, born: A.clock };
+        A.say(probeText(which, r), true);
+      };
+      A.controls.append(
+        slider.row,
+        A.button('🔦 Probe A', 'Probe medium A with a shot from air', probe('A'), 'secondary'),
+        A.button('🔦 Probe B', 'Probe medium B with a shot from air', probe('B'), 'secondary'),
+        A.button('🔥 Fire', 'Fire Ray at this angle', () => {
+          const r = rounds[ri()];
+          const j = judgeSnell(r, inc);
+          shot = { ok: j.ok, r: j.r };
+          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), inc), { x: CX + R * sinD(r.r), y: BY + R * Math.cos(r.r * RAD) }, 1.3);
         }),
       );
-      lab.hint.textContent = 'Find each index from the two photographs (n = sin 60° / sin r), then apply n₁ sin i = n₂ sin r at the water–glass boundary.';
-    }
-    if (lvl.kind === 'depth') {
-      const dIn = lab.field('Distance to move the microscope in cm', 'x = ? cm');
-      const dirChoice = lab.choice<'up' | 'down'>('Direction', [['up', 'Move the microscope up', 'Up'], ['down', 'Move the microscope down', 'Down']], (v) => (dirUp = v === 'up'));
-      let dirChosen = false;
-      dirChoice.addEventListener('click', () => (dirChosen = true));
-      lab.controls.append(
-        lab.row('Move the microscope', dIn, 'cm'),
-        dirChoice,
-        go('Refocus the microscope', () => {
-          const d = lab.num(dIn);
-          if (!need(d, 'the distance', 'cm')) return;
-          if (!dirChosen) return lab.freeNote('Choose whether the microscope goes up or down.');
-          tryA = dirUp ? d! : -d!;
-          finish(judgeDepth(lvl, tryA!).ok, `Needle is sharp again: the microscope moved ${dirUp ? 'up' : 'down'} ${fmt(Math.abs(lvl.move))} cm.`, 'Needle is still blurred in the eyepiece.');
-        }),
-      );
-      lab.hint.textContent = 'Seen from above, an object at real depth H under a liquid of index n appears at depth H/n.';
-    }
-    if (lvl.kind === 'slab') {
-      const sIn = lab.field('How far the pin appears raised in cm', 'x = ? cm');
-      lab.controls.append(
-        lab.row('Pin appears raised by', sIn, 'cm'),
-        lab.choice<'changes' | 'same'>('Slide the slab nearer to the pin', [['changes', 'The raise changes when the slab slides', 'The raise changes'], ['same', 'The raise stays the same when the slab slides', 'The raise stays the same']], (v) => (sameQ = v)),
-        go('Lay the slab over Pin', () => {
-          const s = lab.num(sIn);
-          if (!need(s, 'the raise', 'cm')) return;
-          if (sameQ === null) return lab.freeNote('Say whether sliding the slab changes the raise.');
-          tryA = s;
-          const r = judgeSlab(lvl, s!, sameQ);
-          const parts: string[] = [];
-          if (!r.sOk) parts.push('The camera is still out of focus: Pin appears at a different height.');
-          if (!r.cOk) parts.push('Sliding the slab nearer the pin does not move the image: watch it stay put.');
-          finish(r.ok, `Pin looks ${fmt(lvl.shift)} cm higher, wherever the slab sits.`, parts.join(' '));
-        }),
-      );
-      lab.hint.textContent = `Slab: refractive index ${lvl.n}, thickness ${lvl.t} cm. The camera is far above.`;
-    }
-    if (lvl.kind === 'cone') {
-      const rIn = lab.field('Radius of the disc in cm', 'r = ? cm');
-      lab.controls.append(
-        lab.row('Disc radius', rIn, 'cm'),
-        go('Float the disc', () => {
-          const r = lab.num(rIn);
-          if (!need(r, 'the radius', 'cm')) return;
-          tryA = r;
-          const ok = judgeCone(lvl, r!).ok;
-          finish(ok, `The disc blocks every ray that could leave: radius ${fmt(lvl.radius)} cm.`, r! < lvl.radius ? 'Light still escapes round the edge of the disc.' : 'The disc blocks all the light, but it is wider than it needs to be: part of it covers surface where no light could leave anyway.');
-        }),
-      );
-      lab.hint.textContent = 'A ray escapes only if it meets the surface at less than the critical angle, sin θc = 1/n.';
-    }
-    if (lvl.kind === 'pipe') {
-      const aIn = lab.field('Angle of incidence in degrees', 'i = ? °');
-      lab.controls.append(
-        lab.row('Angle on the end face', aIn, '°'),
-        go('Send the pulse', () => {
-          const a = lab.num(aIn);
-          if (!need(a, 'the angle', 'degrees')) return;
-          if (a! > 90) return lab.freeNote('The angle of incidence cannot be more than 90°.');
-          tryA = a;
-          const r = judgePipe(lvl, a!);
-          finish(r.ok, `Pulse is carried to the far end at up to ${fmt(lvl.maxDeg)}°.`, r.guided ? 'The pulse is carried to the far end, but the fibre would still have guided a wider beam.' : 'At that angle the pulse leaks out through the wall at the first bounce and never reaches the end.');
-        }),
-      );
-      lab.hint.textContent = 'The ray inside the core meets the wall at 90° − r; it is trapped only beyond the critical angle for core and cladding.';
-    }
-
-    // ---- drawing --------------------------------------------------------------------------------
-    const seg = (x1: number, y1: number, x2: number, y2: number, color: string, w = 2.5, dash: number[] = []) => {
-      g.strokeStyle = color;
-      g.lineWidth = w;
-      g.setLineDash(dash);
-      g.beginPath();
-      g.moveTo(x1, y1);
-      g.lineTo(x2, y2);
-      g.stroke();
-      g.setLineDash([]);
-    };
-    const part = (x1: number, y1: number, x2: number, y2: number, f: number) => [x1 + (x2 - x1) * f, y1 + (y2 - y1) * f] as const;
-    function drawScene() {
-      const p = lab.progress;
-      if (lvl.kind === 'snell') {
-        g.fillStyle = col.accent;
-        g.globalAlpha = 0.12;
-        g.fillRect(0, 0, W, 150);
-        g.fillStyle = col.muted;
-        g.globalAlpha = 0.2;
-        g.fillRect(0, 150, W, 150);
-        g.globalAlpha = 1;
-        seg(0, 150, W, 150, col.text, 2);
-        seg(320, 20, 320, 280, col.muted, 1.5, [5, 4]);
-        label(g, 'water', 60, 30, { size: 13, color: col.muted });
-        label(g, 'glass', 60, 280, { size: 13, color: col.muted });
-        label(g, 'normal', 350, 28, { size: 11, color: col.muted });
-        const R = 130;
-        const ix = 320 - R * sinD(lvl.inDeg);
-        const iy = 150 - R * Math.cos(lvl.inDeg * RAD);
-        const f1 = Math.min(1, p * 2);
-        const [ex, ey] = part(ix, iy, 320, 150, started ? f1 : 1);
-        seg(ix, iy, ex, ey, col.accent);
-        label(g, `${lvl.inDeg}° in the water`, 200, 80, { size: 12, color: col.text });
-        if (started) {
-          const r = lvl.answer;
-          const [rx, ry] = part(320, 150, 320 + R * sinD(r), 150 + R * Math.cos(r * RAD), Math.max(0, Math.min(1, (p - 0.5) * 2)));
-          seg(320, 150, rx, ry, col.accent);
+      onRound = (i) => {
+        inc = S.start;
+        slider.set(inc);
+        shot = null;
+        notes = [];
+        inset = null;
+        clearSay();
+        A.hint.textContent = `The detector sits ${fmt(rounds[i].rShown)}° from the normal in medium B. Use probes to find each material’s refractive index, then work out the angle for Ray.`;
+      };
+      A.scene((g, t) => {
+        if (A.phase === 'between') return;
+        const r = rounds[ri()];
+        const air = r.probeA === null;
+        g.fillStyle = air ? 'rgba(77,225,255,0.05)' : 'rgba(77,225,255,0.2)';
+        g.fillRect(0, 0, W, BY);
+        g.fillStyle = 'rgba(160,170,230,0.28)';
+        g.fillRect(0, BY, W, H - BY);
+        line(g, 0, BY, W, BY, PAL.white, 2);
+        line(g, CX, 20, CX, H - 10, PAL.dim, 1.5, [6, 5]);
+        text(g, air ? 'A: air' : 'A: unknown material', 70, 24, PAL.cyan, 12);
+        text(g, 'B: unknown material', 80, H - 18, PAL.dim, 12);
+        text(g, 'normal', CX + 30, 34, PAL.dim, 11);
+        const tx = CX + R * sinD(r.r);
+        const ty = BY + R * Math.cos(r.r * RAD);
+        const resolving = A.phase === 'resolve' && shot !== null;
+        target(g, tx, ty, 16, resolving && shot!.ok && A.rt >= 1.2, A.clock);
+        text(g, `detector ${fmt(r.rShown)}°`, tx + 28, ty + 36, PAL.white, 11, 'left');
+        const ox = CX - R * sinD(inc);
+        const oy = BY - R * Math.cos(inc * RAD);
+        const end: [number, number] = resolving ? [CX + R * sinD(shot!.r), BY + R * Math.cos(shot!.r * RAD)] : [CX, BY];
+        const path: [number, number][] = resolving ? [[ox, oy], [CX, BY], end] : [[ox, oy], [CX, BY]];
+        trace(g, path, resolving ? A.rt / 1.2 : 1, PAL.yellow, 3);
+        if (resolving && A.rt < 1.2) {
+          const [hx, hy] = along(path, A.rt / 1.2);
+          orb(g, hx, hy, 8, PAL.yellow, t);
+        } else {
+          orb(g, ox, oy, 14, PAL.yellow, t, resolving ? (shot!.ok ? 'cheer' : 'worried') : 'happy');
         }
-        if (tryA !== null) {
-          const dx = 320 + R * sinD(tryA);
-          const dy = 150 + R * Math.cos(tryA * RAD);
-          g.strokeStyle = lab.ok && p >= 1 ? col.good : col.bad;
-          g.lineWidth = 3;
-          g.strokeRect(dx - 9, dy - 9, 18, 18);
-          label(g, 'detector', dx + 40, dy + 4, { size: 11, color: col.muted });
+        notes.forEach((n, k) => text(g, n, 14, 46 + k * 14, PAL.cyan, 10, 'left'));
+        if (inset) {
+          const bx = 478;
+          const by = 12;
+          g.fillStyle = 'rgba(0,0,0,0.45)';
+          g.fillRect(bx, by, 150, 112);
+          g.strokeStyle = PAL.cyan;
+          g.lineWidth = 1.5;
+          g.strokeRect(bx, by, 150, 112);
+          const mx = bx + 75;
+          const my = by + 56;
+          line(g, bx, my, bx + 150, my, PAL.white, 1.5);
+          line(g, mx, by + 8, mx, by + 104, PAL.dim, 1, [4, 4]);
+          const rr = inset.which === 'A' ? r.probeA ?? 0 : r.probeB;
+          line(g, mx - 46 * sinD(PROBE_DEG), my - 46 * Math.cos(PROBE_DEG * RAD), mx, my, PAL.yellow, 2);
+          line(g, mx, my, mx + 46 * sinD(rr), my + 46 * Math.cos(rr * RAD), PAL.yellow, 2);
+          text(g, `probe ${inset.which}: ${PROBE_DEG}° → ${fmt(rr)}°`, mx, by + 108, PAL.cyan, 10);
         }
-      } else if (lvl.kind === 'depth') {
-        const surface = 110;
-        const px = 150 / lvl.H;
+      });
+    }
+
+    // ================= level 2: Needle under a new liquid ===============================================
+    if (game.kind === 'depth') {
+      const rounds = game.rounds;
+      const S = SLIDER.depth;
+      const surface = 120;
+      let s: number = S.start;
+      let attempt: { ok: boolean } | null = null;
+      const scOf = () => 150 / rounds[ri()].H;
+      const slider = A.slider({ aria: 'Microscope height change in cm, positive is up', label: 'Move the microscope', min: S.min, max: S.max, step: S.step, value: s, unit: 'cm (+ up)', text: (v) => (v > 0 ? `+${v}` : String(v)), onInput: (v) => (s = v) });
+      A.handle({ x: () => 320, y: () => 52 - s * scOf(), r: 30, drag: (_px, py) => slider.set((52 - py) / scOf()) });
+      A.controls.append(
+        slider.row,
+        A.button('🔬 Lock focus', 'Lock the microscope focus here', () => {
+          const r = rounds[ri()];
+          const j = judgeDepth(r, s);
+          attempt = { ok: j.ok };
+          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), s), { x: 550, y: 120 }, 0.8);
+        }),
+      );
+      onRound = (i) => {
+        s = 0;
+        slider.set(0);
+        attempt = null;
+        clearSay();
+        const r = rounds[i];
+        A.hint.textContent = `Tank ${r.H} cm deep. The focus was set for the old liquid (n = ${r.n1}); the new liquid has n = ${r.n2}. ${r.assist === 0 ? 'The eyepiece shows Needle live.' : 'The eyepiece is off: work it out.'}`;
+      };
+      A.scene((g, t) => {
+        if (A.phase === 'between') return;
+        const r = rounds[ri()];
+        const sc = scOf();
         const bottom = surface + 150;
-        g.fillStyle = col.accent;
-        g.globalAlpha = 0.15;
-        g.fillRect(180, surface, 280, 150);
-        g.globalAlpha = 1;
-        g.strokeStyle = col.text;
+        const a1 = (r.H / r.n1) * sc;
+        const a2 = (r.H / r.n2) * sc;
+        g.fillStyle = 'rgba(77,225,255,0.22)';
+        g.fillRect(190, surface, 260, 150);
+        g.strokeStyle = PAL.white;
         g.lineWidth = 3;
-        g.strokeRect(180, surface - 30, 280, 180);
-        seg(180, surface, 460, surface, col.text, 2);
-        label(g, `liquid, ${started ? 'n = ' + lvl.n2 : 'n = ' + lvl.n1}`, 520, surface + 40, { size: 12, color: col.muted });
-        seg(320, bottom - 22, 320, bottom, col.bad, 5);
-        label(g, 'Needle', 320, bottom + 18, { size: 12, color: col.muted });
-        const a1 = (lvl.H / lvl.n1) * px;
-        const a2 = (lvl.H / lvl.n2) * px;
-        const e = started ? ease(p) : 0;
-        const move = tryA === null ? 0 : tryA * px * e;
-        const focusDepth = a1 - move;
-        const imageDepth = started ? a2 : a1;
-        // microscope
-        const my = 40 - move;
-        g.fillStyle = col.text;
-        g.fillRect(290, my - 30, 60, 50);
-        seg(320, my + 20, 320, surface + focusDepth, col.muted, 1.5, [4, 4]);
-        seg(300, surface + focusDepth, 340, surface + focusDepth, col.good, 2);
-        label(g, 'focus', 380, surface + focusDepth + 4, { size: 11, color: col.good });
-        // where the image of the needle's tip seems to be
-        const blur = Math.abs(focusDepth - imageDepth) * 0.6;
-        g.save();
-        g.shadowColor = col.bad;
-        g.shadowBlur = Math.min(20, blur);
-        g.globalAlpha = Math.max(0.35, 1 - blur / 18);
-        seg(318, surface + imageDepth, 322, surface + imageDepth + 22, col.bad, 5, [3, 2]);
-        g.restore();
-        label(g, 'image of the tip', 250, surface + imageDepth + 6, { size: 10, color: col.muted, align: 'right' });
-      } else if (lvl.kind === 'slab') {
-        const t = 120;
-        const table = 250;
-        const e = started ? ease(Math.max(0, (p - 0.4) / 0.6)) : 0;
-        const bottomY = 200 + 50 * e;
-        seg(120, table, 520, table, col.text, 4);
-        seg(320, table - 24, 320, table, col.bad, 5);
-        label(g, 'Pin', 345, table - 8, { size: 12, color: col.muted, align: 'left' });
-        g.fillStyle = col.accent;
-        g.globalAlpha = 0.25;
-        g.fillRect(230, bottomY - t, 180, t);
-        g.globalAlpha = 1;
-        g.strokeStyle = col.accent;
-        g.lineWidth = 2;
-        g.strokeRect(230, bottomY - t, 180, t);
-        label(g, `glass, n = ${lvl.n}`, 440, bottomY - t / 2, { size: 12, color: col.muted, align: 'left' });
-        seg(320, 20, 320, 40, col.muted, 1);
-        label(g, 'camera above', 320, 16, { size: 11, color: col.muted });
-        if (started) {
-          const rise = Math.min(130, lvl.shift * (t / lvl.t)) * Math.min(1, p * 4);
-          g.globalAlpha = 0.8;
-          seg(320, table - rise - 24, 320, table - rise, col.bad, 5, [4, 3]);
-          g.globalAlpha = 1;
-          label(g, 'where it seems to be', 300, table - rise - 28, { size: 11, color: col.muted, align: 'right' });
-        }
-      } else if (lvl.kind === 'cone') {
-        const surface = 90;
-        const dpx = 140;
-        const sc = dpx / lvl.d;
-        const lampY = surface + dpx;
-        g.fillStyle = col.accent;
-        g.globalAlpha = 0.12;
-        g.fillRect(0, surface, W, H - surface);
-        g.globalAlpha = 1;
-        seg(0, surface, W, surface, col.text, 2);
-        g.fillStyle = col.accent;
+        g.strokeRect(190, surface - 20, 260, 170);
+        line(g, 190, surface, 450, surface, PAL.cyan, 2);
+        text(g, `new liquid, n = ${r.n2}`, 320, bottom + 22, PAL.cyan, 12);
+        text(g, `(it was n = ${r.n1})`, 320, bottom + 38, PAL.dim, 11);
+        pinCharacter(g, 320, bottom, 26, t, attempt && A.phase === 'resolve' ? (attempt.ok ? 'cheer' : 'worried') : 'happy');
+        // microscope body and its focal plane (a1 is where it was focused; s moves it up)
+        const my = 52 - s * sc;
+        g.fillStyle = PAL.white;
+        g.fillRect(296, my - 34, 48, 50);
+        g.fillStyle = PAL.dim;
+        g.fillRect(308, my + 16, 24, 14);
+        const fy = surface + a1 - s * sc;
+        line(g, 320, my + 30, 320, fy, PAL.dim, 1.5, [4, 4]);
+        line(g, 292, fy, 348, fy, PAL.green, 2);
+        text(g, 'focus', 372, fy + 4, PAL.green, 11, 'left');
+        // the eyepiece
+        const ex = 550;
+        const ey = 120;
+        const resolving = A.phase === 'resolve' && attempt !== null;
+        const live = r.assist === 0 || resolving;
+        g.fillStyle = 'rgba(0,0,0,0.55)';
         g.beginPath();
-        g.arc(320, lampY, 8, 0, Math.PI * 2);
+        g.arc(ex, ey, 52, 0, Math.PI * 2);
         g.fill();
-        label(g, 'Glow', 320, lampY + 26, { size: 12, color: col.muted });
-        const half = tryA === null ? 0 : tryA * sc;
-        const theta = criticalDeg(lvl.n);
-        const rays = [-75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75, -theta, theta, -theta - 10, theta + 10, -theta + 10, theta - 10];
-        if (started) {
-          for (const a of rays) {
-            const hitX = 320 + dpx * Math.tan(a * RAD);
-            const f = Math.min(1, p * 1.6);
-            const out = Math.abs(a) < theta;
-            const blocked = out && Math.abs(hitX - 320) <= half;
-            const [x, y] = part(320, lampY, hitX, surface, f);
-            seg(320, lampY, x, y, col.accent, 1.5);
-            if (f >= 1) {
-              if (blocked) seg(hitX - 3, surface - 3, hitX + 3, surface + 3, col.muted, 3);
-              else if (out) seg(hitX, surface, hitX + (hitX - 320) * 0.3, surface - 60, col.good, 2);
-              else seg(hitX, surface, 320 + (hitX - 320) * 2, lampY, col.muted, 1.2, [4, 4]);
-            }
-          }
+        g.strokeStyle = resolving ? (attempt!.ok ? PAL.green : PAL.red) : PAL.cyan;
+        g.lineWidth = 3;
+        g.stroke();
+        text(g, 'eyepiece', ex, ey + 70, PAL.dim, 11);
+        if (live) {
+          const blur = Math.min(24, Math.abs(fy - (surface + a2)) * 0.6);
+          g.save();
+          g.shadowColor = PAL.red;
+          g.shadowBlur = blur;
+          g.globalAlpha = Math.max(0.25, 1 - blur / 26);
+          line(g, ex, ey - 22, ex, ey + 22, PAL.red, blur < 1.5 ? 4 : 7);
+          g.restore();
+        } else text(g, '?', ex, ey + 12, PAL.dim, 38);
+        if (resolving && A.rt > 0.3) {
+          line(g, 312, surface + a2, 328, surface + a2, PAL.red, 3);
+          text(g, 'Needle seems to be here', 400, surface + a2 + 4, PAL.red, 11, 'left');
         }
-        if (tryA !== null) {
-          g.strokeStyle = col.text;
-          g.lineWidth = 6;
-          g.beginPath();
-          g.moveTo(320 - half, surface - 5);
-          g.lineTo(320 + half, surface - 5);
-          g.stroke();
-          label(g, 'floating disc', 320, surface - 16, { size: 11, color: col.muted });
-        }
-      } else {
-        const y0 = 150;
-        const half = 30;
-        const x0 = 110;
-        const x1 = 560;
-        g.fillStyle = col.muted;
-        g.globalAlpha = 0.25;
-        g.fillRect(x0, y0 - half - 14, x1 - x0, 2 * half + 28);
-        g.fillStyle = col.accent;
-        g.globalAlpha = 0.25;
-        g.fillRect(x0, y0 - half, x1 - x0, 2 * half);
-        g.globalAlpha = 1;
-        label(g, `core n = ${lvl.n1}`, 330, y0 + 4, { size: 12, color: col.muted });
-        label(g, lvl.n2 === 1 ? 'air outside' : `cladding n = ${lvl.n2}`, 330, y0 + half + 28, { size: 11, color: col.muted });
-        if (tryA !== null) {
-          const i = tryA;
-          const r = asinD(sinD(i) / lvl.n1);
-          const slope = Math.tan(r * RAD);
-          const guided = judgePipe(lvl, i).guided;
-          // the pulse path, up to the first wall when it leaks
-          const pts: [number, number][] = [[x0, y0]];
-          let x = x0;
-          let y = y0;
-          let dir = -1;
-          let wall = (y0 + dir * half - y) / (dir * slope || 1e-9);
-          const stopAfterFirst = !guided;
-          while (x < x1 && pts.length < 60) {
-            const nx = Math.min(x1, x + Math.abs(wall));
-            y += dir * slope * (nx - x);
-            x = nx;
-            pts.push([x, y]);
-            if (stopAfterFirst) break;
-            dir = -dir;
-            wall = (2 * half) / (slope || 1e-9);
-            if (slope < 1e-6) {
-              pts.push([x1, y0]);
-              break;
-            }
-          }
-          // incoming ray from air, below and to the left
-          const inLen = 70;
-          seg(x0 - inLen * Math.cos(i * RAD), y0 + inLen * Math.sin(i * RAD), x0, y0, col.accent);
-          let total = 0;
-          const lens: number[] = [];
-          for (let k = 1; k < pts.length; k++) {
-            lens.push(Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
-            total += lens[k - 1];
-          }
-          let left = started ? total * Math.min(1, p) : 0;
-          for (let k = 1; k < pts.length && left > 0; k++) {
-            const f = Math.min(1, left / lens[k - 1]);
-            const [ex, ey] = part(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1], f);
-            seg(pts[k - 1][0], pts[k - 1][1], ex, ey, col.accent);
-            left -= lens[k - 1];
-          }
-          if (started && !guided && p >= 1) {
-            const last = pts[pts.length - 1];
-            seg(last[0], last[1], last[0] + 50, last[1] + (last[1] < y0 ? -50 : 50), col.bad, 2.5, [5, 3]);
-            label(g, 'leaks out', last[0] + 60, last[1] + (last[1] < y0 ? -56 : 62), { size: 12, color: col.bad });
-          }
-          if (started && guided && p >= 1) label(g, 'pulse arrives', x1 - 20, y0 - half - 30, { size: 13, color: col.good });
-        }
-      }
+      });
     }
 
-    lab.mountAll();
-    return startLoop((dt) => {
-      lab.tick(dt);
-      g.clearRect(0, 0, W, H);
-      drawScene();
-      lab.endFrame();
-    });
+    // ================= level 3: Pin under glass ==========================================================
+    if (game.kind === 'slab') {
+      const rounds = game.rounds;
+      const S = SLIDER.slab;
+      const table = 290;
+      let raise: number = S.start;
+      let frac = rounds[0].slabAt;
+      let attempt: { ok: boolean } | null = null;
+      const pxCm = () => 120 / rounds[ri()].t;
+      const slabBottom = () => table - frac * 110;
+      const slider = A.slider({ aria: 'How far to raise the camera focus in cm', label: 'Raise the focus by', min: S.min, max: S.max, step: S.step, value: raise, unit: 'cm', onInput: (v) => (raise = v) });
+      A.handle({ x: () => 565, y: () => table - raise * pxCm(), r: 22, drag: (_px, py) => slider.set((table - py) / pxCm()) });
+      A.handle({ x: () => 420, y: () => slabBottom() - 60, r: 26, drag: (_px, py) => (frac = Math.max(0, Math.min(1, (table - (py + 60)) / 110))) });
+      A.controls.append(
+        slider.row,
+        A.button('📷 Refocus', 'Refocus the camera here', () => {
+          const j = judgeSlab(rounds[ri()], raise);
+          attempt = { ok: j.ok };
+          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), raise), { x: 320, y: table - rounds[ri()].shift * pxCm() }, 0.7);
+        }),
+      );
+      onRound = (i) => {
+        raise = S.start;
+        slider.set(raise);
+        frac = rounds[i].slabAt;
+        attempt = null;
+        clearSay();
+        const r = rounds[i];
+        A.hint.textContent = `Glass slab: thickness ${r.t} cm, refractive index ${r.n}. Drag the slab up and down as you like. ${r.assist === 0 ? 'A ghost shows where Pin seems to be.' : 'The ghost is off: work it out.'}`;
+      };
+      A.scene((g, t) => {
+        if (A.phase === 'between') return;
+        const r = rounds[ri()];
+        const px = pxCm();
+        const resolving = A.phase === 'resolve' && attempt !== null;
+        line(g, 100, table, 540, table, PAL.white, 4);
+        // camera
+        g.fillStyle = PAL.dim;
+        g.fillRect(290, 10, 60, 36);
+        g.fillStyle = PAL.cyan;
+        g.beginPath();
+        g.arc(320, 52, 12, 0, Math.PI * 2);
+        g.fill();
+        text(g, 'camera', 320, 8, PAL.dim, 10);
+        line(g, 320, 64, 320, table - raise * px, PAL.dim, 1.2, [4, 5]);
+        // slab
+        const sb = slabBottom();
+        g.fillStyle = 'rgba(160,170,230,0.32)';
+        g.fillRect(210, sb - 120, 220, 120);
+        g.strokeStyle = PAL.cyan;
+        g.lineWidth = 2;
+        g.strokeRect(210, sb - 120, 220, 120);
+        text(g, `glass n = ${r.n}`, 322, sb - 50, PAL.cyan, 11);
+        pinCharacter(g, 320, table, 30, t, resolving ? (attempt!.ok ? 'cheer' : 'dizzy') : 'happy');
+        if (r.assist === 0 || (resolving && A.rt > 0.2)) {
+          g.globalAlpha = 0.6;
+          pinCharacter(g, 320, table - r.shift * px, 30, t, 'happy');
+          g.globalAlpha = 1;
+          text(g, 'where Pin seems to be', 215, table - r.shift * px - 6, PAL.pink, 10, 'right');
+        }
+        // the focus plane
+        const fy = table - raise * px;
+        const col = resolving && A.rt > 0.7 ? (attempt!.ok ? PAL.green : PAL.red) : PAL.yellow;
+        glow(g, col, 8, () => line(g, 470, fy, 590, fy, col, 3));
+        text(g, `focus +${fmt(raise)} cm`, 560, fy - 12, col, 11);
+      });
+    }
+
+    // ================= level 4: the disc over Glow =======================================================
+    if (game.kind === 'cone') {
+      const rounds = game.rounds;
+      const surface = 110;
+      let rad = 20;
+      let attempt: { ok: boolean } | null = null;
+      const scOf = () => 150 / rounds[ri()].d;
+      const slider = A.slider({ aria: 'Radius of the disc in cm', label: 'Disc radius', min: CONE_MIN, max: coneMax(rounds[0].d), step: 1, value: rad, unit: 'cm', onInput: (v) => (rad = v) });
+      A.handle({ x: () => 320 + rad * scOf(), y: () => surface - 6, r: 24, drag: (px) => slider.set((px - 320) / scOf()) });
+      A.controls.append(
+        slider.row,
+        A.button('🥏 Float the disc', 'Float the disc on the surface', () => {
+          const j = judgeCone(rounds[ri()], rad);
+          attempt = { ok: j.ok };
+          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), rad), { x: 320 + rad * scOf(), y: surface - 10 }, 1.0);
+        }),
+      );
+      onRound = (i) => {
+        slider.range(CONE_MIN, coneMax(rounds[i].d));
+        rad = Math.round(0.4 * rounds[i].d);
+        slider.set(rad);
+        attempt = null;
+        clearSay();
+        A.hint.textContent = `The lamp is ${rounds[i].d} cm deep in water-like material of refractive index ${rounds[i].n}. ${rounds[i].assist === 0 ? 'The live rays show what escapes.' : 'The live rays are off: work out the radius.'}`;
+      };
+      A.scene((g, t) => {
+        if (A.phase === 'between') return;
+        const r = rounds[ri()];
+        const sc = scOf();
+        const lampY = surface + 150;
+        const resolving = A.phase === 'resolve' && attempt !== null;
+        g.fillStyle = 'rgba(77,225,255,0.16)';
+        g.fillRect(0, surface, W, H - surface);
+        line(g, 0, surface, W, surface, PAL.white, 2);
+        const theta = criticalDeg(r.n);
+        const show = r.assist === 0 || resolving;
+        if (show) {
+          const f = resolving ? Math.min(1, A.rt / 0.8) : 1;
+          const angles = [-75, -62, -50, -38, -26, -14, 0, 14, 26, 38, 50, 62, 75, -theta, theta];
+          for (const a of angles) {
+            const hitX = 320 + r.d * sc * Math.tan(a * RAD);
+            const out = Math.abs(a) <= theta;
+            const blocked = out && Math.abs(hitX - 320) <= rad * sc;
+            if (hitX < 4 || hitX > W - 4) continue;
+            trace(g, [[320, lampY], [hitX, surface]], f, out ? PAL.yellow : PAL.dim, 1.4);
+            if (f >= 1) {
+              if (blocked) line(g, hitX - 4, surface - 4, hitX + 4, surface + 4, PAL.red, 3);
+              else if (out) glow(g, PAL.green, 6, () => line(g, hitX, surface, hitX + (hitX - 320) * 0.25, surface - 70, PAL.green, 2));
+              else line(g, hitX, surface, 320 + (hitX - 320) * 2, lampY, PAL.dim, 1.2, [4, 4]);
+            }
+          }
+        }
+        orb(g, 320, lampY, 14, PAL.yellow, t, resolving ? (attempt!.ok ? 'cheer' : 'worried') : 'happy');
+        const col = resolving && A.rt > 0.8 ? (attempt!.ok ? PAL.green : PAL.red) : PAL.white;
+        glow(g, col, 8, () => line(g, 320 - rad * sc, surface - 6, 320 + rad * sc, surface - 6, col, 7));
+        text(g, `disc ${fmt(rad)} cm`, 320, surface - 20, col, 12);
+      });
+    }
+
+    // ================= level 5: Pulse in the fibre =======================================================
+    if (game.kind === 'pipe') {
+      const rounds = game.rounds;
+      const S = SLIDER.pipe;
+      const x0 = 150;
+      const x1 = 590;
+      const y0 = 170;
+      const half = 34;
+      let ang: number = S.start;
+      let attempt: { ok: boolean; guided: boolean } | null = null;
+      const slider = A.slider({ aria: 'Angle of incidence on the end face in degrees', label: 'Pulse’s entry angle', min: S.min, max: S.max, step: S.step, value: ang, unit: '°', onInput: (v) => (ang = v) });
+      A.handle({ x: () => x0 - 80 * Math.cos(ang * RAD), y: () => y0 + 80 * Math.sin(ang * RAD), r: 24, drag: (px, py) => slider.set(Math.atan2(py - y0, x0 - px) / RAD) });
+      A.controls.append(
+        slider.row,
+        A.button('⚡ Launch', 'Launch Pulse at this angle', () => {
+          const r = rounds[ri()];
+          const j = judgePipe(r, ang);
+          attempt = { ok: j.ok, guided: j.guided };
+          const path = pipePath(r, ang, x0, x1, y0, half);
+          const last = path.pts[path.pts.length - 1];
+          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), ang), { x: last[0], y: last[1] }, 1.6);
+        }),
+      );
+      onRound = (i) => {
+        ang = S.start;
+        slider.set(ang);
+        attempt = null;
+        clearSay();
+        const r = rounds[i];
+        A.hint.textContent = `Fibre: core n = ${r.n1}, ${r.n2 === 1 ? 'no cladding (air outside)' : `cladding n = ${r.n2}`}. ${r.assist === 0 ? 'The live path shows whether Pulse is guided.' : 'The live path is off: work out the limit.'}`;
+      };
+      A.scene((g, t) => {
+        if (A.phase === 'between') return;
+        const r = rounds[ri()];
+        const resolving = A.phase === 'resolve' && attempt !== null;
+        g.fillStyle = 'rgba(143,155,214,0.3)';
+        g.fillRect(x0, y0 - half - 16, x1 - x0, 2 * half + 32);
+        g.fillStyle = 'rgba(77,225,255,0.16)';
+        g.fillRect(x0, y0 - half, x1 - x0, 2 * half);
+        line(g, x0, y0 - half, x1, y0 - half, PAL.white, 2);
+        line(g, x0, y0 + half, x1, y0 + half, PAL.white, 2);
+        text(g, `core n = ${r.n1}`, 370, y0 + 4, PAL.cyan, 12);
+        text(g, r.n2 === 1 ? 'air outside' : `cladding n = ${r.n2}`, 370, y0 + half + 34, PAL.dim, 11);
+        line(g, x0, y0 - 70, x0, y0 + 70, PAL.dim, 1, [4, 5]);
+        const sx = x0 - 80 * Math.cos(ang * RAD);
+        const sy = y0 + 80 * Math.sin(ang * RAD);
+        glow(g, PAL.yellow, 8, () => line(g, sx, sy, x0, y0, PAL.yellow, 3));
+        const path = pipePath(r, ang, x0, x1, y0, half);
+        const showPath = r.assist === 0 || resolving;
+        if (showPath) {
+          const f = resolving ? Math.min(1, A.rt / 1.6) : 1;
+          trace(g, path.pts, f, path.leaks ? PAL.red : PAL.green, 3);
+          if (resolving && f < 1) {
+            const [hx, hy] = along(path.pts, f);
+            orb(g, hx, hy, 9, PAL.yellow, t);
+          }
+          if (path.leaks && (resolving ? A.rt > 1.6 : true)) {
+            const last = path.pts[path.pts.length - 1];
+            const up = last[1] < y0 ? -1 : 1;
+            line(g, last[0], last[1], last[0] + 60, last[1] + up * 60, PAL.red, 2.5, [5, 4]);
+            text(g, 'leaks out', last[0] + 66, last[1] + up * 68, PAL.red, 12, 'left');
+          }
+        }
+        if (!(resolving && A.rt < 1.6)) orb(g, sx, sy, 14, PAL.yellow, t, resolving ? (attempt!.ok ? 'cheer' : 'worried') : 'happy');
+        if (resolving && A.rt >= 1.6 && !path.leaks) glow(g, PAL.green, 10, () => text(g, 'ARRIVED', x1 - 30, y0 - half - 26, PAL.green, 14));
+        if (r.assist > 0 && !resolving) text(g, 'live path off', 370, 40, PAL.dim, 12);
+      });
+    }
+
+    A.mountAll();
+    return A.run();
   },
 });
+

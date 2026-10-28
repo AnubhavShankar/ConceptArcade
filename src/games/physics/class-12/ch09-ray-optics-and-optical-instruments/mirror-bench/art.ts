@@ -1,35 +1,10 @@
 // Characters and props for the Mirror Arcade, drawn in a neon arcade style on the dark game screen.
 import { PAL } from '@core/arcade';
+import { glow, line, text, type Mood } from '@core/neon';
+
+export { glow, line, text, type Mood };
 
 type G = CanvasRenderingContext2D;
-export type Mood = 'happy' | 'worried' | 'cheer' | 'dizzy';
-
-export function glow(g: G, color: string, blur: number, fn: () => void) {
-  g.save();
-  g.shadowColor = color;
-  g.shadowBlur = blur;
-  fn();
-  g.restore();
-}
-
-export function line(g: G, x1: number, y1: number, x2: number, y2: number, color: string, w = 2, dash: number[] = []) {
-  g.strokeStyle = color;
-  g.lineWidth = w;
-  g.setLineDash(dash);
-  g.beginPath();
-  g.moveTo(x1, y1);
-  g.lineTo(x2, y2);
-  g.stroke();
-  g.setLineDash([]);
-}
-
-export function text(g: G, s: string, x: number, y: number, color: string = PAL.dim, size = 12, align: CanvasTextAlign = 'center', bold = true) {
-  g.font = `${bold ? 'bold ' : ''}${size}px system-ui, sans-serif`;
-  g.textAlign = align;
-  g.fillStyle = color;
-  g.fillText(s, x, y);
-}
-
 /** The ruler under the axis, in cm from the mirror pole. */
 export function ruler(g: G, x0: number, y: number, sc: number, maxCm: number, dir = 1) {
   line(g, x0, y, x0 + dir * maxCm * sc, y, PAL.dim, 1.5);

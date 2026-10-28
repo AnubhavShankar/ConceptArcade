@@ -4,7 +4,17 @@
 import type { GameContext } from './types';
 import { h } from './dom';
 import { fitCanvas, pointerToLocal, startLoop } from './sim';
-import type { Hero } from './labkit';
+
+/** The hero can be a person or any thing with a goal: a light ray, a car, a rolling ball, a charge. */
+export interface Hero {
+  name: string;
+  /** What the hero is or does, e.g. "a spark entering an optical fibre". */
+  role: string;
+  /** The situation, two or three sentences. */
+  story: string;
+  /** What success looks like in the scene, one sentence. */
+  objective: string;
+}
 
 /** Arcade palette: the game screen is always dark, in light and dark mode, like a real game cabinet. */
 export const PAL = { bg0: '#0b1030', bg1: '#222a66', grid: 'rgba(130,160,255,0.13)', cyan: '#4de1ff', yellow: '#ffd23f', pink: '#ff4d8d', green: '#5dff9a', white: '#f4f6ff', dim: '#8f9bd6', red: '#ff5a5a', orange: '#ff9b3d' };

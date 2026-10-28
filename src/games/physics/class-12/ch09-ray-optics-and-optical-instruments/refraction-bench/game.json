@@ -1,8 +1,8 @@
 {
   "$schema": "../../../../../../schema/game.schema.json",
   "id": "refraction-bench",
-  "title": "The Refraction Bench",
-  "summary": "Bend light through water and glass, refocus a microscope, size a pool escape circle and guide a pulse down a fibre.",
+  "title": "The Refraction Arcade",
+  "summary": "Aim a ray at a detector, refocus a microscope, cover a lamp’s escape circle and guide a spark down an optical fibre.",
   "subject": "physics",
   "classLevel": 12,
   "chapter": {
@@ -21,21 +21,21 @@
   ],
   "learningOutcome": "The student can use Snell’s law, apparent depth H/n, the slab shift t(1 − 1/n) and the critical angle sin θc = 1/n to reach each objective, and can say when light is totally reflected in a fibre.",
   "mechanic": "build-the-setup",
-  "estimatedMinutes": 25,
+  "estimatedMinutes": 30,
   "levels": [
     {
-      "title": "Ray from water to glass",
+      "title": "Ray and the detector",
       "tier": "concept",
       "kind": "foundation",
-      "adds": "Baseline: n₁ sin i = n₂ sin r, and indices found from photographs taken in air tell you the angle between two other media (Ex 9.4).",
+      "adds": "Baseline: probe shots from air give each material’s index, n = sin 60° / sin r; then n₁ sin i = n₂ sin r puts Ray on the detector (Ex 9.4).",
       "hints": [
-        "From each photograph, n = sin 60° divided by the sine of the refracted angle.",
-        "At the water–glass boundary use n(water) × sin(incidence) = n(glass) × sin(refraction).",
-        "Take the inverse sine on your calculator in degrees."
+        "A probe shot at 60° from air bends to an angle r: the index is n = sin 60° divided by sin r.",
+        "At the boundary use n(A) × sin(angle in A) = n(B) × sin(angle in B), and solve for the angle in A.",
+        "Use the inverse sine on your calculator in degrees, and set the slider to the nearest whole degree."
       ]
     },
     {
-      "title": "Refocusing on Needle",
+      "title": "Needle under a new liquid",
       "tier": "concept",
       "kind": "concept",
       "adds": "New idea: a liquid of index n makes an object at depth H appear at H/n; refocus by the change in apparent depth (Ex 9.3).",
@@ -46,21 +46,21 @@
       ]
     },
     {
-      "title": "Pin under a glass slab",
+      "title": "Pin under glass",
       "tier": "application",
       "kind": "complexity",
       "adds": "Apply it: a slab of thickness t and index n makes an object look t(1 − 1/n) nearer, wherever the slab sits (Ex 9.16).",
       "hints": [
         "Each thickness t of glass looks like t/n, so the saving is t − t/n.",
-        "Slide the slab in your head: the thickness and the index do not change.",
-        "Give the raise in cm and say whether the position of the slab matters."
+        "Drag the slab around: the thickness and the index do not change.",
+        "Raise the focus by that amount, in cm."
       ]
     },
     {
       "title": "The disc over Glow",
       "tier": "application",
       "kind": "concept",
-      "adds": "New idea: light leaves a surface only within the critical angle, sin θc = 1/n, so a source at depth d lights a circle of radius d tan θc (Ex 9.5).",
+      "adds": "New idea: light leaves a surface only within the critical angle, sin θc = 1/n, so a lamp at depth d lights a circle of radius d tan θc (Ex 9.5).",
       "hints": [
         "Light is totally reflected at the surface when the angle of incidence exceeds θc.",
         "sin θc = 1/n, so tan θc = 1/√(n² − 1).",
