@@ -1,0 +1,90 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "inductance-bench",
+  "title": "The Inductance Bench",
+  "summary": "Find self- and mutual inductance, solenoid energy and the energy density of a magnetic field.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 6,
+    "name": "Electromagnetic Induction"
+  },
+  "ncertRef": "Section 6.7, Inductance",
+  "order": 1,
+  "concepts": [
+    "Self-inductance ε = −L dI/dt",
+    "Mutual inductance and flux linkage",
+    "Solenoid inductance μ₀N²A/l",
+    "Energy ½LI²",
+    "Energy density B²/2μ₀"
+  ],
+  "learningOutcome": "The student can use self- and mutual inductance to find emfs and flux linkage, find the inductance and stored energy of a solenoid, and find the energy density of a magnetic field.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "Self-inductance",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the emf of self-induction is L ΔI/Δt, used both ways round (Ex 6.7).",
+      "hints": [
+        "ε = L ΔI/Δt.",
+        "To find L, multiply the emf by Δt and divide by ΔI.",
+        "The emf opposes the change in current."
+      ]
+    },
+    {
+      "title": "Mutual inductance",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: flux linkage in one coil is M times the current in the other (Ex 6.8).",
+      "hints": [
+        "The flux linkage is M I, so its change is M ΔI.",
+        "The emf is the change in flux linkage divided by the time.",
+        "Keep the units: henry times ampere is weber."
+      ]
+    },
+    {
+      "title": "Solenoid and energy",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: L = μ₀N²A/l and the energy stored is ½LI² (Section 6.7.2).",
+      "hints": [
+        "Convert the area to m² and the length to metres.",
+        "L = μ₀N²A/l, in henry; convert to mH.",
+        "U = ½ L I²."
+      ]
+    },
+    {
+      "title": "Concentric coils",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: use the field at the centre of the large coil to find the mutual inductance (Example 6.8).",
+      "hints": [
+        "The large coil gives B = μ₀N₂I₂/2r₂ at the centre.",
+        "The small coil sees that field over its area πr₁² with N₁ turns.",
+        "M is the flux linkage per unit current."
+      ]
+    },
+    {
+      "title": "Energy in a field",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: the energy per unit volume in a magnetic field is B²/2μ₀ (Example 6.9).",
+      "hints": [
+        "u = B²/2μ₀, in joules per cubic metre.",
+        "Convert the volume from cm³ to m³.",
+        "Energy = density × volume."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The emf of self-induction depends on the size of the current, not its rate of change",
+    "The stored energy in an inductor is LI²",
+    "Inductance depends on the current in the coil"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
