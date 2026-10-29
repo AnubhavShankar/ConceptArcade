@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "matter-waves",
+  "title": "Matter Waves",
+  "summary": "Count photon bullets per second, tune an electron’s wavelength to a crystal and charge an X-ray tube to the right kilovolts.",
+  "chapter": {
+    "number": 11,
+    "name": "Dual Nature of Radiation and Matter"
+  },
+  "ncertRef": "Section 11.8, Wave nature of matter",
+  "concepts": [
+    "Photon energy hf",
+    "Photons per second from the power",
+    "de Broglie wavelength",
+    "Electron accelerated through a voltage",
+    "Shortest X-ray wavelength hc/eV"
+  ],
+  "learningOutcome": "The student can find the photons per second from power and frequency, the de Broglie wavelength of an electron from the accelerating voltage, and the shortest X-ray wavelength from the tube voltage.",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Pixel’s photon count",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: a beam of power P and frequency f delivers N = P/hf photons every second (Ex 11.4; Example 11.1).",
+      "hints": [
+        "One photon has the energy E = hf, with h = 6.63 × 10⁻³⁴ J s.",
+        "The power is the energy per second: P = N E, so N = P/(hf).",
+        "Mind the units: mW to W, and the frequency is in 10¹⁴ Hz."
+      ]
+    },
+    {
+      "title": "Eli’s tuning",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: an electron through V volts has λ = h/√(2meV), about 1.23 nm/√V, and matches a crystal when λ equals the spacing (Ex 11.10; Example 11.3).",
+      "hints": [
+        "The kinetic energy is eV, so p = √(2m eV) and λ = h/p.",
+        "For an electron λ ≈ 1.23 nm divided by √V (V in volts).",
+        "So V = (1.23 nm / λ)²."
+      ]
+    },
+    {
+      "title": "Charge’s power shot",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "Apply it: an electron that gives all of eV to one photon makes the shortest X-ray wavelength, λ_min = hc/eV (Ex 11.1).",
+      "hints": [
+        "The most energetic photon takes all of the electron’s energy: eV = hc/λ_min.",
+        "With V in kilovolts, λ_min = 12.4 / V in Å.",
+        "So V = 12.4 / λ_min, in kV."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Only light has a wavelength: a moving electron does not",
+    "The shortest X-ray wavelength depends on the target metal",
+    "A brighter laser means more energetic photons"
+  ]
+}

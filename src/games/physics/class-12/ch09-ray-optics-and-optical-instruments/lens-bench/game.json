@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "lens-bench",
+  "title": "The Lens Lab",
+  "summary": "Light a lantern with a lens, dial a lens pair, fire a projector shot, race a beam through two lenses and vanish a lens.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 9,
+    "name": "Ray Optics and Optical Instruments"
+  },
+  "ncertRef": "Section 9.5, Refraction at spherical surfaces and by lenses",
+  "order": 1,
+  "concepts": [
+    "Lens-maker’s formula",
+    "Thin lens formula and magnification",
+    "Power of a lens in dioptres",
+    "Lenses in contact add their powers",
+    "Two lenses a distance apart",
+    "A lens in a liquid"
+  ],
+  "learningOutcome": "The student can use 1/f = (n − 1)(1/R₁ + 1/R₂), 1/v − 1/u = 1/f, P = 1/f for lenses in contact, chain two lenses, and say how a liquid changes a lens’s focal length.",
+  "mechanic": "build-the-setup",
+  "estimatedMinutes": 35,
+  "levels": [
+    {
+      "title": "Light the lantern",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the lens-maker’s formula fixes the focal length from n and the radii, so dial the radius that puts the focus on the lantern (Ex 9.7, Example 9.7).",
+      "hints": [
+        "1/f = (n − 1)(1/R₁ + 1/R₂) for a double-convex lens; a flat face counts as 1/R = 0.",
+        "Equal radii: R = 2(n − 1)f. Plano-convex: R = (n − 1)f.",
+        "If one radius is fixed, find 1/R₂ = 1/((n − 1)f) − 1/R₁ and invert it."
+      ]
+    },
+    {
+      "title": "The power pair",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: lenses in contact add their powers, P = 1/f in dioptres with f in metres; dial the back lens to make the pair you need (Ex 9.10).",
+      "hints": [
+        "Convert to dioptres: P = 100/f with f in cm. Converging is positive, diverging negative.",
+        "The pair’s power is P₁ + P₂, so the back lens is P₂ = target − P₁.",
+        "Do not add the focal lengths: add the powers."
+      ]
+    },
+    {
+      "title": "The projector shot",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Apply it: with the slide and the screen D apart, u + v = D and v = mu fix the lens position and its focal length together (Ex 9.19, 9.9).",
+      "hints": [
+        "For a magnification m the image distance is v = mu, and u + v = D.",
+        "So u = D/(m + 1). Then 1/f = 1/u + 1/v.",
+        "Dial that focal length and stand the lens u from the slide."
+      ]
+    },
+    {
+      "title": "Test chamber 09",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the image from lens 1 is the object for lens 2, even when it lies beyond lens 2 as a virtual object (Ex 9.20, Example 9.8).",
+      "hints": [
+        "Use lens 1 alone: v₁ = u₁f₁/(u₁ − f₁). A flash charge shows it.",
+        "The distance from lens 2 to that image is v₁ − s; if the image is beyond lens 2 the object is virtual and u₂ is positive.",
+        "Apply 1/v₂ = 1/f₂ + 1/u₂ for lens 2, and add s to v₂ to place the screen."
+      ]
+    },
+    {
+      "title": "The magician’s tank",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: in a liquid 1/f′ ∝ (n_glass/n_liquid − 1); equal indices make the lens vanish and a denser liquid makes it diverge (Example 9.6, 9.7).",
+      "hints": [
+        "From the radii and f in air, find the glass: n = 1 + R/(2f).",
+        "f′/f = (n_g − 1)/(n_g/n_l − 1). If n_l equals n_g the focal length is infinite.",
+        "Above n_g the bracket is negative, so the lens diverges."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A lens always converges light, whatever surrounds it",
+    "The focal length of two lenses in contact is the sum of their focal lengths",
+    "Light needs a real object before the second lens can bend it"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

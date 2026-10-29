@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "mirror-bench",
+  "title": "The Mirror Arcade",
+  "summary": "Light a wall with a flame, race a toy car to a catch-bar, fit a selfie to a ring and fire a laser off a turning mirror.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 9,
+    "name": "Ray Optics and Optical Instruments"
+  },
+  "ncertRef": "Section 9.2, Reflection of light by spherical mirrors",
+  "order": 1,
+  "concepts": [
+    "Mirror equation and sign convention",
+    "Finding the focal length from one image",
+    "Magnification and real or virtual images",
+    "Image in a convex mirror",
+    "Object inside the focus of a concave mirror",
+    "Turning a plane mirror"
+  ],
+  "learningOutcome": "The student can find a mirror’s focal length from one image, place and size images with 1/v + 1/u = 1/f and m = −v/u, and knows a plane mirror turned by θ turns the ray by 2θ.",
+  "mechanic": "build-the-setup",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Flicker lights the wall",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: one flash gives u and v, so the focal length follows; then place the object so the real image lands on the wall (Ex 9.1).",
+      "hints": [
+        "A flash tells you u (where Flicker stands) and v (where the image lands). Use the mirror equation 1/v + 1/u = 1/f in magnitudes: f = uv/(u + v).",
+        "Now ask for the image at the wall: 1/u = 1/f − 1/v for a real image, in magnitudes.",
+        "A real image is in front of the mirror, so a wall can catch it; a virtual one is behind."
+      ]
+    },
+    {
+      "title": "Dash and the catch-bar",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "New idea: a convex mirror (f > 0) gives a virtual, upright, smaller image behind it; place the bar where it will be at the line (Ex 9.2, Example 9.4).",
+      "hints": [
+        "Convex mirror: f is positive and u is negative. 1/v = 1/f − 1/u.",
+        "v is positive, so the image is behind the mirror, between the pole and the focus.",
+        "Use the distance of the finish line as u, not Dash’s starting distance."
+      ]
+    },
+    {
+      "title": "The selfie ring",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: inside the focus a concave mirror gives an upright, enlarged image, and m = f/(f − u) steepens near the focus (Ex 9.15d, Example 9.3).",
+      "hints": [
+        "For an object inside the focus the image is virtual, upright and larger.",
+        "With f = −F and u = −d: m = F/(F − d). Make m equal the ring’s multiple.",
+        "Solve for d: d = F(1 − 1/m). The answer is smaller than F."
+      ]
+    },
+    {
+      "title": "The laser gallery",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: when a plane mirror turns by θ the reflected ray turns by 2θ, so the spot moves L tan 2θ along the wall (Ex 9.30).",
+      "hints": [
+        "Compare the ray before and after the turn: the angle of incidence changes by θ, and so does the angle of reflection.",
+        "The reflected ray turns through 2θ, twice the dial angle.",
+        "tan 2θ = (height of the target) / (distance to the wall). Halve the angle you find."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A convex mirror can form a real image on a screen",
+    "A plane mirror turned by θ turns the reflected ray by θ",
+    "An object closer than the focus of a concave mirror gives an upside-down image"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

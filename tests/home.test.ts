@@ -317,7 +317,9 @@ describe('the real catalog', () => {
     const real12 = curricula.find((c) => c.subject === 'physics' && c.classLevel === 12)!;
     const built = new Set(catalog.filter((g) => g.manifest.subject === 'physics' && g.manifest.classLevel === 12).map((g) => g.manifest.chapter.number));
     const planned = real12.chapters.filter((c) => !built.has(c.number)).length;
-    expect($('details.coming summary')?.textContent).toBe(`${planned} more chapter${planned === 1 ? '' : 's'} coming soon`);
+    // Once every chapter has games there is nothing left to announce, so the list is not drawn at all.
+    if (planned === 0) expect($('details.coming')).toBeNull();
+    else expect($('details.coming summary')?.textContent).toBe(`${planned} more chapter${planned === 1 ? '' : 's'} coming soon`);
     expect(err).not.toHaveBeenCalled();
   });
 

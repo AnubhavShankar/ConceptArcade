@@ -1,0 +1,57 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "wavefront-run",
+  "title": "Wavefront Run",
+  "summary": "Keep the karts on the wave crests as light enters a medium, then turn a marching column with Huygens’ wavelets.",
+  "chapter": {
+    "number": 10,
+    "name": "Wave Optics"
+  },
+  "ncertRef": "Section 10.3, Refraction and reflection of plane waves using Huygens principle",
+  "concepts": [
+    "Speed of light in a medium",
+    "Wavelength in a medium",
+    "Frequency does not change",
+    "Huygens’ wavelets",
+    "Refraction as a change of speed"
+  ],
+  "learningOutcome": "The student can find the speed and wavelength of light in a medium from n, knows the frequency is unchanged, and uses Huygens’ construction to get sin r / sin i = v₂/v₁.",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Mud run",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: in a medium of index n the speed is c/n and the wavelength λ/n, while the frequency stays the same (Ex 10.1, 10.3a; Example 10.1).",
+      "hints": [
+        "The speed in the medium is v = c/n, with c = 3 × 10⁸ m/s.",
+        "The frequency cannot change, so v/λ′ = c/λ and λ′ = λ/n.",
+        "A test shot tells you whether your two numbers keep the frequency the same."
+      ]
+    },
+    {
+      "title": "The marching column",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: Huygens’ wavelets at the new speed bend the front, so sin r / sin i = v₂/v₁ (Section 10.3, Ex 10.2).",
+      "hints": [
+        "The end of the front that reaches the ground first changes speed first.",
+        "sin r / sin i = v₂ / v₁ for a front entering the new ground.",
+        "Take the inverse sine in degrees and move the dial to the nearest half degree."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The frequency of light changes when it enters glass",
+    "Light slows down in glass because it loses energy",
+    "Reflected light has a different speed from the incident light"
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "prism-lab",
+  "title": "The Prism Lab",
+  "summary": "Find a prism’s sweet spot of least bend, retune it in a gel chamber and keep a photon bouncing in a game of light Pong.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 9,
+    "name": "Ray Optics and Optical Instruments"
+  },
+  "ncertRef": "Section 9.6, Refraction through a prism",
+  "order": 1,
+  "concepts": [
+    "Deviation by a prism",
+    "Angle of minimum deviation",
+    "Refractive index from minimum deviation",
+    "A prism in a liquid",
+    "Total internal reflection in a prism",
+    "Critical angle"
+  ],
+  "learningOutcome": "The student can find n = sin((A + D)/2)/sin(A/2) from the minimum deviation, shift it for a prism in a liquid, and find the incidence at which a ray is just totally reflected at the second face.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "The sweet spot",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the bend is least when the ray crosses the prism symmetrically, and n = sin((A + D)/2) / sin(A/2) follows from it (Ex 9.6).",
+      "hints": [
+        "Two incidence angles that bend the beam by the same amount lie either side of the sweet spot, and it is near the middle of them.",
+        "At the least bend the ray inside makes A/2 with each normal, and i = (A + D)/2.",
+        "n = sin i / sin(A/2), with the angle of least bend D read from your test beams."
+      ]
+    },
+    {
+      "title": "The gel chamber",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: in a gel the prism acts like glass of index n/n(gel), so the sweet spot moves to sin i = (n/n_gel) sin(A/2) (Ex 9.6, prism in water).",
+      "hints": [
+        "Replace n by the relative index n(glass)/n(gel).",
+        "At the least bend the ray inside still makes A/2 with the normals.",
+        "sin i = (n/n_gel) × sin(A/2). Use the inverse sine in degrees."
+      ]
+    },
+    {
+      "title": "Photon Pong",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: Photon is just totally reflected at the second face when r₂ equals the critical angle, which fixes the widest entry angle (Ex 9.21).",
+      "hints": [
+        "r₁ + r₂ = A. The ray bounces back off the second face when r₂ is at least the critical angle c, with sin c = 1/n.",
+        "The widest entry angle has r₁ = A − c.",
+        "Then sin i = n sin r₁."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The prism bends light least when it enters along the normal",
+    "A prism bends light just as much in water as in air",
+    "Total internal reflection depends on the angle at the first face only"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

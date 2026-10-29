@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "light-dimmer",
+  "title": "Light Dimmer",
+  "summary": "Squeeze light through a gap so a dark band hits the target, then dim a lamp with one polaroid and then with three.",
+  "chapter": {
+    "number": 10,
+    "name": "Wave Optics"
+  },
+  "ncertRef": "Section 10.6, Diffraction",
+  "concepts": [
+    "Single-slit diffraction",
+    "Position of the dark bands",
+    "Polarisation and polaroids",
+    "Malus’ law",
+    "A polaroid between crossed polaroids"
+  ],
+  "learningOutcome": "The student can use a sin θ = nλ for the dark bands of a single slit, use Malus’ law I = I₀cos²θ, and find the light through a third polaroid between crossed ones.",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Flap’s gap",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the n-th dark band of a single slit is at a sin θ = nλ, so a wider gap makes a narrower pattern (Section 10.6).",
+      "hints": [
+        "The dark bands are where the light from the two halves of the gap cancels: a sin θ = nλ.",
+        "So a = nλ / sin θ. Keep a and λ in the same unit.",
+        "A test shot tells you where the dark band falls for the width you have set."
+      ]
+    },
+    {
+      "title": "Glare’s shade",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: a polaroid halves unpolarised light and the next passes cos²θ of what is left (Malus’ law, Section 10.7).",
+      "hints": [
+        "Unpolarised light loses half at the first polaroid.",
+        "The second passes cos²θ of what remains, so the fraction is ½cos²θ.",
+        "Solve ½cos²θ = the wanted fraction for θ."
+      ]
+    },
+    {
+      "title": "The middle polaroid",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "Apply it: a polaroid at θ between crossed ones passes I₀cos²θ sin²θ = (I₀/4) sin²2θ, the most at 45° (Example 10.2).",
+      "hints": [
+        "After the first polaroid the light is I₀. The middle one passes I₀cos²θ.",
+        "The last is 90° from the first, so it makes an angle (90° − θ) with the middle one: cos²(90° − θ) = sin²θ.",
+        "I = (I₀/4) sin²2θ. The same value is reached at θ and at 90° − θ."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A narrower slit makes a narrower diffraction pattern",
+    "A polaroid between crossed polaroids cannot let any light through",
+    "A second polaroid at 45° halves the light that reaches it"
+  ]
+}

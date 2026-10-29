@@ -205,6 +205,25 @@ h3 { margin: 18px 0 6px; font-size: 1rem; }
 .pip.on { background: var(--good); border-color: var(--good); }
 @media (max-width: 560px) { .chapter-head { grid-template-columns: 1fr 24px; } .chapter-meta { display: none; } }
 
+/* Hero banner (chapter 9 onward): who the hero is, and the one thing they must achieve */
+.hero { border-left: 6px solid var(--accent); }
+.hero p { margin: 4px 0; }
+.hero .hero-name { font-weight: 700; color: var(--accent); }
+.hero .objective { padding-top: 6px; }
+
+/* Arcade games: HUD above the screen, the screen itself, and the end-of-level overlay */
+.hud { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin: 12px 0 0; padding: 8px 14px; border-radius: 12px 12px 0 0; background: #0b1030; color: #f4f6ff; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hud-hearts { color: #ff5a8a; font-size: 1.25rem; letter-spacing: 2px; }
+.hud-score { color: #ffd23f; }
+.hud-combo { color: #5dff9a; }
+.hud-charges { color: #4de1ff; }
+.hud-mute { margin-left: auto; min-height: 36px; background: transparent; color: #f4f6ff; border: 1px solid #8f9bd6; }
+.arcade-screen { position: relative; line-height: 0; border-radius: 0 0 12px 12px; overflow: hidden; background: #0b1030; }
+.arcade-screen canvas { display: block; }
+.arcade-overlay { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 10px; padding: 16px; line-height: 1.4; text-align: center; color: #f4f6ff; background: rgba(5, 8, 25, 0.82); }
+.arcade-overlay-title { margin: 0; font-size: 1.8rem; font-weight: 800; color: #ffd23f; }
+.arcade-overlay-sub { margin: 0; }
+
 /* Oil-drop lab */
 .status-line { font-weight: 600; margin: 6px 0; min-height: 1.5em; }
 .formula { padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--bg); border-radius: 6px; }

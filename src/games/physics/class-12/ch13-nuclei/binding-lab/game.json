@@ -1,0 +1,69 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "tune-to-target",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "binding-lab",
+  "title": "Binding Lab",
+  "summary": "Pull a nucleus apart, settle a reaction’s Q value with the right sign and work out the energy a fuel can give.",
+  "chapter": {
+    "number": 13,
+    "name": "Nuclei"
+  },
+  "ncertRef": "Section 13.4, Mass-energy and nuclear binding energy",
+  "concepts": [
+    "Mass defect",
+    "Nuclear binding energy",
+    "1 u = 931.5 MeV/c²",
+    "The Q value of a reaction",
+    "Energy from fission and fusion",
+    "E = mc²"
+  ],
+  "learningOutcome": "The student can find the binding energy from the mass defect, the Q value of a reaction with its sign, and the energy released by a mass of fission or fusion fuel.",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "Jenga’s tower",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: binding energy = [Z m_H + (A − Z) m_n − m] × 931.5 MeV (Ex 13.1, 13.2; Example 13.3).",
+      "hints": [
+        "Add up Z hydrogen atoms and A − Z neutrons, then subtract the mass of the atom: that is Δm in u.",
+        "Convert with 1 u = 931.5 MeV/c², so the binding energy is Δm × 931.5 MeV.",
+        "Using m_H for the protons accounts for the electrons too, because the masses given are atomic masses."
+      ]
+    },
+    {
+      "title": "Coin’s trades",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: Q = (mass before − mass after) × 931.5 MeV; a negative Q means the reaction needs energy (Ex 13.5, 13.6).",
+      "hints": [
+        "Add the masses on each side and take (before − after).",
+        "Convert the difference in u to MeV with 931.5 MeV/u.",
+        "A negative Q means energy has to be supplied: the reaction is endothermic, and fission into those pieces is not possible."
+      ]
+    },
+    {
+      "title": "Plant’s fuel",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "Apply it: energy = number of events × energy per event, or E = mc² for a mass turned fully into energy (Ex 13.7, 13.8; Example 13.2).",
+      "hints": [
+        "Find the number of atoms: moles × 6.023 × 10²³, with moles = mass in grams ÷ molar mass.",
+        "Multiply by the energy per event in MeV, then by 1.6 × 10⁻¹³ J per MeV.",
+        "For fusion of deuterium, one event uses two deuterons and gives 3.27 MeV."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The mass of a nucleus is the sum of the masses of its protons and neutrons",
+    "A reaction that conserves the number of nucleons conserves the total mass too",
+    "Energy is released whenever a nucleus splits"
+  ]
+}
