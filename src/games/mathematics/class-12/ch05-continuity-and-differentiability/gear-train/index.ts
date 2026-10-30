@@ -5,7 +5,7 @@ import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
 import { backdrop, face, gear, track, trackHandle, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
-import { DIAL, buildRounds, explain, intel, judge, missText, output, rateText, spotText, type Round } from './logic';
+import { DIAL, buildRounds, explain, flowEnd, intel, judge, missText, output, rateText, spotText, type Round } from './logic';
 
 type G = CanvasRenderingContext2D;
 type Mood = 'happy' | 'worried' | 'cheer';
@@ -16,13 +16,41 @@ const HEROES = [
   { story: 'Some stages are exponentials and logarithms. Their output rates come out in units of e raised to a power, or of ln a, because the derivative of e^g is g′e^g and of a^g is a^g (ln a) g′. The dispatch bell counts in those units.', objective: 'Set the crank speed so the output hits the target rate, in three rounds. The ghost fades and a test run costs a charge.' },
   { story: 'Now the machine drives a bead or a drone along a curve that is not given as y = f(x). On a curve like x² + y² = r² the slope comes from differentiating both sides at once (implicit); on x = at², y = bt³ it is (dy/dt)/(dx/dt). The crank sets how fast x moves.', objective: 'Set the crank speed so that y moves at the target rate, in three rounds. Read the slope from the point, not from the picture.' },
   { story: 'A steady crank moves x at a constant speed w, but y = f(x) bends, so y accelerates. The acceleration of y is the second derivative times w², and w only counts once it is squared.', objective: 'Set the crank speed so that the output gear’s acceleration matches the target, in three rounds.' },
+  { story: 'These machines have wave stages: sines, cosines and tangents of an inner function. The chain rule peels them from the outside in, and the special angles make the slope a clean number.', objective: 'Set the crank speed so the output gear hits the target rate, in three rounds.' },
 ];
 const FIRE = [
   { button: '⚙️ Start the machine', aria: 'Start the machine' },
   { button: '⚙️ Start the machine', aria: 'Start the machine' },
   { button: '⚙️ Start the machine', aria: 'Start the machine' },
   { button: '⚙️ Start the machine', aria: 'Start the machine' },
+  { button: '⚙️ Start the machine', aria: 'Start the machine' },
 ];
+
+/** A small cam (a disc with an off-centre pin) on the input side that traces a wave: the stage is a sine, cosine or tangent. */
+function cam(g: G, x: number, y: number, angle: number) {
+  g.fillStyle = '#4a3a7a';
+  g.beginPath();
+  g.arc(x, y, 14, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = PAL.cyan;
+  g.lineWidth = 1.5;
+  g.stroke();
+  const px = x + Math.cos(angle) * 8;
+  const py = y + Math.sin(angle) * 8;
+  g.fillStyle = PAL.yellow;
+  g.beginPath();
+  g.arc(px, py, 3.5, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = PAL.dim;
+  g.beginPath();
+  g.arc(x, y, 2, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  for (let i = 0; i <= 12; i++) g.lineTo(x + 24 + i * 6, y + Math.sin(angle - i * 0.7) * 8);
+  g.strokeStyle = 'rgba(77,225,255,0.6)';
+  g.lineWidth = 1.5;
+  g.stroke();
+}
 
 /** Cog: a clockwork robot with a gear for a head, an antenna and an arm on the crank. */
 function cog(g: G, x: number, y: number, t: number, mood: Mood, crank: number) {
@@ -77,7 +105,7 @@ function level(n: number, random: () => number): DialLevel<Round> {
       const out = output(r, w);
       const mood: Mood = shot ? (rt > VERDICT ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
       const spin = (w / DIAL.max) * 4;
-      const outSpin = (out / r.target) * 1.6;
+      const outSpin = (shot ? flowEnd(r, w) : out / r.target) * 1.6;
       const clock = shot ? rt : t;
       cog(g, 78, 130, t, mood, clock * spin * 2);
       gear(g, 200, 120, 38, 10, clock * spin, '#6f7fd0');
@@ -86,7 +114,12 @@ function level(n: number, random: () => number): DialLevel<Round> {
       line(g, 238, 126, 252, 142, PAL.dim, 2);
       line(g, 300, 146, 336, 144, PAL.dim, 2);
       text(g, `crank w = ${w}`, 200, 176, PAL.white, 12);
-      text(g, 'output', 380, 204, PAL.dim, 12);
+      text(g, r.kind === 'trig' ? '∿ output' : 'output', 380, 204, r.kind === 'trig' ? PAL.yellow : PAL.dim, 12);
+      if (r.kind === 'trig') {
+        text(g, '∿', 380, 142, PAL.yellow, 22);
+        line(g, 170, 64, 188, 88, PAL.dim, 2);
+        cam(g, 170, 50, clock * spin * 2);
+      }
       const ghost = r.assist === 0 || (r.assist === 1 && !shot) ? 1 : 0;
       if (ghost && !shot) {
         g.globalAlpha = r.assist === 1 ? 0.3 : 0.9;
@@ -101,7 +134,8 @@ function level(n: number, random: () => number): DialLevel<Round> {
       }
       text(g, `target ${rateText(r, r.target)}`, 470, 70, PAL.yellow, 13, 'center');
       g.globalAlpha = r.assist === 1 && !shot ? 0.3 : 1;
-      if (r.assist <= 1 || shot) text(g, `output ${rateText(r, out)}`, 320, 296, PAL.cyan, 14);
+      if (shot && !shot.ok) text(g, out < r.target ? 'output ⬇ too slow' : 'output ⬆ too fast', 320, 296, PAL.cyan, 14);
+      else if (r.assist <= 1 || shot) text(g, `output ${rateText(r, out)}`, 320, 296, PAL.cyan, 14);
       else text(g, 'reading off', 320, 296, PAL.dim, 12);
       g.globalAlpha = 1;
       if (shot && !shot.ok && rt > 0.6) {
@@ -120,6 +154,6 @@ function level(n: number, random: () => number): DialLevel<Round> {
 
 export default defineGame({
   mount(ctx) {
-    return mountDialLevel(ctx as never, level(Math.max(1, Math.min(4, ctx.level)), ctx.random) as never, 'A clockwork robot turning a hand crank that drives a chain of gears, with a target rate for the last gear.');
+    return mountDialLevel(ctx as never, level(Math.max(1, Math.min(5, ctx.level)), ctx.random) as never, 'A clockwork robot turning a hand crank that drives a chain of gears, with a target rate for the last gear.');
   },
 });

@@ -130,7 +130,8 @@ export function buildGame(level: number, random: () => number): Game {
         objective: 'Hold her face at the distance where the image fits the frame, upright, then snap the photo. The helper aids fade as you go.',
       },
       rounds,
-      charges: [0, 0, 0],
+      // one peek in round 2: the live view shows for a moment after it
+      charges: [0, 1, 0],
     };
   }
   const spots = shuffle(SPOT, random).slice(0, 3);
@@ -202,21 +203,65 @@ export function explainRound(game: Game, i: number): string[] {
   ];
 }
 
+// ---- misses: the direction only, with fixed effects ----------------------------------------------------------------------
+
+/** Where things sit on the canvas (logical pixels), shared by the scene and the tests. */
+export const GEOM = {
+  wall: { x0: 50, sc: 5.4, AX: 190 },
+  drive: { x0: 170, sc: 4.4, AX: 190 },
+  laser: { xw: 560, AX: 190, ps: 4 },
+};
+/** Level 2: where the catch-bar starts. No row has this as its answer. */
+export const START_BAR = 18;
+/** Level 2, on a miss: the ghost image stops this many pixels beyond or short of the player's own bar, whatever the error. */
+export const GHOST_GAP = 70;
+/** Level 3, on a miss: the face in the viewfinder is this fraction of the ring when it is too small (or too far, upside down) and this fraction when it is too big, whatever the error. */
+export const SELFIE_MISS = { small: 0.55, big: 1.45 };
+
+/** Level 1, on a miss: where the image landed compared with the wall, or why no wall can catch it. */
+export type WallMiss = 'none' | 'virtual' | 'before' | 'behind';
+export function wallMiss(r: WallRound, u: number): WallMiss {
+  const img = mirrorImage(r.F, true, u);
+  if (img.kind === 'none') return 'none';
+  if (img.kind === 'virtual') return 'virtual';
+  return img.dist < r.wall ? 'before' : 'behind';
+}
+/** Level 2, on a miss: the image was beyond the bar (farther behind the mirror) or short of it. */
+export const driveMiss = (r: DriveRound, bar: number): 'beyond' | 'short' => (r.behind > bar ? 'beyond' : 'short');
+/** Level 3, on a miss: the face in the frame is too small or too big for the ring (the focus gives no image). */
+export type SelfieMiss = 'none' | 'small' | 'big';
+export function selfieMiss(r: SelfieRound, d: number): SelfieMiss {
+  const img = mirrorImage(r.F, true, d);
+  if (img.kind === 'none') return 'none';
+  if (img.kind === 'real') return 'small';
+  return Math.abs(img.m) < r.want ? 'small' : 'big';
+}
+
+/** Where the burst of points and the "−1 ♥" appear: the player's own setting, or a fixed point; never the answer. */
+export function hitPoint(game: Game, i: number, tried: number): [number, number] {
+  if (game.kind === 'wall') return [GEOM.wall.x0 + tried * GEOM.wall.sc, GEOM.wall.AX - 20];
+  if (game.kind === 'drive') return [GEOM.drive.x0 - tried * GEOM.drive.sc, GEOM.drive.AX - 20];
+  if (game.kind === 'selfie') return [120, 170];
+  return [GEOM.laser.xw, GEOM.laser.AX - game.rounds[i].shift * GEOM.laser.ps];
+}
+
 /** What the player sees after a miss: the effect of what they chose, never the right answer. */
 export function missText(game: Game, i: number, tried: number): string {
   if (game.kind === 'wall') {
-    const r = game.rounds[i];
-    const img = mirrorImage(r.F, true, tried);
-    if (img.kind === 'none') return 'At the focus no image forms at all, so the wall stays dark.';
-    if (img.kind === 'virtual') return 'The image is virtual, behind the mirror: no wall can catch it, so the wall stays dark.';
-    return `The image lands ${fmt(img.dist)} cm from the mirror, not on the wall, so Flicker looks blurred there.`;
+    const k = wallMiss(game.rounds[i], tried);
+    if (k === 'none') return 'At the focus no image forms at all, so the wall stays dark.';
+    if (k === 'virtual') return 'The image is virtual, behind the mirror: no wall can catch it, so the wall stays dark.';
+    return `The image lands ${k === 'before' ? 'in front of' : 'behind'} the wall, not on it, so Flicker looks blurred there.`;
   }
-  if (game.kind === 'drive') return 'The image of Dash was not on the catch-bar when he crossed the line: the photo shows a gap.';
+  if (game.kind === 'drive') {
+    return `The image of Dash was not on the catch-bar when he crossed the line: it was ${driveMiss(game.rounds[i], tried) === 'beyond' ? 'beyond' : 'short of'} the bar, and the photo shows a gap.`;
+  }
   if (game.kind === 'selfie') {
+    const k = selfieMiss(game.rounds[i], tried);
+    if (k === 'none') return 'At the focus no image forms at all.';
     const img = mirrorImage(game.rounds[i].F, true, tried);
-    if (img.kind === 'none') return 'At the focus no image forms at all.';
-    if (img.kind === 'real') return `Too far: the image is real and upside down, ${fmt(Math.abs(img.m))} times her face.`;
-    return `The image is upright and ${fmt(img.m)} times her face: it does not fit the frame.`;
+    if (img.kind === 'real') return 'Too far: the image is real and upside down, which does not fit the frame.';
+    return `The image is upright but too ${k === 'small' ? 'small' : 'big'} for the frame: it does not fit.`;
   }
   return 'The spot lands beside the target.';
 }

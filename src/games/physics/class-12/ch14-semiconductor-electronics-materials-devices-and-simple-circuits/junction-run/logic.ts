@@ -84,12 +84,25 @@ export function biasRounds(random: () => number): BiasRound[] {
   const third = random() < 0.5 ? { goal: 'lower' as const, ...lower[1] } : { goal: 'raise' as const, ...raise[1] };
   return [{ goal: 'lower' as const, ...lower[0] }, { goal: 'raise' as const, ...raise[0] }, third].map((b, k) => ({ ...b, v0: V0[b.material], sol: biasSolution(b.material, b.goal, b.target), assist: aid(k) }));
 }
+/** Supply frequencies, Hz: the 50 and 60 Hz mains and three other supplies. Every output frequency (f for half-wave, 2f for full-wave) stays between 10 and 250 and clear of the dial's start. */
+export const SUPPLIES = [25, 40, 50, 60, 100];
+export const RECT_START = 30;
+const rectOut = (kind: RectRound['kind'], f: number) => (kind === 'half' ? f : 2 * f);
+/**
+ * Three rounds: the kinds are a shuffle of half, full, full or of half, half, full, and the supplies are three different ones from the pool,
+ * re-drawn until the three output frequencies differ, so the order and the earlier rounds say nothing about the later ones.
+ */
 export function rectRounds(random: () => number): RectRound[] {
-  const pick = () => (random() < 0.5 ? 50 : 60);
-  const f1 = pick();
-  const f2 = pick();
-  const f3 = f2 === 50 ? 60 : 50;
-  return ([['half', f1], ['full', f2], ['full', f3]] as [RectRound['kind'], number][]).map(([kind, f], k) => ({ kind, f, sol: kind === 'half' ? f : 2 * f, assist: aid(k) }));
+  const kinds = shuffle<RectRound['kind']>(random() < 0.5 ? ['half', 'full', 'full'] : ['half', 'half', 'full'], random);
+  let fs = [40, 50, 60];
+  for (let i = 0; i < 40; i++) {
+    const pick = shuffle(SUPPLIES, random).slice(0, 3);
+    if (new Set(pick.map((f, k) => rectOut(kinds[k], f))).size === 3) {
+      fs = pick;
+      break;
+    }
+  }
+  return kinds.map((kind, k) => ({ kind, f: fs[k], sol: rectOut(kind, fs[k]), assist: aid(k) }));
 }
 export const resistance = (r: Pick<CurveRound, 'kind' | 'v1' | 'i1' | 'v2' | 'i2'>) => (r.kind === 'forward' ? (r.v2 - r.v1) / ((r.i2 - r.i1) * 1e-3) : Math.abs(r.v1) / Math.abs(r.i1 * 1e-6));
 export function curveRounds(random: () => number): CurveRound[] {
@@ -124,9 +137,8 @@ export function biasMiss(r: BiasRound, v: number): string {
   if (r.goal === 'lower' && v < 0) return 'That battery is the wrong way round: it pulls the carriers away from the junction, widening the depletion layer and making the barrier higher instead of lower.';
   return barrierAfter(r, v) > r.target ? 'With that battery the barrier ends up higher than the one the hopper is planning for.' : 'With that battery the barrier ends up lower than the one the hopper is planning for.';
 }
+/** After a miss: the direction only (faster or slower than the circuit), never a ratio to the true rate. */
 export function rectMiss(r: RectRound, f: number): string {
-  if (r.kind === 'half' && Math.abs(f - 2 * r.f) <= FREQ_TOL) return 'A single diode blocks one half of each cycle, so it cannot fill both halves with pulses: your lamp would flash twice as often as the circuit lets it.';
-  if (r.kind === 'full' && Math.abs(f - r.f) <= FREQ_TOL) return 'Both half-cycles of the supply give a pulse in a full-wave rectifier: your lamp would be missing every second flash.';
   return f > r.sol ? 'Your lamp flashes faster than the circuit delivers: some of the flashes would be invented.' : 'Your lamp flashes more slowly than the circuit delivers: some of the real pulses would be missed.';
 }
 export function curveMiss(r: CurveRound, x: number): string {

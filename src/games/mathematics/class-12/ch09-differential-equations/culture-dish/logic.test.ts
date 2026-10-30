@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { createRng } from '@core/random';
-import { buildRounds, exponent, explain, intel, judge, judgeScan, magnify, missText, spotText, swingsFor, type Round } from './logic';
+import { buildRounds, exponent, explain, intel, judge, judgeScan, magnify, missText, overshoot, spotText, swingsFor, type Round } from './logic';
 
 const seeds = Array.from({ length: 60 }, (_, i) => i * 7919 + 13);
 const all = (level: number) => seeds.flatMap((s) => buildRounds(level, createRng(s)));
 const span = (lo: number, hi: number) => Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+/** The three kinds of specimen, told by the text: a function around a derivative (no degree), a power on a lower derivative, or a plain polynomial. */
+const isUndefined = (r: Round) => /sin\(|cos\(|e\^/.test(r.text);
+const isPower = (r: Round) => !isUndefined(r) && /\+ y = 0$/.test(r.text);
+const kindOf = (r: Round) => (isUndefined(r) ? 'undefined' : isPower(r) ? 'power' : 'plain');
 
 describe('order and degree', () => {
   it('textbook anchors: d³y/dx³ + 2(d²y/dx²)² + y = 0 has order 3 and degree 1; (dy/dx)² + y = x has order 1, degree 2', () => {
-    const r = buildRounds(1, createRng(1))[1];
+    const r = all(1).find((x) => isPower(x))!;
     expect(r.degree).toBe(1);
     expect(r.order).toBeGreaterThanOrEqual(2);
     const plain = all(1).find((x) => x.degree === 2 && x.order === 1);
@@ -21,14 +25,27 @@ describe('order and degree', () => {
       expect(wins).toEqual([`${r.order},${r.degree}`]);
     }
   });
-  it('the three rounds are plain, a power on a lower derivative (degree stays 1), and a degree that is not defined', () => {
+  it('the three rounds are one plain specimen, one with a power on a lower derivative (degree stays 1) and one whose degree is not defined, in a random order', () => {
+    const where: Record<string, Set<number>> = { plain: new Set(), power: new Set(), undefined: new Set() };
     for (const s of seeds) {
       const rs = buildRounds(1, createRng(s));
-      expect(rs[0].degree).toBeGreaterThan(0);
-      expect(rs[1].degree).toBe(1);
-      expect(rs[1].text).toMatch(/\)[²³]/);
-      expect(rs[2].degree).toBe(0);
+      expect(rs.map(kindOf).sort()).toEqual(['plain', 'power', 'undefined']);
+      rs.forEach((r, i) => {
+        where[kindOf(r)].add(i);
+        if (kindOf(r) === 'plain') expect(r.degree).toBeGreaterThan(0);
+        if (kindOf(r) === 'power') {
+          expect(r.degree).toBe(1);
+          expect(r.text).toMatch(/\)[²³]/);
+        }
+        if (kindOf(r) === 'undefined') expect(r.degree).toBe(0);
+      });
     }
+    // no round number tells the kind, so none tells the degree
+    for (const k of Object.keys(where)) expect([...where[k]].sort()).toEqual([0, 1, 2]);
+    for (const i of [0, 1, 2]) expect(new Set(seeds.map((s) => buildRounds(1, createRng(s))[i].degree)).size).toBeGreaterThan(2);
+  });
+  it('the start (order 4, degree 4) never wins', () => {
+    for (const r of all(1)) expect(judgeScan(r, 4, 4)).toBe(false);
   });
   it('the order is the highest derivative written, and the magnifier names it without the answer', () => {
     for (const r of all(1)) {
@@ -77,7 +94,7 @@ describe('words', () => {
     for (const level of [1, 2, 3]) {
       for (const r of all(level).slice(0, 40) as Round[]) {
         if (level === 1) {
-          const msg = missText(r, 0, r.order === 1 ? 2 : 1, r.degree === 1 ? 2 : 1);
+          const msg = missText(r);
           expect(msg).toMatch(/flagged/);
           expect(msg).not.toMatch(/order is \d|degree is \d/);
         } else {
@@ -87,6 +104,24 @@ describe('words', () => {
         }
         expect(explain(r).length).toBeGreaterThan(40);
         expect(intel(r).length).toBeGreaterThan(30);
+      }
+    }
+  });
+  it('a miss names no number: one text for every wrong scanner setting, and one per direction for the lamp and the dish', () => {
+    expect(new Set(all(1).map((r) => missText(r))).size).toBe(1);
+    expect(missText(all(1)[0])).not.toMatch(/\d|not defined|too (low|high)|power/);
+    for (const level of [2, 3]) {
+      for (const r of all(level).slice(0, 60)) {
+        const byDir = new Map<boolean, Set<string>>();
+        for (const v of span(r.min, r.max)) {
+          if (v === r.ans) continue;
+          const t = missText(r, v);
+          expect(t).not.toMatch(/\d/);
+          byDir.set(overshoot(r, v), (byDir.get(overshoot(r, v)) ?? new Set()).add(t));
+        }
+        for (const set of byDir.values()) expect(set.size).toBe(1);
+        expect(byDir.size).toBe(2);
+        expect([...byDir.get(true)!][0]).not.toBe([...byDir.get(false)!][0]);
       }
     }
   });

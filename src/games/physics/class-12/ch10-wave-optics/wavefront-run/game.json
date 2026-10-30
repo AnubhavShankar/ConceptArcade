@@ -21,7 +21,8 @@
     "Wavelength in a medium",
     "Frequency does not change",
     "Huygens’ wavelets",
-    "Refraction as a change of speed"
+    "Refraction as a change of speed",
+    "Dispersion: speed in glass depends on colour"
   ],
   "learningOutcome": "The student can find the speed and wavelength of light in a medium from n, knows the frequency is unchanged, and uses Huygens’ construction to get sin r / sin i = v₂/v₁.",
   "estimatedMinutes": 20,
@@ -46,6 +47,17 @@
         "The end of the front that reaches the ground first changes speed first.",
         "sin r / sin i = v₂ / v₁ for a front entering the new ground.",
         "Take the inverse sine in degrees and move the dial to the nearest half degree."
+      ]
+    },
+    {
+      "title": "Rainbow race",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: dispersion: violet is slower in glass than red, so a violet pulse needs a head start of d(n_v − n_r)/c to exit with the red one (Ex 10.3).",
+      "hints": [
+        "In glass the speed is c/n.",
+        "Violet has the larger n, so it is the slower colour.",
+        "The extra time through thickness d is d(n_v − n_r)/c."
       ]
     }
   ],

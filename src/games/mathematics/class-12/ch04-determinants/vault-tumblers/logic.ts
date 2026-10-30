@@ -96,9 +96,17 @@ function jam(verdict: Verdict, random: () => number): Round {
   }
 }
 
+/** Three verdicts drawn at random (not a permutation), never all the same, so "a singular plate set" or d = 0 is not a pattern across rounds. */
+export function verdicts(random: () => number): Verdict[] {
+  for (;;) {
+    const vs = [0, 1, 2].map(() => ri(1, 3, random) as Verdict);
+    if (new Set(vs).size > 1) return vs;
+  }
+}
+
 export function buildRounds(level: number, random: () => number): Round[] {
   let rs: Round[];
-  if (level === 4) rs = shuffle([1, 2, 3] as Verdict[], random).map((v) => jam(v, random));
+  if (level === 4) rs = verdicts(random).map((v) => jam(v, random));
   else {
     const kind = (['two', 'three', 'bill'] as const)[level - 1];
     rs = [solvable(kind, random), solvable(kind, random), solvable(kind, random)];
@@ -113,15 +121,10 @@ export function judge(r: Round, v: Record<string, number>): boolean {
   return r.sol.every((s, i) => v['xyz'[i]] === s);
 }
 
-/** After a miss: what the vault did, never the code. */
-export function missText(r: Round, v: Record<string, number>): string {
-  if (r.kind === 'jam') {
-    if (v.d !== r.det) return 'The vault computes |A| from its own plates and compared it with your reading: they disagreed, so the door stayed shut.';
-    return 'The door’s sensors compared your verdict with how the plates actually behave, and they disagreed: the alarm sounded.';
-  }
-  const ok = plateOk(r, r.sol.map((_, i) => v['xyz'[i]]));
-  const stuck = ok.map((o, i) => (o ? null : i + 1)).filter((x): x is number => x !== null);
-  return `The tumblers turned, but plate${stuck.length > 1 ? 's' : ''} ${stuck.join(' and ')} stayed locked, so the door did not open.`;
+/** After a miss: what the vault did, never the code and never which plate or which dial is wrong (that is the paid Plate check). */
+export function missText(r: Round, _v: Record<string, number>): string {
+  if (r.kind === 'jam') return 'The door stayed shut and the alarm sounded: your |A| or your verdict is off. Work out |A| again, then test (adj A)B before you declare.';
+  return 'The tumblers turned, but the door stayed shut: at least one tumbler is wrong. Put your values back into the plates and see which ones fail.';
 }
 export function spotText(r: Round, v: Record<string, number>): string {
   if (r.kind === 'jam') return `Plate check: |A| is ${v.d === r.det ? 'the value you dialled' : 'not the value you dialled'}.`;

@@ -87,6 +87,9 @@ export const SLIDERS = {
   n: { min: 1.3, max: 1.8, step: 0.01, start: 1.5 },
 };
 
+/** Where the angle dial starts. No round of the level has this as its answer (the Photon Pong row [60, 1.524] has 29.75°, so it starts wide). */
+export const startAngle = (kind: Game['kind']) => (kind === 'pong' ? 62 : SLIDERS.i.start);
+
 export function buildGame(level: number, random: () => number): Game {
   const assist = (k: number) => k as Assist;
   if (level === 1) {
@@ -185,23 +188,21 @@ export function resultLine(g: Game, k: number): string {
   return `Photon just bounces: the limit is ${fmt(g.rounds[k].iSol)}°.`;
 }
 
-/** After a miss: the effect of what the player chose, never the right answer. */
+/** Which side of the sweet spot an angle is on: too shallow (below it) or too steep (above it). */
+export const sideOf = (iSol: number, i: number): 'shallow' | 'steep' => (i < iSol ? 'shallow' : 'steep');
+
+/** After a miss: the direction only, in the same words for every angle on the same side (no bend, no number). */
 export function missText(g: Game, k: number, tried: { i: number; n?: number }): string {
   if (g.kind === 'sweet') {
     const r = g.rounds[k];
     const j = judgeSweet(r, tried.i, tried.n ?? 1.5);
     const parts: string[] = [];
-    if (!j.iOk) {
-      const p = path(r.A, r.nSol, tried.i);
-      parts.push(p.D === null ? 'At that angle the beam never leaves the prism, so the crystal stays dark.' : `Beam leaves bent by ${fmt(p.D)}°, not at its sweet spot, so the crystal stays dark.`);
-    }
+    if (!j.iOk) parts.push(`Beam arrives too ${sideOf(r.iSol, tried.i)}, away from its sweet spot, so the crystal stays dark.`);
     if (!j.nOk) parts.push('The index you read does not match the glass.');
     return parts.join(' ');
   }
   if (g.kind === 'gel') {
-    const r = g.rounds[k];
-    const p = path(r.A, r.n / r.nL, tried.i);
-    return p.D === null ? 'At that angle the beam is totally reflected and never leaves the prism.' : `Ray leaves bent by ${fmt(p.D)}°, but that is not the least bend the prism can give in this gel.`;
+    return `Ray arrives too ${sideOf(g.rounds[k].iSol, tried.i)}: that is not the least bend the prism can give in this gel.`;
   }
   const r = g.rounds[k];
   return trapped(r, tried.i) ? 'Photon bounces back inside, but a wider shot would have bounced too: the limit is further out.' : 'Photon meets the second face too steeply and escapes through it.';

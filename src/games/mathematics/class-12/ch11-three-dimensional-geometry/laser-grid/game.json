@@ -16,11 +16,12 @@
     "Perpendicular lines: a₁b₁ + a₂b₂ + a₃b₃ = 0",
     "Angle between two lines",
     "Shortest distance between skew lines",
-    "Unknown ratio from a condition"
+    "Unknown ratio from a condition",
+    "Vector and cartesian equations of a line"
   ],
-  "learningOutcome": "The student can turn direction ratios into direction cosines, find an unknown ratio for perpendicular lines or a given angle, and find the shortest distance between two skew lines.",
+  "learningOutcome": "The student can find direction cosines, test lines for a right angle, find the angle between lines and the distance between skew lines, and write a line in vector and cartesian form.",
   "mechanic": "tune-to-target",
-  "estimatedMinutes": 20,
+  "estimatedMinutes": 28,
   "levels": [
     {
       "title": "Aim the beam",
@@ -64,6 +65,28 @@
         "Find b₁ × b₂ and its length first.",
         "Dot the offset (with h in it) with b₁ × b₂.",
         "Divide by |b₁ × b₂| and match the distance wanted."
+      ]
+    },
+    {
+      "title": "Relay line",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the line through two points is r = a + λb with b = B − A; the boss relay is reached at λ = 2, so b = (B − A)/2 (Ex 11.2 Q4 to Q6; Misc Q2).",
+      "hints": [
+        "The beam starts at A, so a = A.",
+        "After λ = 1 the tip is at a + b, which must be B: b = B − A.",
+        "If B is reached at λ = 2, then 2b = B − A."
+      ]
+    },
+    {
+      "title": "Read the code",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: turn a cartesian equation (x − x₁)/a = (y − y₁)/b = (z − z₁)/c into vector form, minding signs such as (3 − x)/2 (Ex 11.2 Q7).",
+      "hints": [
+        "Set each ratio equal to λ and solve for x, y and z.",
+        "(x + 3)/2 = λ gives x = −3 + 2λ.",
+        "(3 − x)/2 = λ gives x = 3 − 2λ, so that step is −2."
       ]
     }
   ],

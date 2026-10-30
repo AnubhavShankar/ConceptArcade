@@ -74,7 +74,8 @@ function swing(random: () => number): Round {
 
 export function buildRounds(level: number, random: () => number): Round[] {
   let makers: (() => Round)[];
-  if (level === 1) makers = [() => specimen('plain', random), () => specimen('power', random), () => specimen('undefined', random)];
+  // The three kinds of specimen come in a random order, so no round number tells the degree (a fixed order made round 2 always degree 1 and round 3 always 0).
+  if (level === 1) makers = shuffle(['plain', 'power', 'undefined'] as const, random).map((kind) => () => specimen(kind, random));
   else if (level === 2) makers = [() => growth(random), () => growth(random), () => growth(random)];
   else makers = [() => swing(random), () => swing(random), () => swing(random)];
   const out: Round[] = [];
@@ -109,20 +110,17 @@ export function spotText(r: Round, v: number): string {
   if (r.kind === 'grow') return `Incubator test with k = ${num(v)}: after ${r.T} hour${r.T === 1 ? '' : 's'} the colony would read ${r.c}·e^${num(exponent(r, v))}.`;
   return `Swing test with m = ${v}: in one turn of the lamp the dish makes ${swingsFor(v)} full swing${swingsFor(v) === 1 ? '' : 's'}.`;
 }
-/** After a miss. */
-export function missText(r: Round, v: number, order = 0, degree = 0): string {
-  if (r.kind === 'scan') {
-    const bits: string[] = [];
-    if (order !== r.order) bits.push(order < r.order ? 'the order is too low: a higher derivative is still in the equation' : 'the order is too high: no derivative that high appears');
-    if (degree !== r.degree) bits.push(r.degree === 0 ? 'a derivative inside sin, cos or e is not a power, so the degree is not defined' : degree === 0 ? 'the equation is a polynomial in its derivatives, so a degree exists' : 'the degree is the power of the highest derivative only');
-    return `The scanner flagged the specimen: ${bits.join('; ')}.`;
-  }
-  if (r.kind === 'grow') {
-    const e = exponent(r, v);
-    return `After ${r.T} hour${r.T === 1 ? '' : 's'} the colony reads ${r.c}·e^${num(e)}, ${e > r.exp ? 'above' : 'below'} the reading wanted.`;
-  }
-  return `The dish made ${swingsFor(v)} full swing${swingsFor(v) === 1 ? '' : 's'} in one turn of the lamp, ${v > r.swings ? 'more' : 'fewer'} than the ${r.swings} wanted.`;
+/**
+ * After a miss: one text for every wrong scanner setting (which dial is wrong, or whether the degree exists, would be the answer), and for the lamp
+ * and the dish only the direction of the error, never the reading or the count the setting made (the paid test gives those).
+ */
+export function missText(r: Round, v = 0): string {
+  if (r.kind === 'scan') return 'The scanner flagged the specimen: its order, its degree or both do not match the equation.';
+  if (r.kind === 'grow') return `At the end of the time the colony ended ${exponent(r, v) > r.exp ? 'above' : 'below'} the reading wanted.`;
+  return `The dish made ${v > r.swings ? 'more' : 'fewer'} full swings in one turn of the lamp than wanted.`;
 }
+/** Which way a wrong lamp or frequency setting missed: true when it overshot. */
+export const overshoot = (r: Round, v: number) => (r.kind === 'grow' ? exponent(r, v) > r.exp : v > r.swings);
 /** After a hit. */
 export function explain(r: Round): string {
   if (r.kind === 'scan') return `The highest derivative is ${r.highest}, so the order is ${r.order}. ${r.degree === 0 ? 'The derivative sits inside a function (sin, cos or e), so the equation is not a polynomial in its derivatives and the degree is not defined.' : `Its power is ${r.degree}, so the degree is ${r.degree}. Only the power of the highest derivative counts.`}`;

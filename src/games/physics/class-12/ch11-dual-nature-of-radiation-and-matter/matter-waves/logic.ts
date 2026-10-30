@@ -46,6 +46,14 @@ export const SLIDERS = {
   v: { min: 10, max: 800, step: 1 },
   kv: { min: 5, max: 80, step: 1 },
 };
+/** Where each dial starts: never the answer of any round. */
+export const START = { n: 1, v: 200, kv: 10 };
+/** Where the burst of points and the "−1 ♥" appear: a fixed point, never where the answer is drawn. */
+export const HIT: Record<'n' | 'v' | 'kv', [number, number]> = { n: [470, 160], v: [330, 175], kv: [480, 200] };
+/** Level 3: the x on the canvas of a wavelength in Å (the spectrum runs from 0 to 1.2 Å over the width of the track). */
+export const specX = (lam: number) => 60 + (lam / 1.2) * 520;
+/** On a miss the drawn effect is a fixed multiple of the wanted value, never the player's own result: [too small, too big]. */
+export const MISS_FRAC = { under: 0.55, over: 1.45 };
 
 export function countRounds(random: () => number): CountRound[] {
   return shuffle(COUNT, random)

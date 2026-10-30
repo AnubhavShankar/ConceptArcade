@@ -3,7 +3,8 @@ import { defineGame } from '@core/define';
 import { fmt } from '@core/judge';
 import { trace } from '@core/neon';
 import { car, face, flame, glow, line, mirror, ruler, target, text, type Mood } from './art';
-import { RAIL_MAX, buildGame, explainRound, flashText, judgeDrive, judgeLaser, judgeSelfie, judgeWall, mirrorImage, missText, resultLine, tanDeg, type Image } from './logic';
+import { helperOn, paidFlash } from '@core/aidflash';
+import { GEOM, GHOST_GAP, RAIL_MAX, SELFIE_MISS, START_BAR, buildGame, driveMiss, explainRound, flashText, hitPoint, judgeDrive, judgeLaser, judgeSelfie, judgeWall, mirrorImage, missText, resultLine, selfieMiss, tanDeg, wallMiss, type Image } from './logic';
 
 const W = 640;
 const H = 340;
@@ -23,12 +24,10 @@ export default defineGame({
     // ================= level 1: Flicker lights the wall =================================================
     if (game.kind === 'wall') {
       const rounds = game.rounds;
-      const x0 = 50;
-      const sc = 5.4;
-      const AX = 190;
+      const { x0, sc, AX } = GEOM.wall;
       let u = rounds[0].uStart;
       let flash: { u: number; img: Image; born: number } | null = null;
-      let attempt: { ok: boolean; img: Image } | null = null;
+      let attempt: { ok: boolean; img: Image; u: number } | null = null;
       const slider = A.slider({ aria: 'Flicker position from the mirror in cm', label: 'Flicker stands at', min: 5, max: RAIL_MAX, step: 1, value: u, unit: 'cm', onInput: (v) => (u = v) });
       A.handle({ x: () => x0 + u * sc, y: () => AX - 24, r: 28, drag: (px) => slider.set((px - x0) / sc) });
       A.controls.append(
@@ -42,8 +41,9 @@ export default defineGame({
         A.button('🔥 Ignite', 'Ignite Flicker at this spot', () => {
           const R = rounds[ri()];
           const r = judgeWall(R, u);
-          attempt = { ok: r.ok, img: r.image };
-          A.resolve(r.ok, r.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), u), { x: x0 + R.wall * sc, y: AX - 20 }, 1.3);
+          attempt = { ok: r.ok, img: r.image, u };
+          const [hx, hy] = hitPoint(game, ri(), u);
+          A.resolve(r.ok, r.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), u), { x: hx, y: hy }, 1.3);
         }),
       );
       onRound = (i) => {
@@ -104,9 +104,11 @@ export default defineGame({
         const fx = x0 + u * sc;
         const mood: Mood = resolving ? (attempt!.ok ? (A.rt > 1.3 ? 'cheer' : 'happy') : 'worried') : 'happy';
         if (resolving) {
-          const img = attempt!.img;
           const tipY = AX - 46;
-          if (img.kind === 'real') {
+          const miss = wallMiss(R, attempt!.u);
+          if (attempt!.ok) {
+            // the true construction, only for the winning spot
+            const img = attempt!.img;
             const xi = x0 + img.dist * sc;
             const hi = Math.min(140, Math.abs(img.m) * 46);
             const yi = AX + hi;
@@ -114,27 +116,26 @@ export default defineGame({
             trace(g, [[fx, tipY], [x0, tipY], [xi, yi]], f, PAL.cyan);
             trace(g, [[fx, tipY], [x0, yi], [xi, yi]], f, PAL.yellow);
             if (A.rt > 1.0) {
-              flame(g, xi, AX, hi, t, attempt!.ok ? 'cheer' : 'happy', true, 0.95);
-              if (!attempt!.ok) {
-                text(g, 'the image forms here', xi, AX - 16, PAL.red, 11);
-                const blur = Math.min(22, Math.abs(img.dist - R.wall) * sc * 0.25);
-                g.save();
-                g.shadowColor = PAL.orange;
-                g.shadowBlur = blur;
-                g.globalAlpha = Math.max(0.2, 1 - blur / 24);
-                flame(g, xw, AX, Math.min(hi, 80), t, 'worried', true, 0.8);
-                g.restore();
-                text(g, 'a blur on the wall', xw, AX + 120, PAL.red, 11);
-              } else {
-                glow(g, PAL.green, 20, () => text(g, 'SHARP!', xw, AX + 120, PAL.green, 16));
-              }
+              flame(g, xi, AX, hi, t, 'cheer', true, 0.95);
+              glow(g, PAL.green, 20, () => text(g, 'SHARP!', xw, AX + 120, PAL.green, 16));
             }
-          } else if (img.kind === 'virtual') {
-            const xi = x0 - img.dist * sc;
-            if (xi > 12) flame(g, xi, AX, Math.min(120, img.m * 46), t, 'worried', false, 0.45);
-            text(g, 'a virtual image: no wall can catch it', 330, AX + 130, PAL.red, 12);
           } else {
-            text(g, 'no image forms: the rays leave parallel', 330, AX + 130, PAL.red, 12);
+            // a miss: the incident rays only, a fixed blur on the wall and the direction in words; never the true image
+            const f = Math.min(1, A.rt / 1.0);
+            trace(g, [[fx, tipY], [x0, tipY]], f, PAL.cyan);
+            trace(g, [[fx, tipY], [x0, AX + 40]], f, PAL.yellow);
+            if (A.rt > 1.0 && (miss === 'before' || miss === 'behind')) {
+              g.save();
+              g.shadowColor = PAL.orange;
+              g.shadowBlur = 12;
+              g.globalAlpha = 0.6;
+              flame(g, xw, AX, 60, t, 'worried', true, 0.8);
+              g.restore();
+              text(g, miss === 'before' ? 'a blur: the image lands in front of the wall' : 'a blur: the image lands behind the wall', xw, AX + 120, PAL.red, 11);
+            } else if (A.rt > 1.0 && miss === 'virtual') {
+              flame(g, x0 - 50, AX, 60, t, 'worried', false, 0.45);
+              text(g, 'a virtual image: no wall can catch it', 330, AX + 130, PAL.red, 12);
+            } else if (A.rt > 1.0) text(g, 'no image forms: the rays leave parallel', 330, AX + 130, PAL.red, 12);
           }
         }
         flame(g, fx, AX, 46, t, mood);
@@ -145,11 +146,9 @@ export default defineGame({
     // ================= level 2: Dash and the catch-bar ==================================================
     if (game.kind === 'drive') {
       const rounds = game.rounds;
-      const x0 = 170;
-      const sc = 4.4;
-      const AX = 190;
+      const { x0, sc, AX } = GEOM.drive;
       const START = 100;
-      let bar = 8;
+      let bar = START_BAR;
       let attempt: { bar: number; ok: boolean } | null = null;
       const slider = A.slider({ aria: 'Catch-bar position behind the mirror in cm', label: 'Catch-bar, behind the mirror', min: 1, max: 20, step: 1, value: bar, unit: 'cm', onInput: (v) => (bar = v) });
       A.handle({ x: () => x0 - bar * sc, y: () => AX - 30, r: 28, drag: (px) => slider.set((x0 - px) / sc) });
@@ -159,11 +158,12 @@ export default defineGame({
           const R = rounds[ri()];
           const r = judgeDrive(R, bar);
           attempt = { bar, ok: r.ok };
-          A.resolve(r.ok, r.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), bar), { x: x0 - R.behind * sc, y: AX - 20 }, DRIVE_T);
+          const [hx, hy] = hitPoint(game, ri(), bar);
+          A.resolve(r.ok, r.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), bar), { x: hx, y: hy }, DRIVE_T);
         }),
       );
       onRound = (i) => {
-        bar = 8;
+        bar = START_BAR;
         slider.set(bar);
         attempt = null;
         clearSay();
@@ -193,30 +193,35 @@ export default defineGame({
         const xnose = x0 + d * sc;
         car(g, xnose + 34 * k, AX, k, A.clock * (resolving && f < 1 ? 1 : 0.2), resolving ? (attempt!.ok ? 'cheer' : A.rt > DRIVE_T ? 'worried' : 'happy') : 'happy');
         text(g, 'Dash', xnose + 34 * k, AX + 16, PAL.white, 11);
+        const xb = x0 - (resolving ? attempt!.bar : bar) * sc;
         if (resolving) {
+          // the image of Dash. On a win it follows the real mirror formula onto the bar; on a miss it glides to a fixed gap
+          // beyond or short of the bar, at a fixed size, so the picture never shows where the image really is.
           const v = (R.F * d) / (R.F + d);
-          const xi = x0 - v * sc;
+          const xTrue = x0 - v * sc;
+          const dir = driveMiss(R, attempt!.bar) === 'beyond' ? -1 : 1;
+          const xi = attempt!.ok ? xTrue : xTrue + (xb + dir * GHOST_GAP - xTrue) * f;
           g.save();
           g.translate(xi, 0);
           g.scale(-1, 1);
           g.globalAlpha = 0.7;
-          car(g, 0, AX, k * (v / d), A.clock, 'happy');
+          car(g, 0, AX, attempt!.ok ? k * (v / d) : k * 0.45, A.clock, 'happy');
           g.restore();
           line(g, xnose, AX - 20, x0, AX - 20, PAL.cyan, 1.5, [4, 5]);
           line(g, x0, AX - 20, xi, AX - 12, PAL.cyan, 1.5, [4, 5]);
         }
         const done = resolving && A.rt >= DRIVE_T;
         const barColor = done ? (attempt!.ok ? PAL.green : PAL.red) : PAL.pink;
-        const xb = x0 - bar * sc;
         glow(g, barColor, done ? 20 : 8, () => {
           g.fillStyle = barColor;
           g.fillRect(xb - 3, AX - 74, 6, 84);
         });
         text(g, 'catch-bar', xb, AX - 82, barColor, 11);
         if (done && !attempt!.ok) {
-          const xi = x0 - R.behind * sc;
-          line(g, xi, AX - 90, xb, AX - 90, PAL.red, 2);
-          text(g, 'gap', (xi + xb) / 2, AX - 96, PAL.red, 11);
+          // a marker of fixed length on the side where the image was
+          const dir = driveMiss(R, attempt!.bar) === 'beyond' ? -1 : 1;
+          line(g, xb, AX - 90, xb + dir * 40, AX - 90, PAL.red, 3);
+          text(g, dir < 0 ? 'image beyond the bar' : 'image short of the bar', xb + dir * 20, AX - 98, PAL.red, 11);
         }
         if (resolving && A.rt >= DRIVE_T && A.rt < DRIVE_T + 0.3) {
           g.fillStyle = '#fff';
@@ -233,16 +238,22 @@ export default defineGame({
       const x0 = 290;
       const AX = 210;
       const R14 = 14;
+      const flash = paidFlash();
       let d = Math.round(2 * rounds[0].F);
       const scFor = () => 320 / (3 * rounds[ri()].F);
-      let snap: { ok: boolean; img: Image } | null = null;
+      let snap: { ok: boolean; img: Image; d: number } | null = null;
       const slider = A.slider({ aria: 'Distance of her face from the mirror in cm', label: 'Her face is', min: 1, max: 3 * rounds[0].F, step: 1, value: d, unit: 'cm from the mirror', onInput: (v) => (d = v) });
       A.handle({ x: () => x0 + d * scFor(), y: () => AX - 34, r: 26, drag: (px) => slider.set((px - x0) / scFor()) });
       A.controls.append(
         slider.row,
+        A.button('👀 Peek', 'Peek: show the live view for a moment', () => {
+          if (!A.spend()) return;
+          flash.paid();
+          A.say('The live view shows for a moment.', true);
+        }, 'secondary'),
         A.button('📸 Snap!', 'Take the selfie at this distance', () => {
           const r = judgeSelfie(rounds[ri()], d);
-          snap = { ok: r.ok, img: r.image };
+          snap = { ok: r.ok, img: r.image, d };
           A.resolve(r.ok, r.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), d), { x: 120, y: 170 }, 0.5);
         }),
       );
@@ -253,7 +264,7 @@ export default defineGame({
         snap = null;
         clearSay();
         const a = rounds[i].assist;
-        A.hint.textContent = `Concave mirror, focal length ${rounds[i].F} cm. Fit the face to the ring (${rounds[i].want}× her real face). ${a === 0 ? 'Round 1: the tolerance band is shown.' : a === 1 ? 'Round 2: the live view is dimmed.' : 'Round 3: no live view. Work it out, then snap.'}`;
+        A.hint.textContent = `Concave mirror, focal length ${rounds[i].F} cm. Fit the face to the ring (${rounds[i].want}× her real face). ${a === 0 ? 'Round 1: the tolerance band is shown.' : a === 1 ? 'Round 2: the live view shows for a moment after a peek (one charge).' : 'Round 3: no live view. Work it out, then snap.'}`;
       };
       A.scene((g) => {
         if (A.phase === 'between') return;
@@ -290,11 +301,14 @@ export default defineGame({
             g.stroke();
           }
         }
+        const since = flash.since(A.clock, ri());
         const img = resolving ? snap!.img : mirrorImage(R.F, true, d);
-        const visible = resolving ? 1 : R.assist === 0 ? 1 : R.assist === 1 ? 0.3 : 0;
+        // live in round 1, for a moment after the peek in round 2, never in round 3; after a snap only the winning face is drawn to scale
+        const visible = resolving || helperOn(R.assist, false, since) ? 1 : 0;
         if (img.kind !== 'none' && visible > 0) {
-          const r = Math.min(110, R14 * Math.abs(img.m));
-          face(g, cx, cy, r, resolving ? (snap!.ok ? 'cheer' : 'dizzy') : 'happy', img.kind === 'real', visible);
+          // a miss draws a face of a fixed size (too small or too big for the ring), never the player's own magnification
+          const r = resolving && !snap!.ok ? ring * (selfieMiss(R, snap!.d) === 'big' ? SELFIE_MISS.big : SELFIE_MISS.small) : Math.min(110, R14 * Math.abs(img.m));
+          face(g, cx, cy, Math.min(110, r), resolving ? (snap!.ok ? 'cheer' : 'dizzy') : 'happy', img.kind === 'real', visible);
         } else if (img.kind === 'none') text(g, 'no image', cx, cy, PAL.red, 14);
         else text(g, '?', cx, cy + 14, PAL.dim, 44);
         g.restore();
@@ -324,9 +338,7 @@ export default defineGame({
     if (game.kind === 'laser') {
       const rounds = game.rounds;
       const px0 = 110;
-      const xw = 560;
-      const AX = 190;
-      const ps = 4;
+      const { xw, AX, ps } = GEOM.laser;
       let theta = 1;
       let shot: { theta: number; ok: boolean; shift: number } | null = null;
       const slider = A.slider({ aria: 'Mirror dial angle in degrees', label: 'Mirror dial', min: 0, max: 10, step: 0.5, value: theta, unit: '°', onInput: (v) => (theta = v) });
@@ -338,7 +350,7 @@ export default defineGame({
           const R = rounds[ri()];
           const r = judgeLaser(R, theta);
           shot = { theta, ok: r.ok, shift: r.shift };
-          A.resolve(r.ok, r.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), theta), { x: xw, y: AX - R.shift * ps }, 0.9);
+          A.resolve(r.ok, r.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), theta), { x: hitPoint(game, ri(), theta)[0], y: hitPoint(game, ri(), theta)[1] }, 0.9);
         }),
       );
       onRound = (i) => {

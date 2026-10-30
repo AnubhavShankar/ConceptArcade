@@ -16,7 +16,8 @@
     "P(A | B) = P(A ∩ B)/P(B)",
     "Independent events: P(A ∩ B) = P(A)P(B)",
     "Drawing without replacement",
-    "At least one, by the complement"
+    "At least one, by the complement",
+    "Complement and union given F"
   ],
   "learningOutcome": "The student can find P(A | B) by counting in the reduced sample space, use P(A ∩ B) = P(A)P(B) for independent events, and find chances for draws without replacement.",
   "mechanic": "tune-to-target",
@@ -53,6 +54,17 @@
         "After the first card is drawn, the deck has one card fewer.",
         "Multiply the two chances.",
         "For at least one, take 1 minus the chance that both are black."
+      ]
+    },
+    {
+      "title": "Not and or",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: P(E′ | F) = 1 − P(E | F) and P(A ∪ C | F) = P(A | F) + P(C | F) − P(A ∩ C | F), counted on the reduced deck (Section 13.2.1).",
+      "hints": [
+        "First mark every card that fits B: that is the new sample space.",
+        "Not A: the cards of B that do not fit A.",
+        "A or C: count A and C, and do not count the overlap twice."
       ]
     }
   ],

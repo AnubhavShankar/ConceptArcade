@@ -4,11 +4,13 @@ import { aid } from '@core/dialgame';
 import { num } from '@core/mathkit';
 import { shuffle } from '@core/quiz';
 
-export type Kind = 'join' | 'mag' | 'section';
+// Level 4 (Crosswind): the triangle law. legs: two legs added tip to tail as one hop. wind: ground track = own vector + wind, so own = target − wind. wind2: the target is two
+// minutes away and the command is per minute, so own = target/2 − wind.
+export type Kind = 'join' | 'mag' | 'section' | 'legs' | 'wind' | 'wind2';
 export type Pt = [number, number];
 export interface Round {
   kind: Kind;
-  /** join: the drone D and the pad E. mag: the given direction d and the thrust size M. section: the points P and Q and the ratio m : n. */
+  /** join: the drone D and the pad E. mag: the given direction d and the thrust size M. section: the points P and Q and the ratio m : n. legs: D and E are the two legs. wind and wind2: D is the wind per minute and E the target, measured from Dash. */
   D: Pt;
   E: Pt;
   d: Pt;
@@ -70,8 +72,21 @@ function section(external: boolean, random: () => number): Round {
   }
 }
 
+/** Level 4 pools: [leg 1, leg 2], or [wind, target]. Every answer is a whole-number vector inside the plane. */
+const LEGS: readonly (readonly [Pt, Pt])[] = [[[3, 1], [-1, 4]], [[2, -3], [1, 5]], [[-4, 2], [1, 3]], [[4, 0], [-1, 3]]];
+const WIND: readonly (readonly [Pt, Pt])[] = [[[-2, 1], [3, 4]], [[1, -2], [-2, 3]], [[2, 2], [4, -1]]];
+const WIND2: readonly (readonly [Pt, Pt])[] = [[[2, -3], [-2, 4]], [[-1, 2], [4, 6]], [[1, 1], [6, -2]]];
+export const isTriangle = (k: Kind) => k === 'legs' || k === 'wind' || k === 'wind2';
+
+function crosswind(kind: 'legs' | 'wind' | 'wind2', random: () => number): Round {
+  const [a, b] = pick(kind === 'legs' ? LEGS : kind === 'wind' ? WIND : WIND2, random);
+  const ans: Pt = kind === 'legs' ? [a[0] + b[0], a[1] + b[1]] : kind === 'wind' ? [b[0] - a[0], b[1] - a[1]] : [b[0] / 2 - a[0], b[1] / 2 - a[1]];
+  return { ...blank, kind, D: [a[0], a[1]], E: [b[0], b[1]], ans };
+}
+
 export function buildRounds(level: number, random: () => number): Round[] {
-  const makers: (() => Round)[] = level === 1 ? [() => join(random), () => join(random), () => join(random)]
+  const makers: (() => Round)[] = level === 4 ? [() => crosswind('legs', random), () => crosswind('wind', random), () => crosswind('wind2', random)]
+    : level === 1 ? [() => join(random), () => join(random), () => join(random)]
     : level === 2 ? [() => magnitude(random), () => magnitude(random), () => magnitude(random)]
     : [() => section(false, random), () => section(false, random), () => section(true, random)];
   const out: Round[] = [];
@@ -89,7 +104,33 @@ const pt = (p: Pt) => `(${num(p[0])}, ${num(p[1])})`;
 const one = (x: number) => num(Math.round(x * 10) / 10);
 export const label = (r: Round) => (r.external ? 'externally' : 'internally');
 
+/** Level 4: the compass direction of the error from the target, from the signs of (tapped − answer) only. */
+export function compass(r: Round, v: Pt): { word: string; dx: number; dy: number } {
+  const dx = Math.sign(v[0] - r.ans[0]);
+  const dy = Math.sign(v[1] - r.ans[1]);
+  const words = ['south-west', 'south', 'south-east', 'west', 'on', 'east', 'north-west', 'north', 'north-east'];
+  return { word: words[(dy + 1) * 3 + (dx + 1)], dx, dy };
+}
+/** Level 4: after a miss Dash ends this far from the target, in the compass direction of the error, whatever the real landing point was. */
+export const MISS_GAP = 1.5;
+export function missOffset(r: Round, v: Pt): Pt {
+  const c = compass(r, v);
+  const n = Math.hypot(c.dx, c.dy) || 1;
+  return [(MISS_GAP * c.dx) / n, (MISS_GAP * c.dy) / n];
+}
+/** Level 4, paid test flight only (a charge buys it, so it may show numbers): how far from the target a command would land. */
+const offsetText = (r: Round, v: Pt) => {
+  const f = r.kind === 'wind2' ? 2 : 1;
+  const dx = f * (v[0] - r.ans[0]);
+  const dy = f * (v[1] - r.ans[1]);
+  const parts = [dx ? `${Math.abs(dx)} ${dx > 0 ? 'east' : 'west'}` : '', dy ? `${Math.abs(dy)} ${dy > 0 ? 'north' : 'south'}` : ''].filter(Boolean);
+  return parts.length ? `${parts.join(' and ')} of the target` : 'on the target';
+};
+
 export function intel(r: Round): string {
+  if (r.kind === 'legs') return `Dash must cover two legs, ${pt(r.D)} and then ${pt(r.E)}, as one hop that ends where the second leg ends. Tap that single vector.`;
+  if (r.kind === 'wind') return `A steady wind blows ${pt(r.D)} each minute. The target is ${pt(r.E)} from Dash, one minute away. Tap the vector Dash must fly under its own power.`;
+  if (r.kind === 'wind2') return `A steady wind blows ${pt(r.D)} each minute. The target is ${pt(r.E)} from Dash, two minutes away. Tap the vector Dash must fly under its own power each minute.`;
   if (r.kind === 'join') return `The drone is at ${pt(r.D)} and the pad is at ${pt(r.E)}. Tap the vector from the drone to the pad.`;
   if (r.kind === 'mag') return `The thrust must point along (${r.d[0]}, ${r.d[1]}) and have size ${one(r.M)}. Tap the end of the thrust vector.`;
   return `Towers at P ${pt(r.D)} and Q ${pt(r.E)}. Tap the relay point R that divides PQ ${label(r)} in the ratio ${r.m} : ${r.n}.`;
@@ -111,6 +152,7 @@ function onLine(r: Round, v: Pt): { ratio: string; external: boolean } | null {
 export function spotText(r: Round, v: Pt): string {
   if (r.kind === 'join') return `Test flight with ${pt(v)}: the drone would land at ${pt([r.D[0] + v[0], r.D[1] + v[1]])}.`;
   if (r.kind === 'mag') return `Test flight with ${pt(v)}: the thrust has size ${one(size(v))}.`;
+  if (isTriangle(r.kind)) return `Test flight with ${pt(v)}: Dash would land ${offsetText(r, v)}.`;
   const o = onLine(r, v);
   if (!o) return `Test flight with ${pt(v)}: that point is not on the line through P and Q.`;
   return `Test flight with ${pt(v)}: that point is on the line PQ and divides it ${o.external ? 'externally' : 'internally'}, ${o.ratio === 'at P' || o.ratio === 'at Q' ? o.ratio : `PR : RQ = ${o.ratio}`}.`;
@@ -120,22 +162,29 @@ export function spotText(r: Round, v: Pt): string {
 export function missText(r: Round, v: Pt): string {
   if (r.kind === 'join') {
     const L: Pt = [r.D[0] + v[0], r.D[1] + v[1]];
-    const ew = L[0] === r.E[0] ? '' : L[0] < r.E[0] ? 'west of' : 'east of';
-    const ns = L[1] === r.E[1] ? '' : L[1] < r.E[1] ? 'south of' : 'north of';
-    return `The drone landed ${[ew, ns].filter(Boolean).join(' and ')} the pad, ${one(Math.hypot(L[0] - r.E[0], L[1] - r.E[1]))} away.`;
+    const ew = L[0] === r.E[0] ? '' : L[0] < r.E[0] ? 'west' : 'east';
+    const ns = L[1] === r.E[1] ? '' : L[1] < r.E[1] ? 'south' : 'north';
+    return `The drone landed ${ns && ew ? `${ns}-${ew}` : ns || ew} of the pad.`;
   }
   if (r.kind === 'mag') {
     const aligned = v[0] * r.d[1] - v[1] * r.d[0] === 0 && v[0] * r.d[0] + v[1] * r.d[1] > 0;
-    if (!aligned) return `The thrust does not point along (${r.d[0]}, ${r.d[1]}): the drone flew off course, with size ${one(size(v))}.`;
-    return `The thrust points the right way but its size is ${one(size(v))}, ${size(v) < r.M ? 'less' : 'more'} than the ${one(r.M)} wanted.`;
+    if (!aligned) return 'The thrust does not point along the direction given: the drone flew off course.';
+    return `The thrust points the right way but it is ${size(v) < r.M ? 'too short' : 'too long'} for the size wanted.`;
   }
+  if (isTriangle(r.kind)) return `Dash came down on a rooftop ${compass(r, v).word} of the target.`;
   const o = onLine(r, v);
-  if (!o) return `The relay at ${pt(v)} is not on the line through P and Q, so it cannot divide PQ at all.`;
-  return `The relay is on the line PQ but it divides it ${o.external ? 'externally' : 'internally'}${o.ratio.includes(':') ? `, in the ratio ${o.ratio}` : ` (${o.ratio})`}, not as required.`;
+  if (!o) return 'The relay you chose is not on the line through P and Q, so it cannot divide PQ at all.';
+  return `The relay is on the line PQ but it divides it ${o.external ? 'externally' : 'internally'}, not in the ratio required.`;
 }
 
 /** After a hit: the working. */
 export function explain(r: Round): string {
+  if (r.kind === 'legs') return `Triangle law: one hop covering both legs is their sum, ${pt(r.D)} + ${pt(r.E)} = ${pt(r.ans)}.`;
+  if (r.kind === 'wind') return `Ground track = own vector + wind, so own vector = target − wind = ${pt(r.E)} − ${pt(r.D)} = ${pt(r.ans)}.`;
+  if (r.kind === 'wind2') {
+    const half: Pt = [r.E[0] / 2, r.E[1] / 2];
+    return `Each minute Dash must cover half the trip, ${pt(half)}. Own vector = ${pt(half)} − ${pt(r.D)} = ${pt(r.ans)}.`;
+  }
   if (r.kind === 'join') return `The vector from the drone to the pad is E − D = ${pt(r.E)} − ${pt(r.D)} = ${pt(r.ans)}.`;
   if (r.kind === 'mag') {
     const norm = size(r.d);

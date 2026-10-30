@@ -77,6 +77,17 @@
         "f′/f = (n_g − 1)/(n_g/n_l − 1). If n_l equals n_g the focal length is infinite.",
         "Above n_g the bracket is negative, so the lens diverges."
       ]
+    },
+    {
+      "title": "One curved face",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: one curved face: n₂/v − n₁/u = (n₂ − n₁)/R; dial the radius that focuses the light on the sensor inside the rod (Section 9.5.1; Example 9.5).",
+      "hints": [
+        "Light goes from air (n₁ = 1) into glass (n₂ = 1.5) or water (4/3).",
+        "Put in u (negative, the lamp is in front) and v, the depth of the sensor.",
+        "A negative R means the face curves the other way: concave."
+      ]
     }
   ],
   "misconceptions": [

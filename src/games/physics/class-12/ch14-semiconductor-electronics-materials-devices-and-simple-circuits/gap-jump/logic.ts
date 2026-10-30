@@ -80,7 +80,8 @@ export function dopeRounds(random: () => number): DopeRound[] {
   const first = doping(pick(DONORS), pick([1, 2, 5]));
   const second = doping(pick(ACCEPTORS), pick([0.5, 1, 2]));
   const third = doping(pick([...DONORS, ...ACCEPTORS]), pick([10, 20, 50]));
-  return [first, second, third].map((d, k) => ({ ...d, assist: aid(k) }));
+  // the order is shuffled, so a round's position says nothing about whether its dopant is a donor or an acceptor
+  return shuffle([first, second, third], random).map((d, k) => ({ ...d, assist: aid(k) }));
 }
 
 // ---- judging --------------------------------------------------------------------------------------------------------------
@@ -104,7 +105,7 @@ export function dopeMiss(r: DopeRound, logE: number, logH: number): string {
   const maj = r.type === 'n' ? { v: logE, sol: r.logE, other: logH, name: 'electrons', otherName: 'holes', ok: j.eOk } : { v: logH, sol: r.logH, other: logE, name: 'holes', otherName: 'electrons', ok: j.hOk };
   const min = r.type === 'n' ? j.hOk : j.eOk;
   if (!maj.ok) {
-    if (maj.v < maj.other) return `In your crystal the ${maj.otherName} outnumber the ${maj.name}, but an atom with ${r.dopant.valence} valence electrons in silicon adds ${r.type === 'n' ? 'a spare electron' : 'a missing electron, a hole'}, so the dopant makes the other carrier the common one.`;
+    if (maj.v < maj.other) return `In your crystal the ${maj.otherName} outnumber the ${maj.name}: that is the wrong way round for this dopant in silicon.`;
     if (maj.v > maj.sol) return 'You have more free carriers than dopant atoms: every dopant atom gives one carrier at most, so the extra ones would have to come from nowhere.';
     return 'You have fewer free carriers than dopant atoms: at room temperature nearly every dopant atom has given its carrier, so some are missing.';
   }

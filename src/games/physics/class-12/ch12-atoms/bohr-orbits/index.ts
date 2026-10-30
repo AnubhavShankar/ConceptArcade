@@ -3,16 +3,18 @@
 import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
+import { helperOn, paidFlash } from '@core/aidflash';
 import { fmt } from '@core/judge';
 import { glow, line, orb, text } from '@core/neon';
-import { A0, SLIDERS, bigExplain, bigMiss, bigReading, bigRounds, judgeBig, judgeLap, judgeRing, lapExplain, lapMiss, lapReading, lapRounds, radius, ringExplain, ringMiss, ringReading, ringRounds, type BigRound, type LapRound, type RingRound } from './logic';
+import { A0, HIT, RING_SCALE, SLIDERS, START, bigExplain, bigMiss, bigReading, bigRounds, judgeBig, judgeLap, judgeRing, lapExplain, lapMiss, lapReading, lapRounds, radius, ringExplain, ringMiss, ringReading, ringRounds, type BigRound, type LapRound, type RingRound } from './logic';
 
-const CX = 330;
-const CY = 170;
-const SC = 1.2;
+const CX = HIT.ring[0];
+const CY = HIT.ring[1];
+const SC = RING_SCALE;
 
 function ringLevel(random: () => number): DialLevel<RingRound> {
   const S = SLIDERS.r;
+  const flash = paidFlash();
   return {
     hero: {
       name: 'Hop',
@@ -22,31 +24,31 @@ function ringLevel(random: () => number): DialLevel<RingRound> {
     },
     rounds: ringRounds(random),
     charges: [1, 1, 1],
-    dials: [{ key: 'r', aria: 'Radius of the orbit in units of 10 to the minus 11 metres', label: 'Orbit radius', unit: '× 10⁻¹¹ m', step: S.step, min: S.min, max: S.max, start: 10, text: (x) => x.toFixed(1) }],
+    dials: [{ key: 'r', aria: 'Radius of the orbit in units of 10 to the minus 11 metres', label: 'Orbit radius', unit: '× 10⁻¹¹ m', step: S.step, min: S.min, max: S.max, start: START.r, text: (x) => x.toFixed(1) }],
     handles: [{ dial: 'r', at: (_r, v) => [CX + SC * v.r, CY], drag: (_r, px) => (px - CX) / SC, radius: 22 }],
-    test: { button: '🔦 Test shot', aria: 'Test shot: which level does this ring belong to', read: (r, v) => ringReading(r, v.r) },
+    test: { button: '🔦 Test shot', aria: 'Test shot: which level does this ring belong to', read: (r, v) => (flash.paid(), ringReading(r, v.r)) },
     fire: { button: '🛰️ Orbit', aria: 'Put the electron on this ring' },
     judge: (r, v) => judgeRing(r, v.r),
     miss: (r, v) => ringMiss(r, v.r),
     win: (r) => `${ringExplain(r)[0]} ${ringExplain(r)[1]}`,
-    hint: (r) => `Hop is on level n = ${r.n}; the first orbit has radius a₀ = 0.53 Å = 5.3 × 10⁻¹¹ m. ${r.assist === 0 ? 'The allowed rings are drawn.' : r.assist === 1 ? 'The rings are dim: use a test shot.' : 'No rings: work it out.'}`,
-    hit: (r) => [CX + SC * r.rSol, CY],
+    hint: (r) => `Hop is on level n = ${r.n}; the first orbit has radius a₀ = 0.53 Å = 5.3 × 10⁻¹¹ m. ${r.assist === 0 ? 'The allowed rings are drawn.' : r.assist === 1 ? 'The rings show for a moment after a test shot.' : 'No rings: work it out.'}`,
+    hit: () => HIT.ring,
     delay: 0.9,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
+      const since = flash.since(A.clock, k);
       orb(g, CX, CY, 9, PAL.red, t);
       text(g, 'nucleus', CX, CY + 24, PAL.dim, 10);
-      const live = r.assist === 0 || shot !== null;
-      const dim = r.assist === 1 && shot === null;
-      if (live || dim) {
+      // the allowed rings are the helper: live in round 1, around a test shot in round 2, on a win; never after a miss
+      if (helperOn(r.assist, !!shot?.ok, since)) {
         for (let n = 1; n <= 5; n++) {
-          g.strokeStyle = dim ? 'rgba(143,155,214,0.25)' : PAL.dim;
+          g.strokeStyle = PAL.dim;
           g.lineWidth = 1.5;
           g.setLineDash([4, 5]);
           g.beginPath();
           g.arc(CX, CY, SC * radius(n), 0, Math.PI * 2);
           g.stroke();
           g.setLineDash([]);
-          if (!dim) text(g, `n = ${n}`, CX - SC * radius(n) - 4, CY - 4, PAL.dim, 10, 'right');
+          text(g, `n = ${n}`, CX - SC * radius(n) - 4, CY - 4, PAL.dim, 10, 'right');
         }
       }
       const col = shot ? (shot.ok ? PAL.green : PAL.red) : PAL.cyan;
@@ -67,6 +69,7 @@ function ringLevel(random: () => number): DialLevel<RingRound> {
 }
 
 function lapLevel(): DialLevel<LapRound> {
+  const flash = paidFlash();
   const vX = (v: number) => 60 + ((v - SLIDERS.v.min) / (SLIDERS.v.max - SLIDERS.v.min)) * 520;
   const tX = (t: number) => 60 + ((t - SLIDERS.t.min) / (SLIDERS.t.max - SLIDERS.t.min)) * 520;
   return {
@@ -79,22 +82,23 @@ function lapLevel(): DialLevel<LapRound> {
     rounds: lapRounds(),
     charges: [1, 1, 1],
     dials: [
-      { key: 'v', aria: 'Speed in units of 10 to the 5 metres per second', label: 'Speed', unit: '× 10⁵ m/s', step: SLIDERS.v.step, min: SLIDERS.v.min, max: SLIDERS.v.max, start: 15, text: (x) => x.toFixed(2) },
-      { key: 't', aria: 'Lap time in units of 10 to the minus 16 seconds', label: 'Lap time', unit: '× 10⁻¹⁶ s', step: SLIDERS.t.step, min: SLIDERS.t.min, max: SLIDERS.t.max, start: 10, text: (x) => x.toFixed(2) },
+      { key: 'v', aria: 'Speed in units of 10 to the 5 metres per second', label: 'Speed', unit: '× 10⁵ m/s', step: SLIDERS.v.step, min: SLIDERS.v.min, max: SLIDERS.v.max, start: START.v, text: (x) => x.toFixed(2) },
+      { key: 't', aria: 'Lap time in units of 10 to the minus 16 seconds', label: 'Lap time', unit: '× 10⁻¹⁶ s', step: SLIDERS.t.step, min: SLIDERS.t.min, max: SLIDERS.t.max, start: START.t, text: (x) => x.toFixed(2) },
     ],
     handles: [
       { dial: 'v', at: (_r, v) => [vX(v.v), 296], drag: (_r, px) => SLIDERS.v.min + ((px - 60) / 520) * (SLIDERS.v.max - SLIDERS.v.min), radius: 20 },
       { dial: 't', at: (_r, v) => [tX(v.t), 326], drag: (_r, px) => SLIDERS.t.min + ((px - 60) / 520) * (SLIDERS.t.max - SLIDERS.t.min), radius: 20 },
     ],
-    test: { button: '🔦 Test shot', aria: 'Test shot: time a lap at this speed', read: (r, v) => lapReading(r, v.v, v.t) },
+    test: { button: '🔦 Test shot', aria: 'Test shot: time a lap at this speed', read: (r, v) => (flash.paid(), lapReading(r, v.v, v.t)) },
     fire: { button: '🏁 Race', aria: 'Race the electron round the orbit' },
     judge: (r, v) => judgeLap(r, v.v, v.t).ok,
     miss: (r, v) => lapMiss(r, v.v, v.t),
     win: (r) => `${lapExplain(r)[0]} ${lapExplain(r)[1]}`,
-    hint: (r) => `Level n = ${r.n}. Level 1: r₁ = 0.53 Å, v₁ = 2.19 × 10⁶ m/s. ${r.assist === 0 ? 'The lap counter is live.' : r.assist === 1 ? 'The counter is dim: use a test shot.' : 'No counter: work it out.'}`,
-    hit: () => [CX, CY],
+    hint: (r) => `Level n = ${r.n}. Level 1: r₁ = 0.53 Å, v₁ = 2.19 × 10⁶ m/s. ${r.assist === 0 ? 'The lap counter is live.' : r.assist === 1 ? 'The counter shows for a moment after a test shot.' : 'No counter: work it out.'}`,
+    hit: () => HIT.lap,
     delay: 1.0,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
+      const since = flash.since(A.clock, k);
       const R = 38 * r.n + 20;
       orb(g, CX, CY - 20, 9, PAL.red, t);
       for (let n = 1; n <= 3; n++) {
@@ -104,7 +108,8 @@ function lapLevel(): DialLevel<LapRound> {
         g.arc(CX, CY - 20, 38 * n + 20, 0, Math.PI * 2);
         g.stroke();
       }
-      const live = r.assist === 0 || shot !== null;
+      // the lap counter is the helper: live in round 1, around a test shot in round 2, on a win; never after a miss
+      const live = helperOn(r.assist, !!shot?.ok, since);
       const w = (2 * Math.PI) / (v.t * 0.1);
       orb(g, CX + R * Math.cos(t * w * 0.35), CY - 20 + R * Math.sin(t * w * 0.35), 9, PAL.green, t, shot ? (shot.ok ? 'cheer' : 'worried') : 'happy');
       text(g, `level n = ${r.n}`, 90, 40, PAL.yellow, 14, 'left');
@@ -134,7 +139,7 @@ function bigLevel(): DialLevel<BigRound> {
     },
     rounds: bigRounds(),
     charges: [1, 1, 1],
-    dials: [{ key: 'x', aria: 'Base ten logarithm of the quantum number', label: 'log₁₀ of the quantum number', unit: '', step: SLIDERS.log.step, min: SLIDERS.log.min, max: SLIDERS.log.max, start: 10, text: (x) => `n ≈ 10^${x.toFixed(1)}` }],
+    dials: [{ key: 'x', aria: 'Base ten logarithm of the quantum number', label: 'log₁₀ of the quantum number', unit: '', step: SLIDERS.log.step, min: SLIDERS.log.min, max: SLIDERS.log.max, start: START.x, text: (x) => `n ≈ 10^${x.toFixed(1)}` }],
     handles: [{ dial: 'x', at: (_r, v) => [lx(v.x), 314], drag: (_r, px) => SLIDERS.log.min + ((px - 60) / 520) * (SLIDERS.log.max - SLIDERS.log.min), radius: 22 }],
     test: { button: '🔦 Test shot', aria: 'Test shot: read the angular momentum mvr', read: (r) => bigReading(r) },
     fire: { button: '🔢 Count', aria: 'Lock in the number of zeros' },
@@ -142,7 +147,7 @@ function bigLevel(): DialLevel<BigRound> {
     miss: (r, v) => bigMiss(r, v.x),
     win: (r) => `${bigExplain(r)[0]} ${bigExplain(r)[1]}`,
     hint: (r) => `${r.desc.charAt(0).toUpperCase()}${r.desc.slice(1)}. ${r.assist === 0 ? 'The odometer is live.' : r.assist === 1 ? 'The odometer is dim: use a test shot.' : 'No odometer: work it out.'}`,
-    hit: () => [330, 160],
+    hit: () => HIT.big,
     delay: 0.9,
     draw: ({ g, r, v, t, rt, shot }) => {
       orb(g, 90, 110, 26, r.name === 'Ball' ? PAL.orange : r.name === 'Moon' ? PAL.white : PAL.cyan, t, shot ? (shot.ok ? 'cheer' : 'worried') : 'happy');

@@ -15,11 +15,12 @@
     "tan⁻¹ of a height-to-distance ratio",
     "Pythagoras for the line of sight",
     "Signed principal values of sin⁻¹",
-    "The [0, π] branch of cos⁻¹"
+    "The [0, π] branch of cos⁻¹",
+    "Branches of sec⁻¹, cosec⁻¹ and cot⁻¹"
   ],
   "learningOutcome": "The student can turn a height, distance or offset into an exact angle with tan⁻¹, sin⁻¹ or cos⁻¹, keep it inside the principal branch with the right sign, and find a line of sight by Pythagoras.",
   "mechanic": "tune-to-target",
-  "estimatedMinutes": 15,
+  "estimatedMinutes": 20,
   "levels": [
     {
       "title": "Down the street",
@@ -63,6 +64,17 @@
         "cos of the bearing = (east offset)/(range); a west offset is negative.",
         "The turret cannot point behind the wall, so the answer is never negative.",
         "cos⁻¹(−x) = π − cos⁻¹(x)."
+      ]
+    },
+    {
+      "title": "Gadget readouts",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the scope shows sec, cosec or cot ratios; use their branches: sec⁻¹ in [0, π], cosec⁻¹ in [−π/2, π/2], cot⁻¹ in (0, π) (Ex 2.1 Q3, Q7, Q8, Q10).",
+      "hints": [
+        "sec θ = 1/cos θ, cosec θ = 1/sin θ and cot θ = 1/tan θ.",
+        "cosec⁻¹ of a negative number is a negative angle, but sec⁻¹ and cot⁻¹ of a negative number are obtuse.",
+        "cot⁻¹(−x) = π − cot⁻¹(x), not −cot⁻¹(x): its branch is (0, π), so it is never negative."
       ]
     }
   ],

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createRng } from '@core/random';
-import { DIALS, KINDS, buildRounds, explain, formText, intel, judge, matText, missText, mul, outline, spotText, surdText, type Round } from './logic';
+import { num } from '@core/mathkit';
+import { DIALS, GATES, KINDS, buildRounds, explain, formText, intel, judge, machineText, matText, missText, mul, outline, spotText, surdText, type Round } from './logic';
 
 const seeds = Array.from({ length: 40 }, (_, i) => i * 7919 + 13);
 const all = (level: number) => seeds.flatMap((s) => buildRounds(level, createRng(s)));
@@ -18,7 +19,7 @@ function combos(r: Round): Record<string, number>[] {
 
 describe('every round has exactly one setting that fits the hole', () => {
   it('a scan of every dial combination finds only the answer, and the dials start away from it', () => {
-    for (const level of [1, 2, 3, 4]) {
+    for (const level of [1, 2, 3, 4, 5]) {
       for (const r of all(level).slice(0, 36)) {
         const wins = combos(r).filter((v) => judge(r, v));
         expect(wins).toEqual([r.ans]);
@@ -32,7 +33,7 @@ describe('every round has exactly one setting that fits the hole', () => {
     }
   });
   it('levels use their kinds, the holes differ within a level, and the helpers fade', () => {
-    for (const level of [1, 2, 3, 4]) {
+    for (const level of [1, 2, 3, 4, 5]) {
       const rs = buildRounds(level, createRng(9));
       expect(rs.every((r) => r.kind === KINDS[level - 1])).toBe(true);
       expect(rs.map((r) => r.assist)).toEqual([0, 1, 2]);
@@ -53,6 +54,61 @@ describe('every round has exactly one setting that fits the hole', () => {
   });
 });
 
+describe('level 4: a wide pool of shears, gates and poses', () => {
+  const rounds4 = Array.from({ length: 150 }, (_, i) => i * 7919 + 13).flatMap((s) => buildRounds(4, createRng(s)));
+  it('shears run from 1 to 6, both orders occur, and every gate and pose is used', () => {
+    expect([...new Set(rounds4.map((r) => r.ans.k))].sort()).toEqual([1, 2, 3, 4, 5, 6]);
+    expect([...new Set(rounds4.map((r) => r.ans.o))].sort()).toEqual([1, 2]);
+    expect(new Set(rounds4.map((r) => JSON.stringify(r.T))).size).toBe(GATES.length);
+    expect(new Set(rounds4.map((r) => JSON.stringify(r.P))).size).toBe(3);
+    expect(new Set(rounds4.map((r) => `${r.ans.k},${r.ans.o},${JSON.stringify(r.T)}`)).size).toBeGreaterThanOrEqual(40);
+  });
+  it('no single (k, order) setting wins more than a small share of rounds', () => {
+    for (const k of [1, 2, 3, 4, 5, 6]) for (const o of [1, 2]) expect(rounds4.filter((r) => r.ans.k === k && r.ans.o === o).length / rounds4.length).toBeLessThan(0.15);
+  });
+  it('the dial reaches past the largest answer, so the answer is never pinned to the end of the dial', () => {
+    expect(DIALS.order[0].max).toBeGreaterThan(6);
+    expect(DIALS.order[0].min).toBe(0);
+  });
+});
+
+describe('level 5: A² = kA − mI', () => {
+  it('the hole is A²P, the answer is (tr A, det A), A is not a multiple of I and det A is not 0', () => {
+    for (const r of all(5)) {
+      const M = r.M!;
+      expect(r.ans).toEqual({ k: M[0][0] + M[1][1], m: M[0][0] * M[1][1] - M[0][1] * M[1][0] });
+      expect(r.H).toEqual(mul(mul(M, M), r.P!));
+      expect(r.ans.m).not.toBe(0);
+      expect(M[0][1] !== 0 || M[1][0] !== 0 || M[0][0] !== M[1][1]).toBe(true);
+    }
+  });
+  it('the machines grow harder round by round and the worked examples are present', () => {
+    const rs = buildRounds(5, createRng(3));
+    expect(rs.map((r) => r.assist)).toEqual([0, 1, 2]);
+    const answers = new Set(all(5).filter((r) => r.assist === 2).map((r) => `${r.ans.k},${r.ans.m}`));
+    // Misc Q5 (A = [3 1; −1 2]) gives A² − 5A + 7I = O
+    expect(answers.has('5,7')).toBe(true);
+  });
+  it('the working shows A² and states k and m, and the miss does not state them', () => {
+    for (const r of all(5).slice(0, 30)) {
+      const text = explain(r);
+      expect(text).toContain('A² −');
+      expect(text).toContain(`k = ${r.ans.k}`);
+      expect(text).toContain(`m = ${num(r.ans.m)}`);
+      expect(text).toContain(matText(mul(r.M!, r.M!)));
+      const wrong = { k: r.ans.k + 1, m: r.ans.m };
+      expect(missText(r, wrong)).toMatch(/vertex \d came out at/);
+      expect(missText(r, wrong)).not.toMatch(/k =|m =|trace|determinant/);
+      expect(machineText(r)).toContain('kA − mI');
+    }
+  });
+  it('a negative m is written as + in the identity', () => {
+    const M: number[][] = [[1, 2], [3, 4]];
+    const r: Round = { kind: 'identity', M, P: [[1, 2], [1, 3]], H: mul(mul(M, M), [[1, 2], [1, 3]]), ans: { k: 5, m: -2 }, assist: 0 };
+    expect(explain(r)).toContain('A² = 5A + 2I, that is A² − 5A − 2I = O');
+  });
+});
+
 describe('arithmetic and words', () => {
   it('matrix multiplication is row by column, and order matters', () => {
     expect(mul([[1, 2], [3, 4]], [[0, 1], [1, 0]])).toEqual([[2, 1], [4, 3]]);
@@ -65,11 +121,14 @@ describe('arithmetic and words', () => {
     expect(formText([0, 0, 4])).toBe('4');
     expect(formText([1, 1, -2])).toBe('x + y − 2');
   });
-  it('a miss names the first vertex that is wrong and never the setting', () => {
-    for (const level of [1, 2, 3, 4]) {
-      for (const r of all(level).slice(0, 20)) {
+  it('a miss never prints a coordinate; round 1 names the first vertex that jammed, rounds 2 and 3 do not (level 5 keeps its reviewed text)', () => {
+    for (const level of [1, 2, 3, 4, 5]) {
+      for (const r of all(level).slice(0, 30)) {
         const wrong = Object.fromEntries(DIALS[r.kind].map((d) => [d.key, r.ans[d.key] === d.max ? d.max - 1 : r.ans[d.key] + 1]));
-        expect(missText(r, wrong)).toMatch(/vertex \d came out at/);
+        if (level === 5) expect(missText(r, wrong)).toMatch(/vertex \d came out at/);
+        else if (r.assist === 0) expect(missText(r, wrong)).toMatch(/^Vertex \d landed outside the hole/);
+        else expect(missText(r, wrong)).toMatch(/^Blocky jammed in the wall: at least one corner/);
+        if (level < 5) expect(missText(r, wrong)).not.toMatch(/\(|\[|came out at/);
         expect(missText(r, wrong)).not.toMatch(/α =|x =|y =|a =|b =/);
         expect(spotText(r, wrong)).toMatch(/\[/);
         expect(explain(r).length).toBeGreaterThan(30);

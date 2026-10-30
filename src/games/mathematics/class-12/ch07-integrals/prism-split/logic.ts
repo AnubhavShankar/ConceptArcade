@@ -93,12 +93,9 @@ export function probeText(r: Round, v: number[]): string {
   return `Test beam at x = ${r.probe}: the original reads ${num(Math.round(original(r, r.probe) * 100) / 100)} and your split reads ${num(Math.round(recombined(r, v, r.probe) * 100) / 100)}.`;
 }
 
-/** After a miss: where the two beams disagree, never the right strengths. */
-export function missText(r: Round, v: number[]): string {
-  const b = bad(r, v);
-  const x = b[0];
-  const shown = (y: number) => num(Math.round(y * 100) / 100);
-  return `The scanner found the beams apart at ${b.length} of ${CHECK.length} checkpoints. At x = ${num(x)} the original reads ${shown(original(r, x))} and your split reads ${shown(recombined(r, v, x))}.`;
+/** After a miss: that the beams part, with no checkpoint, reading or count (a reading at one point is the paid test beam). Never the right strengths. */
+export function missText(_r: Round, _v: number[]): string {
+  return 'The scanner found the beams apart: your pieces do not add back to the original beam. Put them over the common bottom and compare the top with the original top.';
 }
 
 /** After a hit: the working. */

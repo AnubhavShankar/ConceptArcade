@@ -49,6 +49,12 @@ export const SLIDERS = {
   t: { min: 1, max: 130, step: 0.01 },
   log: { min: 0, max: 90, step: 0.1 },
 };
+/** Where each dial starts: never the answer of any round. */
+export const START = { r: 10, v: 15, t: 10, x: 10 };
+/** Where the burst of points and the "−1 ♥" appear: a fixed point (the nucleus for the rings), never the answer. */
+export const HIT: Record<'ring' | 'lap' | 'big', [number, number]> = { ring: [330, 170], lap: [330, 170], big: [330, 160] };
+/** The distance on the canvas, in pixels per 10⁻¹¹ m, at which rings are drawn. */
+export const RING_SCALE = 1.2;
 
 export function ringRounds(random: () => number): RingRound[] {
   return shuffle([2, 3, 4, 5], random)

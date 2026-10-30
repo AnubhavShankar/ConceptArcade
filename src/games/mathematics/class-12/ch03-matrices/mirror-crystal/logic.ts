@@ -5,7 +5,7 @@ import { aid } from '@core/dialgame';
 import { num } from '@core/mathkit';
 import { shuffle } from '@core/quiz';
 
-export type Kind = 'sym' | 'skew' | 'split';
+export type Kind = 'sym' | 'skew' | 'split' | 'reverse';
 export type Cell = number | null;
 export interface Round {
   kind: Kind;
@@ -13,6 +13,9 @@ export interface Round {
   A: Cell[][];
   /** split: the 2 by 2 crystal [a b; c d]. */
   M: number[][];
+  /** reverse: the two crystals A and B whose product the vault reads in the mirror, (AB)′. */
+  RA?: number[][];
+  RB?: number[][];
   /** The winning setting of every dial. */
   ans: Record<string, number>;
   assist: 0 | 1 | 2;
@@ -32,8 +35,10 @@ export const DIALS: Record<Kind, { key: string; label: string; min: number; max:
     { key: 'q21', label: 'Q bottom left', min: -12, max: 12, step: 0.5, start: 0 },
     { key: 'q22', label: 'Q bottom right', min: -12, max: 12, step: 0.5, start: 0 },
   ],
+  // The four gems of the crystal X the vault reads, (AB)′, in reading order.
+  reverse: ['x11', 'x12', 'x21', 'x22'].map((k, i) => ({ key: k, label: ['X top left', 'X top right', 'X bottom left', 'X bottom right'][i], min: -20, max: 20, step: 1, start: 0 })),
 };
-export const KINDS: Kind[] = ['sym', 'skew', 'split'];
+export const KINDS: Kind[] = ['sym', 'skew', 'split', 'reverse'];
 
 const pick = <T>(xs: readonly T[], random: () => number): T => shuffle(xs, random)[0];
 const ri = (lo: number, hi: number, random: () => number) => lo + Math.floor(random() * (hi - lo + 1));
@@ -94,12 +99,36 @@ function splitRound(random: () => number): Round {
   return { kind: 'split', A: [], M: [[a, b], [c, d]], ans: { p11: a, p12: (b + c) / 2, p21: (b + c) / 2, p22: d, q11: 0, q12: (b - c) / 2, q21: (c - b) / 2, q22: 0 }, assist: 0 };
 }
 
+export const transpose = (M: number[][]): number[][] => M[0].map((_, j) => M.map((row) => row[j]));
+export const mulM = (A: number[][], B: number[][]): number[][] => A.map((row) => B[0].map((_, j) => row.reduce((s, v, k) => s + v * B[k][j], 0)));
+const sameM = (A: number[][], B: number[][]) => A.length === B.length && A.every((row, i) => row.length === B[i].length && row.every((v, j) => v === B[i][j]));
+const rand = (rows: number[], cols: number, lo: number, hi: number, random: () => number): number[][] => rows.map(() => Array.from({ length: cols }, () => ri(lo, hi, random)));
+
+/** Level 4: the vault reads (AB)′. Rounds 1 and 2 use 2 by 2 crystals, the boss a 2 by 3 times a 3 by 2. Every gem of C = AB is within the dials, C is not symmetric
+ *  (so transposing matters), A′B′ differs from X = C′ (always, for the boss, where it is 3 by 3), and X has at least two non-zero gems. */
+function reverseRound(i: number, random: () => number): Round {
+  for (;;) {
+    const boss = i === 2;
+    const RA = boss ? rand([0, 1], 3, -2, 3, random) : rand([0, 1], 2, -3, 4, random);
+    const RB = boss ? rand([0, 1, 2], 2, -2, 3, random) : rand([0, 1], 2, -3, 4, random);
+    const C = mulM(RA, RB);
+    const X = transpose(C);
+    if (!C.flat().every((c) => Math.abs(c) <= 20)) continue;
+    if (sameM(C, X)) continue;
+    if (!boss && sameM(mulM(transpose(RA), transpose(RB)), X)) continue;
+    if (X.flat().filter((c) => c !== 0).length < 2) continue;
+    return { kind: 'reverse', A: [], M: [], RA, RB, ans: { x11: X[0][0], x12: X[0][1], x21: X[1][0], x22: X[1][1] }, assist: 0 };
+  }
+}
+
 export function buildRounds(level: number, random: () => number): Round[] {
-  const make = { sym: symRound, skew: skewRound, split: splitRound }[KINDS[level - 1]];
+  const kind = KINDS[level - 1];
   const out: Round[] = [];
+  const make: (random: () => number) => Round = kind === 'reverse' ? (rnd) => reverseRound(out.length, rnd) : { sym: symRound, skew: skewRound, split: splitRound }[kind];
   for (let i = 0; i < 3; i++) {
     let r = make(random);
-    for (let t = 0; t < 10 && (out.some((o) => JSON.stringify(o.A) === JSON.stringify(r.A) && JSON.stringify(o.M) === JSON.stringify(r.M)) || Object.values(r.ans).every((x) => x === 0)); t++) r = make(random);
+    const same = (o: Round) => JSON.stringify(o.A) === JSON.stringify(r.A) && JSON.stringify(o.M) === JSON.stringify(r.M) && JSON.stringify(o.RA) === JSON.stringify(r.RA) && JSON.stringify(o.RB) === JSON.stringify(r.RB);
+    for (let t = 0; t < 10 && (out.some(same) || Object.values(r.ans).every((x) => x === 0)); t++) r = make(random);
     out.push({ ...r, assist: aid(i) });
   }
   return out;
@@ -119,7 +148,20 @@ export const sumPQ = (v: Record<string, number>): number[][] => [[v.p11 + v.q11,
 export const pSymmetric = (v: Record<string, number>) => v.p12 === v.p21;
 export const qSkew = (v: Record<string, number>) => v.q11 === 0 && v.q22 === 0 && v.q21 === -v.q12;
 
+const XKEYS = ['x11', 'x12', 'x21', 'x22'];
+const XPLACE = ['top left', 'top right', 'bottom left', 'bottom right'];
+/** The four gems of the player's crystal X as a 2 by 2 matrix. */
+export const xOf = (v: Record<string, number>): number[][] => [[v.x11, v.x12], [v.x21, v.x22]];
+/** How many of the four gems of X match the vault's crystal. */
+export const reverseMatches = (r: Round, v: Record<string, number>) => XKEYS.filter((k) => v[k] === r.ans[k]).length;
+/** The 2 by 2 matrix A′B′ (the wrong order), or null when it is not 2 by 2. */
+export const wrongOrder = (r: Round): number[][] | null => {
+  const P = mulM(transpose(r.RA!), transpose(r.RB!));
+  return P.length === 2 && P[0].length === 2 ? P : null;
+};
+
 export function judge(r: Round, v: Record<string, number>): boolean {
+  if (r.kind === 'reverse') return reverseMatches(r, v) === 4;
   if (r.kind === 'split') {
     const S = sumPQ(v);
     return S.every((row, i) => row.every((x, j) => x === r.M[i][j])) && pSymmetric(v) && qSkew(v);
@@ -131,9 +173,20 @@ export function judge(r: Round, v: Record<string, number>): boolean {
 const at = (i: number, j: number) => `row ${i + 1}, column ${j + 1}`;
 /** After a miss: which gems the mirror caught, never the values that fix them. */
 export function missText(r: Round, v: Record<string, number>): string {
+  if (r.kind === 'reverse') {
+    const X = xOf(v);
+    const P = wrongOrder(r);
+    if (P && sameM(X, P)) return 'Your crystal is A′B′, the mirror images multiplied in the same order: the vault stayed shut. The transpose of a product turns the order round.';
+    if (sameM(X, mulM(r.RA!, r.RB!))) return 'Your crystal is AB itself, not its mirror image: the vault stayed shut.';
+    const i = XKEYS.findIndex((k) => v[k] !== r.ans[k]);
+    return `The ${XPLACE[i]} gem does not match the vault’s crystal: the vault stayed shut.`;
+  }
+  // Rounds 2 and 3 get one generic text: naming the failing pair or part would be the paid check for free.
+  if (r.kind === 'split' && r.assist > 0) return 'The crystal stayed shut. P must mirror itself, Q must be its own opposite, and P + Q must give A: test each of the three rules against your gems.';
+  if (r.kind !== 'split' && r.assist > 0) return r.kind === 'sym' ? 'The crystal stayed shut: a gem does not equal its reflection in the mirror. Test each gem against the one opposite it.' : 'The crystal stayed shut: some gem is not the opposite of its reflection, or a gem on the mirror line is not its own opposite. Test each pair.';
   if (r.kind === 'split') {
     const S = sumPQ(v);
-    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) if (S[i][j] !== r.M[i][j]) return `P + Q does not give the crystal: at ${at(i, j)} the two parts add up to ${num(S[i][j])}, not what the crystal holds there.`;
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) if (S[i][j] !== r.M[i][j]) return `P + Q does not give the crystal at ${at(i, j)}: change one of the two parts there.`;
     if (!pSymmetric(v)) return `P is not symmetric: its gems at ${at(0, 1)} and ${at(1, 0)} differ, so the mirror does not match them.`;
     if (v.q11 !== 0 || v.q22 !== 0) return 'Q is not skew symmetric: a gem on its mirror line is its own reflection, so it would have to be its own opposite.';
     return `Q is not skew symmetric: its gems at ${at(0, 1)} and ${at(1, 0)} are not opposites.`;
@@ -146,6 +199,7 @@ export function missText(r: Round, v: Record<string, number>): string {
   return `A gem on the mirror line (${at(b.diag[0], b.diag[0])}) must be its own opposite for a skew crystal, and it is not.`;
 }
 export function spotText(r: Round, v: Record<string, number>): string {
+  if (r.kind === 'reverse') return `Test glow: ${reverseMatches(r, v)} of the 4 gems match.`;
   if (r.kind === 'split') {
     const S = sumPQ(v);
     const ok = S.map((row, i) => row.map((x, j) => (x === r.M[i][j] ? '✓' : '✗')).join(' '));
@@ -157,7 +211,13 @@ export function spotText(r: Round, v: Record<string, number>): string {
 
 const cellName = (i: number, j: number) => `a${i + 1}${j + 1}`;
 /** After a hit: the working. */
+const matStr = (M: number[][]) => `[${M.map((row) => row.map(num).join(', ')).join('; ')}]`;
 export function explain(r: Round): string {
+  if (r.kind === 'reverse') {
+    const C = mulM(r.RA!, r.RB!);
+    const BtAt = mulM(transpose(r.RB!), transpose(r.RA!));
+    return `AB = ${matStr(C)}, so (AB)′ = ${matStr(transpose(C))}. Check: B′A′ = ${matStr(BtAt)}, the same, because (AB)′ = B′A′.`;
+  }
   if (r.kind === 'split') {
     const [[a, b], [c, d]] = r.M;
     return `P = ½(A + A′) = [${a}, ${num((b + c) / 2)}; ${num((b + c) / 2)}, ${d}] is symmetric, and Q = ½(A − A′) = [0, ${num((b - c) / 2)}; ${num((c - b) / 2)}, 0] is skew symmetric. Check: P + Q = A.`;
@@ -175,6 +235,8 @@ export function explain(r: Round): string {
   return `${r.kind === 'sym' ? 'A′ = A means a_ij = a_ji' : 'A′ = −A means a_ji = −a_ij, so every diagonal entry is 0'}: ${letters.join('; ')}.`;
 }
 export const intel = (r: Round): string =>
-  r.kind === 'split'
-    ? `The crystal is A = [${r.M.map((row) => row.join(', ')).join('; ')}]. Split it into P + Q with P symmetric and Q skew symmetric.`
-    : `Set the gems x, y and z so that the crystal is ${r.kind === 'sym' ? 'symmetric: every gem equals its reflection in the diagonal mirror' : 'skew symmetric: every gem is the opposite of its reflection, and the mirror line is all zeros'}.`;
+  r.kind === 'reverse'
+    ? `The vault reads (AB)′ with A = ${matStr(r.RA!)} and B = ${matStr(r.RB!)}. Set the four gems of X.`
+    : r.kind === 'split'
+      ? `The crystal is A = [${r.M.map((row) => row.join(', ')).join('; ')}]. Split it into P + Q with P symmetric and Q skew symmetric.`
+      : `Set the gems x, y and z so that the crystal is ${r.kind === 'sym' ? 'symmetric: every gem equals its reflection in the diagonal mirror' : 'skew symmetric: every gem is the opposite of its reflection, and the mirror line is all zeros'}.`;

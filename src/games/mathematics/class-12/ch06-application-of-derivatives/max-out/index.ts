@@ -5,13 +5,15 @@ import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
 import { glow, line, text } from '@core/neon';
-import { buildRounds, explain, intel, judge, missText, objective, show, spotText, type Round } from './logic';
+import { barRatio, buildRounds, explain, intel, judge, missText, show, spotText, type Round } from './logic';
 
 type G = CanvasRenderingContext2D;
 type Mood = 'happy' | 'worried' | 'cheer';
 const TRACK = { x0: 60, x1: 580, y: 322 };
 const BUILD = 1.0;
 const VERDICT = 1.7;
+/** How long a paid test build keeps the reading (and the winch line) on screen in round 2 (seconds). */
+const PULSE = 1.5;
 const STEEL = '#2a3470';
 const SIDE = '#1d2556';
 
@@ -150,31 +152,28 @@ function crate(g: G, x: number, rimY: number, floorY: number, rt: number, ok: bo
   cuboid(g, x - 14 + bounce, yy, 28, 18, 28, '#c9962b', false);
 }
 
-/** The bar for a build: for a minimum, the rope, metal or money runs out at the tick; for a maximum, the order is met only when the bar reaches the tick. */
-function budget(g: G, r: Round, s: number, rt: number, label: string) {
-  const ratio = objective(r, s) / objective(r, r.best);
+/** The bar for a build, drawn only while a build is being tested: for a minimum, the rope, metal or money runs out at the tick; for a maximum, the order is met only when the bar reaches the tick. */
+function budget(g: G, r: Round, ok: boolean, rt: number, label: string) {
+  const ratio = barRatio(r, ok);
   const grow = Math.min(1, rt / BUILD);
   const min = r.goal === 'min';
   const frac = min ? Math.min(2, ratio) / 2 : Math.min(1, ratio);
   const tick = min ? 0.5 : 1;
-  const good = min ? ratio <= 1.0005 : ratio >= 0.9995;
   g.fillStyle = 'rgba(255,255,255,0.1)';
   g.fillRect(420, 270, 160, 10);
-  g.fillStyle = good ? PAL.green : PAL.red;
+  g.fillStyle = ok ? PAL.green : PAL.red;
   g.fillRect(420, 270, frac * grow * 160, 10);
   line(g, 420 + tick * 160, 264, 420 + tick * 160, 286, PAL.yellow, 2);
   text(g, label, 500, 300, PAL.dim, 11);
 }
 
-function reading(g: G, r: Round, s: number, shot: boolean) {
-  const live = r.assist === 0 || shot;
-  g.globalAlpha = r.assist === 1 && !shot ? 0.3 : 1;
-  if (live || r.assist === 1) text(g, show(r, s), 320, 296, PAL.yellow, 15);
+/** The reading of the objective at the setting: a helper, so `showIt` is true only in round 1, for a moment after a paid test build in round 2, and after a win. */
+function reading(g: G, r: Round, s: number, showIt: boolean) {
+  if (showIt) text(g, show(r, s), 320, 296, PAL.yellow, 15);
   else text(g, 'reading off', 320, 296, PAL.dim, 12);
-  g.globalAlpha = 1;
 }
 
-function drawBox(g: G, r: Round, s: number, t: number, rt: number, shot: { ok: boolean } | null, mood: Mood) {
+function drawBox(g: G, r: Round, s: number, t: number, rt: number, shot: { ok: boolean } | null, mood: Mood, helper: boolean) {
   const b = r.shape === 'square' ? r.a : r.b;
   const u = Math.min(210 / r.a, 160 / b);
   const sx = 40;
@@ -197,10 +196,10 @@ function drawBox(g: G, r: Round, s: number, t: number, rt: number, shot: { ok: b
   cuboid(g, bx, by, (r.a - 2 * s) * k, (b - 2 * s) * k, Math.max(2, s * k * hf), '#6f7fd0', true);
   if (shot) crate(g, bx + ((r.a - 2 * s) * k) / 2 + ((b - 2 * s) * k) * 0.25, by - Math.max(2, s * k), by - 6, rt, shot.ok);
   fold(g, 320, 62, t, mood, shot && rt < BUILD ? [sx + (r.a * u) / 2, sy + (b * u) / 2] : null, 0);
-  reading(g, r, s, shot !== null);
+  reading(g, r, s, helper);
 }
 
-function drawMin(g: G, r: Round, s: number, t: number, rt: number, shot: { ok: boolean } | null, mood: Mood) {
+function drawMin(g: G, r: Round, s: number, t: number, rt: number, shot: { ok: boolean } | null, mood: Mood, helper: boolean) {
   let dims: string;
   if (r.shape === 'can') {
     const V = 2 * r.a ** 3;
@@ -229,12 +228,12 @@ function drawMin(g: G, r: Round, s: number, t: number, rt: number, shot: { ok: b
     dims = `${s} m × ${Number(y.toFixed(2))} m, ${r.b} m deep`;
   }
   text(g, dims, 220, 284, PAL.white, 12);
-  budget(g, r, s, shot ? rt : BUILD, r.shape === 'can' ? 'metal used (tick = budget)' : 'cost (tick = budget)');
+  if (shot) budget(g, r, shot.ok, rt, r.shape === 'can' ? 'metal used (tick = budget)' : 'cost (tick = budget)');
   fold(g, 320, 62, t, mood, shot && rt < BUILD ? [220, 190] : null, 0);
-  reading(g, r, s, shot !== null);
+  reading(g, r, s, helper);
 }
 
-function drawFit(g: G, r: Round, s: number, t: number, rt: number, shot: { ok: boolean } | null, mood: Mood) {
+function drawFit(g: G, r: Round, s: number, t: number, rt: number, shot: { ok: boolean } | null, mood: Mood, helper: boolean) {
   const cx = 230;
   if (r.shape === 'cone') {
     const R = r.a;
@@ -274,19 +273,19 @@ function drawFit(g: G, r: Round, s: number, t: number, rt: number, shot: { ok: b
     text(g, `cone ${H} cm tall, base radius ${H / 2} cm`, cx, base + 18, PAL.dim, 11);
     text(g, `h = ${s} cm`, cx + a + 44, base - (s * u) / 2, PAL.white, 12);
   }
-  budget(g, r, s, shot ? rt : BUILD, r.shape === 'cylSurf' ? 'curved surface (tick = target)' : 'volume (tick = target)');
+  if (shot) budget(g, r, shot.ok, rt, r.shape === 'cylSurf' ? 'curved surface (tick = target)' : 'volume (tick = target)');
   fold(g, 320, 62, t, mood, shot && rt < BUILD ? [cx, 190] : null, 0);
-  reading(g, r, s, shot !== null);
+  reading(g, r, s, helper);
 }
 
-function drawCable(g: G, r: Round, s: number, t: number, rt: number, shot: { ok: boolean } | null, mood: Mood) {
+function drawCable(g: G, r: Round, s: number, t: number, rt: number, shot: { ok: boolean } | null, mood: Mood, helper: boolean) {
   const px = (x: number) => 220 + x * 30;
   const py = (y: number) => 280 - y * 10;
   g.strokeStyle = PAL.dim;
   g.lineWidth = 3;
   g.beginPath();
   let started = false;
-  for (let x = -5; x <= 8; x += 0.1) {
+  for (let x = -6; x <= 8; x += 0.1) {
     const y = r.a * x * x;
     if (y > 25) continue;
     if (!started) g.moveTo(px(x), py(y));
@@ -306,12 +305,8 @@ function drawCable(g: G, r: Round, s: number, t: number, rt: number, shot: { ok:
   line(g, px(p), py(0), px(p), py(0) - 1, PAL.pink, 1);
   text(g, 'climber', px(p), py(0) + 16, PAL.pink, 11);
   const len = Math.hypot(px(p) - dx, py(0) - 6 - (dy + 18));
-  const showLine = r.assist <= 1 || shot !== null;
-  if (showLine) {
-    g.globalAlpha = r.assist === 1 && !shot ? 0.35 : 1;
-    line(g, dx, dy + 18, px(p), py(0) - 6, PAL.yellow, 1.5, [4, 4]);
-    g.globalAlpha = 1;
-  }
+  // The dashed winch line is part of the helper: live in round 1, a moment after a paid test build in round 2, and after a win.
+  if (helper) line(g, dx, dy + 18, px(p), py(0) - 6, PAL.yellow, 1.5, [4, 4]);
   const hook = shot ? Math.min(1, rt / BUILD) * (shot.ok ? len : len * 0.7) : 0;
   const ang = Math.atan2(py(0) - 6 - (dy + 18), px(p) - dx);
   fold(g, dx, dy, t, mood, null, 0);
@@ -326,28 +321,44 @@ function drawCable(g: G, r: Round, s: number, t: number, rt: number, shot: { ok:
     g.stroke();
   }
   text(g, `x = ${s}`, dx, py(0) + 34, PAL.white, 12);
-  reading(g, r, s, shot !== null);
+  reading(g, r, s, helper);
 }
 
 function level(n: number, random: () => number): DialLevel<Round> {
   const X = (r: Round, v: number) => TRACK.x0 + ((v - r.lo) / (r.hi - r.lo)) * (TRACK.x1 - TRACK.x0);
   const hero = HEROES[n - 1];
   const label = ['Corner cut x', 'Length x', 'Inner height h', 'Position x'][n - 1];
+  /** The last paid test build: its round and the clock time it first showed (set by the first frame that draws it). */
+  let pulse: { r: Round; t0: number | null } | null = null;
   return {
     hero: { name: hero.name, role: 'a cargo drone with a cutting laser and a winch, flying for Skyline Freight', story: hero.story, objective: hero.objective },
     rounds: buildRounds(n, random),
     charges: [1, 1, 0],
     dials: [{ key: 's', aria: `${label}`, label, unit: UNIT[n - 1], step: 1, min: (r) => r.lo, max: (r) => r.hi, start: (r) => r.start, text: (v) => `${v}` }],
     handles: [{ dial: 's', at: (r, v) => [X(r, v.s), TRACK.y], drag: (r, px) => r.lo + ((px - TRACK.x0) / (TRACK.x1 - TRACK.x0)) * (r.hi - r.lo), radius: 20 }],
-    test: { button: '📏 Test build', aria: 'Test build: read the result at this setting', read: (r, v) => spotText(r, v.s) },
+    test: {
+      button: '📏 Test build',
+      aria: 'Test build: read the result at this setting',
+      read: (r, v) => {
+        pulse = { r, t0: null };
+        return spotText(r, v.s);
+      },
+    },
     fire: FIRE[n - 1],
     judge: (r, v) => judge(r, v.s),
     miss: (r, v) => missText(r, v.s),
     win: (r) => `Delivered! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The live reading is on.' : r.assist === 1 ? 'The reading is dim: a test build costs a charge.' : 'Boss round: no reading, no test build.'}`,
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The live reading is on.' : r.assist === 1 ? `No reading${n === 4 ? ' or winch line' : ''} shown: a test build shows ${n === 4 ? 'them' : 'it'} for a moment and costs a charge.` : 'Boss round: no reading, no test build.'}`,
     hit: () => [n === 4 ? 320 : 400, 200],
     delay: VERDICT,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, v, t, rt, shot, A }) => {
+      if (pulse && pulse.r === r && pulse.t0 === null) pulse.t0 = t;
+      // The reading (and in level 4 the winch line) shows live in round 1, for 1.5 s after a paid test build in round 2, and after a win; never before Fire in the boss round
+      // and never after a miss. The build bar exists only while a build is tested, with a fixed fill on a miss.
+      const frozen = !shot && r.assist === 1 && pulse !== null && pulse.r === r && pulse.t0 !== null && t - pulse.t0 < PULSE;
+      const helper = r.assist === 0 || frozen || (shot !== null && shot.ok);
+      A.canvas.dataset.reading = helper ? '1' : '0';
+      A.canvas.dataset.bar = shot && n >= 2 && n <= 3 ? barRatio(r, shot.ok).toFixed(2) : '';
       const mood: Mood = shot ? (rt > VERDICT ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
       g.fillStyle = '#060a24';
       g.fillRect(0, 0, 640, 340);
@@ -357,10 +368,10 @@ function level(n: number, random: () => number): DialLevel<Round> {
       g.lineWidth = 1;
       for (let i = 0; i < 16; i++) line(g, i * 40, 0, i * 40, 340, PAL.grid, 1);
       const s = v.s;
-      if (n === 1) drawBox(g, r, s, t, rt, shot, mood);
-      else if (n === 2) drawMin(g, r, s, t, rt, shot, mood);
-      else if (n === 3) drawFit(g, r, s, t, rt, shot, mood);
-      else drawCable(g, r, s, t, rt, shot, mood);
+      if (n === 1) drawBox(g, r, s, t, rt, shot, mood, helper);
+      else if (n === 2) drawMin(g, r, s, t, rt, shot, mood, helper);
+      else if (n === 3) drawFit(g, r, s, t, rt, shot, mood, helper);
+      else drawCable(g, r, s, t, rt, shot, mood, helper);
       line(g, TRACK.x0, TRACK.y, TRACK.x1, TRACK.y, PAL.dim, 3);
       text(g, String(r.lo), TRACK.x0, TRACK.y + 16, PAL.dim, 10);
       text(g, String(r.hi), TRACK.x1, TRACK.y + 16, PAL.dim, 10);

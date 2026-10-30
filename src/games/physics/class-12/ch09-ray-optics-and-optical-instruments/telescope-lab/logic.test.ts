@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   D,
+  MISS_BLUR,
   MOON_ANGLE,
+  PLATE_MISS,
+  SCOPE_MISS_RADIUS,
+  blurPx,
+  cassIntel,
+  cassSide,
+  cassV,
+  judgeCass,
   SLIDERS,
   buildGame,
   eyeSees,
@@ -14,8 +22,10 @@ import {
   nearL,
   nearM,
   normalM,
+  plateSide,
   plateSize,
   resultLine,
+  scopeMiss,
   view,
   viewReading,
   type Game,
@@ -152,11 +162,12 @@ describe('words: the working and the misses', () => {
   it('a miss describes the effect and does not hand over the answer', () => {
     const g2 = as(buildGame(2, lcg(3)), 'plate');
     const r = g2.rounds[0];
-    expect(missText(g2, 0, { fo: r.foSol * 2 })).toMatch(/spills over/);
-    expect(missText(g2, 0, { fo: r.foSol / 2 })).toMatch(/partly empty/);
+    expect(missText(g2, 0, { fo: r.foSol * 2 })).toMatch(/too big.*spills over/);
+    expect(missText(g2, 0, { fo: r.foSol / 2 })).toMatch(/too small.*partly empty/);
     const g1 = buildGame(1, lcg(3));
     expect(missText(g1, 0, { fe: 3, L: 120 })).toMatch(/No clear picture/);
-    expect(missText(g1, 0, { fe: 3, L: 146 })).toMatch(/× and the final image/);
+    expect(missText(g1, 0, { fe: 3, L: 146 })).toMatch(/overfills the ring, and the picture is blurred/);
+    expect(missText(g1, 0, { fe: 12, L: 156 })).toMatch(/does not fill the ring: this is not the view/);
   });
   it('a test shot reads the view in words', () => {
     expect(viewReading(144, 6, 150)).toMatch(/at infinity, magnification 24×/);
@@ -164,5 +175,207 @@ describe('words: the working and the misses', () => {
     expect(viewReading(140, 5, 135)).toMatch(/inside the objective/);
     expect(viewReading(140, 5, 160)).toMatch(/outside the eyepiece/);
     expect(eyeSees(24)).toBe(false);
+  });
+});
+
+describe('level 4: Planet night, the Cassegrain (Section 9.7.2, Exercise 9.29)', () => {
+  const seeds80 = Array.from({ length: 80 }, (_, i) => i * 7919 + 13);
+  const cg = (s: number) => as(buildGame(4, lcg(s)), 'cass');
+  const dial = grid(SLIDERS.cass.min, SLIDERS.cass.max, SLIDERS.cass.step);
+  /** Every row of the brief: [R₁, R₂, d] to v, each also checked by the mirror formula written out by hand. */
+  const TABLE: Record<number, [number, number, number, number][]> = {
+    0: [[220, 140, 20, 315]],
+    1: [[200, 120, 25, 300], [240, 160, 20, 400]],
+    2: [[180, 100, 15, 150]],
+  };
+
+  it('Exercise 9.29: R₁ = 220 mm, R₂ = 140 mm, 20 mm apart put the final image 315 mm from the small mirror', () => {
+    expect(cassV(220, 140, 20)).toBeCloseTo(315, 9);
+    // by hand: f₁ = 110, f₁ − d = 90 behind the small mirror (a virtual object, u = +90), f₂ = +70 for the convex mirror
+    expect(1 / 70 - 1 / 90).toBeCloseTo(1 / 315, 12);
+  });
+  it('every row of the table gives its v: 315, then 300 and 400, then 150, by the formula and by the mirror formula', () => {
+    for (const rows of Object.values(TABLE)) {
+      for (const [R1, R2, d, v] of rows) {
+        expect(cassV(R1, R2, d)).toBeCloseTo(v, 9);
+        const u = R1 / 2 - d; // virtual object distance behind the small mirror
+        const f2 = R2 / 2;
+        // the mirror formula for the convex mirror, 1/v + 1/u = 1/f, with the virtual object at +u
+        expect(1 / v + 1 / u).toBeCloseTo(1 / f2, 12);
+      }
+    }
+    expect(1 / 60 - 1 / 75).toBeCloseTo(1 / 300, 12);
+    expect(1 / 80 - 1 / 100).toBeCloseTo(1 / 400, 12);
+    expect(1 / 50 - 1 / 75).toBeCloseTo(1 / 150, 12);
+  });
+  it('over 80 seeds the rounds are Saturn, Jupiter, Neptune with the brief’s rows, every row turns up, and the aids fade', () => {
+    const seen: Record<number, Set<number>> = { 0: new Set(), 1: new Set(), 2: new Set() };
+    for (const s of seeds80) {
+      const g = cg(s);
+      expect(g.rounds.map((r) => r.planet)).toEqual(['Saturn', 'Jupiter', 'Neptune']);
+      expect(g.rounds.map((r) => r.assist)).toEqual([0, 1, 2]);
+      expect(g.charges).toEqual([1, 1, 0]);
+      g.rounds.forEach((r, i) => {
+        const row = TABLE[i].find(([R1, R2, d]) => R1 === r.R1 && R2 === r.R2 && d === r.d);
+        expect(row).toBeDefined();
+        expect(r.v).toBe(row![3]);
+        expect(r.f1).toBe(r.R1 / 2);
+        expect(r.f2).toBe(r.R2 / 2);
+        expect(r.u).toBe(r.f1 - r.d);
+        seen[i].add(r.v);
+      });
+    }
+    expect([...seen[0]]).toEqual([315]);
+    expect([...seen[1]].sort((a, b) => a - b)).toEqual([300, 400]);
+    expect([...seen[2]]).toEqual([150]);
+  });
+  it('the first image is a virtual object for the small mirror (f₁ > d) and every v is a multiple of 5 mm inside the dial', () => {
+    for (const s of seeds80) {
+      for (const r of cg(s).rounds) {
+        expect(r.u).toBeGreaterThan(0);
+        expect(r.v % 5).toBe(0);
+        expect(r.v).toBeGreaterThan(SLIDERS.cass.min);
+        expect(r.v).toBeLessThan(SLIDERS.cass.max);
+        expect(r.v).toBeCloseTo(cassV(r.R1, r.R2, r.d), 9);
+      }
+    }
+  });
+  it('only the answer wins: scanning the whole dial gives exactly one winner, and the start (50 mm) is never it', () => {
+    for (const s of seeds80) {
+      for (const r of cg(s).rounds) {
+        expect(dial.filter((x) => judgeCass(r, x).ok)).toEqual([r.v]);
+        expect(judgeCass(r, SLIDERS.cass.start).ok).toBe(false);
+        expect(r.v).not.toBe(SLIDERS.cass.start);
+      }
+    }
+  });
+  it('classic slips do not win: the big mirror’s focus, the virtual object distance, or v measured from the big mirror', () => {
+    for (const s of seeds80.slice(0, 20)) {
+      for (const r of cg(s).rounds) {
+        for (const slip of [r.f1, r.u, r.f2, r.R1, r.f1 + r.d, r.v - r.d, r.v + r.d]) {
+          if (slip !== r.v) expect(judgeCass(r, Math.round(slip / 5) * 5).ok).toBe(false);
+        }
+      }
+    }
+  });
+  it('the picture is sharp only at the answer: the live blur is 0 at v and grows with the error', () => {
+    for (const s of seeds80.slice(0, 20)) {
+      for (const r of cg(s).rounds) {
+        expect(dial.filter((x) => blurPx(x, r.v) === 0)).toEqual([r.v]);
+        for (const x of dial) {
+          if (x < r.v - 5) expect(blurPx(x, r.v)).toBeGreaterThanOrEqual(blurPx(x + 5, r.v));
+          if (x > r.v + 5) expect(blurPx(x, r.v)).toBeGreaterThanOrEqual(blurPx(x - 5, r.v));
+        }
+      }
+    }
+    expect(MISS_BLUR).toBe(14);
+    expect(MISS_BLUR).toBeGreaterThan(blurPx(0, 5));
+  });
+  it('a miss gives the brief’s words, with the side only: the same text (apart from the player’s own x) however far off, and never v', () => {
+    for (const s of seeds80) {
+      const g = cg(s);
+      g.rounds.forEach((r, i) => {
+        const bySide = new Map<string, Set<string>>();
+        for (const x of dial) {
+          if (x === r.v) continue;
+          const text = missText(g, i, { x });
+          expect(text).toBe(`With the sensor at ${x} mm, ${r.planet} came out as a blurred disc: the light ${x < r.v ? 'had not yet come to a focus' : 'had already focused and spread out again'}.`);
+          expect(text.replace(String(x), 'X')).not.toMatch(new RegExp(`\\b${r.v}\\b`));
+          expect(text.replace(String(x), 'X')).not.toMatch(/\d/);
+          const side = cassSide(r, x);
+          const set = bySide.get(side) ?? new Set<string>();
+          set.add(text.replace(String(x), 'X'));
+          bySide.set(side, set);
+        }
+        bySide.forEach((set) => expect(set.size).toBe(1));
+        expect(bySide.get('short')!.size + bySide.get('long')!.size).toBe(2);
+      });
+    }
+  });
+  it('the words: the intel line and the working, exactly as the brief says, for every row', () => {
+    const lines = new Map<string, string>();
+    for (const s of seeds80) {
+      const g = cg(s);
+      g.rounds.forEach((r, i) => {
+        expect(cassIntel(r)).toBe(`Tonight: ${r.planet}. Big mirror R₁ = ${r.R1} mm, small convex mirror R₂ = ${r.R2} mm, ${r.d} mm apart. Slide the camera sensor to where the planet’s image forms, measured from the small mirror.`);
+        lines.set(`${r.R1}/${r.R2}/${r.d}`, explainRound(g, i)[0]);
+        expect(explainRound(g, i)).toHaveLength(2);
+        expect(resultLine(g, i)).toMatch(/pin-sharp/);
+      });
+    }
+    expect(lines.get('220/140/20')).toBe('The big mirror would focus Saturn at f₁ = 110 mm, which is 110 − 20 = 90 mm behind the small mirror: a virtual object. With f₂ = 70 mm, 1/v = 1/70 − 1/90, so v = 315 mm from the small mirror.');
+    expect(lines.get('200/120/25')).toBe('The big mirror would focus Jupiter at f₁ = 100 mm, which is 100 − 25 = 75 mm behind the small mirror: a virtual object. With f₂ = 60 mm, 1/v = 1/60 − 1/75, so v = 300 mm from the small mirror.');
+    expect(lines.get('240/160/20')).toContain('so v = 400 mm from the small mirror.');
+    expect(lines.get('180/100/15')).toBe('The big mirror would focus Neptune at f₁ = 90 mm, which is 90 − 15 = 75 mm behind the small mirror: a virtual object. With f₂ = 50 mm, 1/v = 1/50 − 1/75, so v = 150 mm from the small mirror.');
+  });
+  it('Stella has the name, role, story and objective of the brief, in plain game words', () => {
+    const g = buildGame(4, lcg(5));
+    expect(g.hero.name).toBe('Stella');
+    expect(g.hero.role).toBe('a young stargazer with a Cassegrain telescope on a rooftop observatory');
+    expect(g.hero.story).toBe('Stella wants to photograph a planet tonight. Her Cassegrain telescope folds the light: the big concave mirror sends it to a small convex mirror, which sends it back through a hole in the big mirror to the camera. The big mirror’s image is a virtual object for the small one.');
+    expect(g.hero.objective).toBe('Slide the camera sensor to where the planet comes into focus, and photograph all three planets.');
+    expect(`${g.hero.story} ${g.hero.objective}`).not.toMatch(/\border\b|stock|shop|workshop|customer|inventory|craft/i);
+  });
+  it('levels 1 to 3 are unchanged by the new level', () => {
+    expect(buildGame(1, lcg(3)).kind).toBe('zoom');
+    expect(buildGame(2, lcg(3)).kind).toBe('plate');
+    expect(buildGame(3, lcg(3)).kind).toBe('near');
+  });
+});
+
+describe('no leaks, levels 1 to 3: the start and the misses', () => {
+  it('the start never wins: the eyepiece and tube length, the plate focal length', () => {
+    for (const s of seeds) {
+      for (const r of as(buildGame(1, lcg(s)), 'zoom').rounds) expect(judgeZoom(r, SLIDERS.fe.start, r.fo).ok).toBe(false);
+      for (const r of as(buildGame(3, lcg(s)), 'near').rounds) expect(judgeNear(r, SLIDERS.fe.start, r.fo + 8).ok).toBe(false);
+      for (const r of as(buildGame(2, lcg(s)), 'plate').rounds) expect(judgePlate(r, SLIDERS.fo.start).ok).toBe(false);
+    }
+  });
+  it('levels 1 and 3: a miss is worded by category only (size against the ring, blurred or not), with no number, whatever the settings', () => {
+    for (const level of [1, 3]) {
+      const g = buildGame(level, lcg(5)) as Extract<Game, { kind: 'zoom' | 'near' }>;
+      g.rounds.forEach((r, k) => {
+        const lr = lRange(r.fo, level === 1 ? 1 : 0.5);
+        const byKind = new Map<string, Set<string>>();
+        const all = new Set<string>();
+        for (const fe of grid(SLIDERS.fe.min, SLIDERS.fe.max, SLIDERS.fe.step * 2)) {
+          for (const L of grid(lr.min, lr.max, lr.step)) {
+            const win = level === 1 ? judgeZoom(r as never, fe, L).ok : judgeNear(r as never, fe, L).ok;
+            if (win) continue;
+            const t = missText(g, k, { fe, L });
+            const key = JSON.stringify(scopeMiss(r, fe, L));
+            byKind.set(key, (byKind.get(key) ?? new Set()).add(t));
+            all.add(t);
+            expect(t).not.toMatch(/\d/);
+          }
+        }
+        byKind.forEach((set) => expect(set.size).toBe(1));
+        expect(all.size).toBeLessThanOrEqual(7);
+      });
+    }
+  });
+  it('level 2: every wrong focal length on one side gives the same text, with no number, and the same fixed ring', () => {
+    for (const s of seeds.slice(0, 20)) {
+      const g = as(buildGame(2, lcg(s)), 'plate');
+      g.rounds.forEach((r, k) => {
+        const wrong = grid(SLIDERS.fo.min, SLIDERS.fo.max, SLIDERS.fo.step).filter((fo) => !judgePlate(r, fo).ok);
+        for (const side of ['over', 'under'] as const) {
+          const set = wrong.filter((fo) => plateSide(r, fo) === side);
+          expect(set.length).toBeGreaterThan(0);
+          expect(new Set(set.map((fo) => missText(g, k, { fo }))).size).toBe(1);
+          expect(missText(g, k, { fo: set[0] })).not.toMatch(/\d/);
+        }
+      });
+    }
+    expect(PLATE_MISS.over).toBeGreaterThan(1);
+    expect(PLATE_MISS.under).toBeLessThan(1);
+  });
+  it('a missed scope draws the target at a fixed size for its category: over the ring, under it, about the ring', () => {
+    expect(SCOPE_MISS_RADIUS.over).toBeGreaterThan(56);
+    expect(SCOPE_MISS_RADIUS.under).toBeLessThan(56);
+    expect(SCOPE_MISS_RADIUS.about).toBe(56);
+    expect(scopeMiss({ fo: 144, M: 24 }, 3, 146)).toEqual({ none: false, size: 'over', blurred: true });
+    expect(scopeMiss({ fo: 144, M: 24 }, 12, 156)).toEqual({ none: false, size: 'under', blurred: false });
+    expect(scopeMiss({ fo: 144, M: 24 }, 3, 120)).toEqual({ none: true });
   });
 });

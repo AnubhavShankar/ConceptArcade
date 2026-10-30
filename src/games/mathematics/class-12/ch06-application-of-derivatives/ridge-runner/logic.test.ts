@@ -56,19 +56,41 @@ describe('every round has exactly one winning camp', () => {
       expect(r.fpp(r.ans) > 0).toBe(r.ask === 'valley');
     }
   });
-  it('level 3: the winner beats every other whole position on the walk, and round 1 is interior, round 2 an end point', () => {
+  it('level 3: the winner beats every other whole position on the walk, and every level has an interior answer and an end-point answer', () => {
     for (const s of seeds) {
       const rs = buildRounds(3, createRng(s));
-      rs.forEach((r, k) => {
+      rs.forEach((r) => {
         for (let x = r.lo; x <= r.hi; x++) {
           if (x === r.ans) continue;
           if (r.ask === 'highest') expect(r.f(x)).toBeLessThan(r.f(r.ans));
           else expect(r.f(x)).toBeGreaterThan(r.f(r.ans));
         }
-        if (k === 0) expect(r.ans > r.lo && r.ans < r.hi).toBe(true);
-        if (k === 1) expect(r.ans === r.lo || r.ans === r.hi).toBe(true);
       });
+      const atEnd = rs.map((r) => r.ans === r.lo || r.ans === r.hi);
+      expect(atEnd.some((b) => b)).toBe(true);
+      expect(atEnd.some((b) => !b)).toBe(true);
     }
+  });
+  it('level 3: no round slot always has its answer at a dial end or always inside, and the start says nothing about the answer', () => {
+    for (const slot of [0, 1, 2]) {
+      const ends = seeds.map((s) => {
+        const r = buildRounds(3, createRng(s))[slot];
+        return r.ans === r.lo || r.ans === r.hi;
+      });
+      const share = ends.filter(Boolean).length / ends.length;
+      expect(share).toBeGreaterThan(0.2);
+      expect(share).toBeLessThan(0.8);
+    }
+    // the start is not tied to the ends of the walk: it is neither always lo nor a function of "the answer is lo"
+    const rs = all(3);
+    expect(new Set(rs.map((r) => r.start - r.lo)).size).toBeGreaterThanOrEqual(5);
+    const startAtLo = rs.filter((r) => r.start === r.lo).length / rs.length;
+    expect(startAtLo).toBeLessThan(0.4);
+    // given that the answer is at lo, the start is spread over the whole walk rather than sitting at hi
+    const ansLo = rs.filter((r) => r.ans === r.lo);
+    expect(ansLo.length).toBeGreaterThan(10);
+    expect(ansLo.filter((r) => r.start === r.hi).length / ansLo.length).toBeLessThan(0.5);
+    expect(new Set(ansLo.map((r) => r.start - r.lo)).size).toBeGreaterThanOrEqual(4);
   });
   it('helpers fade', () => {
     for (const level of [1, 2, 3]) expect(buildRounds(level, createRng(5)).map((r) => r.assist)).toEqual([0, 1, 2]);
@@ -86,6 +108,28 @@ describe('words', () => {
         }
         expect(explain(r)).toContain(String(r.ans));
         expect(intel(r).length).toBeGreaterThan(30);
+      }
+    }
+  });
+  it('a miss holds no height and no slope: the only number it may print is the flag’s own position', () => {
+    for (const level of [1, 2, 3]) {
+      for (const r of all(level).slice(0, 60)) {
+        for (const x of span(r).filter((v) => v !== r.ans)) {
+          const t = missText(r, x).replace(`camped at ${x}`, 'camped at #');
+          expect(/\d/.test(t)).toBe(false);
+        }
+      }
+    }
+  });
+  it('two wrong settings that did the same thing give the same miss text', () => {
+    for (const level of [1, 2, 3]) {
+      for (const r of all(level).slice(0, 60)) {
+        const wrong = span(r).filter((v) => v !== r.ans);
+        const key = (x: number) => (r.kind === 'camp' ? 'camp' : r.fp(x) === 0 ? `flat${Math.sign(r.fp(x - 0.5))}${Math.sign(r.fp(x + 0.5))}` : `slope${Math.sign(r.fp(x))}`);
+        for (const a of wrong) for (const b of wrong) {
+          if (key(a) !== key(b)) continue;
+          expect(missText(r, a).replace(`camped at ${a}`, 'camped at #')).toBe(missText(r, b).replace(`camped at ${b}`, 'camped at #'));
+        }
       }
     }
   });

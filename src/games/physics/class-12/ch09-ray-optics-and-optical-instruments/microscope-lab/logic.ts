@@ -183,10 +183,17 @@ export function missText(g: Game, k: number, tried: { u: number; L?: number }): 
     const o = magnifier(r.f, tried.u);
     if (o.kind === 'real') return 'Mite is outside the focal length: the lens makes a real image, so there is nothing to look at.';
     if (o.kind === 'infinity') return 'The image is at infinity: relaxed and sharp, but Mite could be bigger.';
-    return eyeSees(o.v) ? `Sharp, but Mite only looks ${fmt(o.M)}× bigger: he could look bigger and still be sharp.` : `The image is only ${fmt(o.v)} cm away, nearer than the eye can focus: it is a blur.`;
+    return eyeSees(o.v) ? 'Sharp, but Mite could look bigger and still be sharp.' : 'The image is nearer than the eye can focus: it is a blur.';
   }
   const r = g.rounds[k];
   const c = compound(r.fo, r.fe, tried.L ?? 10, tried.u);
   if (c.M === null || c.ve === null) return 'No clear picture forms with those settings.';
-  return `With those settings the picture is ${fmt(c.M)}× and its image is ${Number.isFinite(c.ve) ? `${fmt(c.ve)} cm` : 'at infinity'} away${eyeSees(c.ve) ? '' : ', too near to focus'}: not the picture the lab wants.`;
+  return scopeSides(r, c);
+}
+/** The direction of each side of a scope miss, in fixed words: the size against the wanted one, and the final image against the near point. */
+export function scopeSides(r: ScopeRound, c: Compound): string {
+  if (c.M === null || c.ve === null) return 'No clear picture forms with those settings.';
+  const size = c.M < r.M * 0.99 ? 'The picture magnifies less than the lab wants' : c.M > r.M * 1.01 ? 'The picture magnifies more than the lab wants' : 'The picture is close to the size the lab wants';
+  const focus = c.ve < D - 0.5 ? 'the final image is nearer than the eye can focus' : c.ve > D + 0.5 ? 'the final image is farther out than the near point' : 'the final image is near the near point';
+  return `${size}, and ${focus}: not the picture the lab wants.`;
 }

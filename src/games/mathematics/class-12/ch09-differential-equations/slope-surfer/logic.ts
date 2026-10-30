@@ -154,11 +154,15 @@ export function buildRounds(level: number, random: () => number): Round[] {
   const out: Round[] = [];
   makers.forEach((make, i) => {
     let r = make();
-    for (let t = 0; t < 50 && out.some((o) => o.de === r.de && o.xb === r.xb && o.ans === r.ans); t++) r = make();
-    out.push({ ...r, start: r.ans === r.cmin ? r.cmax : r.cmin <= 0 && r.cmax >= 0 && r.ans !== 0 ? 0 : r.cmin, assist: aid(i) });
+    // Every dial starts at 0, the same for every row, so a row whose answer is 0 (which the start would win) is drawn again.
+    for (let t = 0; t < 200 && (r.ans === START || out.some((o) => o.de === r.de && o.xb === r.xb && o.ans === r.ans)); t++) r = make();
+    out.push({ ...r, start: START, assist: aid(i) });
   });
   return out;
 }
+
+/** The constant every round starts at. */
+export const START = 0;
 
 export const judge = (r: Round, c: number) => c === r.ans;
 const near = (a: number, b: number) => Math.abs(a - b) < 1e-9;
@@ -172,11 +176,33 @@ export function spotText(r: Round, c: number): string {
   const h = r.curve(r.xb, c);
   return Number.isNaN(h) ? `Test ride with C = ${num(c)}: the curve ends before it reaches x = ${r.xb}.` : `Test ride with C = ${num(c)}: at x = ${r.xb} the board is at height ${round2(h)}.`;
 }
-/** After a miss: where the board crossed the beacon's x, and on which side, never the constant. */
-export function missText(r: Round, c: number): string {
+/** On which side of the beacon the board crosses x = xb: above, below, or nowhere (the curve does not exist there). */
+export function missSide(r: Round, c: number): 'above' | 'below' | 'none' {
   const h = r.curve(r.xb, c);
-  if (Number.isNaN(h)) return `The ride ended before it reached the beacon: with this C the curve does not exist at x = ${r.xb}.`;
-  return `The board crossed x = ${r.xb} at height ${round2(h)}, ${h > r.yb ? 'above' : 'below'} the beacon at ${num(r.yb)}.`;
+  return Number.isNaN(h) ? 'none' : h > r.yb ? 'above' : 'below';
+}
+/** After a miss: the side only, with no height and no number from the player's constant (the paid test ride is the only place that prints one). */
+export function missText(r: Round, c: number): string {
+  const side = missSide(r, c);
+  if (side === 'none') return `The ride ended before it reached the beacon: with this C the curve does not exist at x = ${r.xb}.`;
+  return `The board crossed x = ${r.xb} ${side} the beacon.`;
+}
+/**
+ * The y frame of the picture: fixed, from the family's own curves at the two ends of the dial. Every curve of the family lies between them, so it holds the true
+ * curve and the beacon whatever the answer is, and it is the same for any answer.
+ */
+export function frameOf(r: Round): [number, number] {
+  const ys: number[] = [];
+  for (const c of [r.cmin, r.cmax]) {
+    for (let i = 0; i <= 60; i++) {
+      const y = r.curve(r.xs + ((r.xe - r.xs) * i) / 60, c);
+      if (Number.isFinite(y)) ys.push(y);
+    }
+  }
+  const lo = Math.min(...ys);
+  const hi = Math.max(...ys);
+  const pad = (hi - lo) * 0.08 + 0.5;
+  return [lo - pad, hi + pad];
 }
 /** After a hit: the working. */
 export function explain(r: Round): string {

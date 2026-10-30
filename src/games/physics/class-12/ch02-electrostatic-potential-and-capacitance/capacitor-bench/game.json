@@ -1,8 +1,8 @@
 {
   "$schema": "../../../../../../schema/game.schema.json",
   "id": "capacitor-bench",
-  "title": "The Capacitor Bench",
-  "summary": "Charge a capacitor, design a parallel plate and slide in a dielectric with the battery connected or not.",
+  "title": "Lightning on Set",
+  "summary": "Rig a giant plate capacitor on a film set: charge it, set the gap, slide in panels and fire a flash on cue to wake a robot.",
   "subject": "physics",
   "classLevel": 12,
   "chapter": {
@@ -14,44 +14,57 @@
   "concepts": [
     "Capacitance C = Q/V",
     "Parallel-plate capacitor, C = ε₀A/d",
-    "Effect of a dielectric",
-    "Battery connected or disconnected"
+    "A dielectric multiplies C by K",
+    "Charger connected or unplugged",
+    "Dielectric strength of air, about 3 × 10⁶ V/m",
+    "Energy density of the field, u = ½ε₀E²"
   ],
-  "learningOutcome": "The student can use C = Q/V, find the capacitance of parallel plates, and say how a dielectric changes C, V, Q and the field with the battery connected or disconnected.",
+  "learningOutcome": "The student can use Q = CV and C = Kε₀A/d, say how a dielectric changes Q and V with the charger on or off, and use air’s breakdown field and u = ½ε₀E² to size a flash.",
   "mechanic": "tune-to-target",
   "estimatedMinutes": 20,
   "levels": [
     {
-      "title": "Charge a capacitor",
+      "title": "Wake-up charge",
       "tier": "concept",
       "kind": "foundation",
-      "adds": "Baseline: C = Q/V, so the charge on the plates is Q = CV, with one plate +Q and the other −Q (Ex 2.8).",
+      "adds": "Baseline: the plates hold Q = CV, so set V = Q/C; at 3 kV or more per millimetre of air the gap breaks down and the rig flashes over (Section 2.11).",
       "hints": [
-        "Q = CV. With C in pF and V in volts, Q comes out in pC; divide by 1000 for nC.",
-        "To find the voltage instead, use V = Q/C.",
-        "One plate carries +Q and the other −Q."
+        "Q = CV: nanofarads times kilovolts gives microcoulombs.",
+        "So V = Q/C. Remember 1000 pF = 1 nF.",
+        "Keep V below 3 kV for every millimetre of air between the plates."
       ]
     },
     {
-      "title": "The parallel plate",
+      "title": "Set the gap",
       "tier": "concept",
       "kind": "concept",
-      "adds": "New idea: C = ε₀A/d, so halving the gap doubles C, and a dielectric multiplies C by K (Ex 2.5, 2.8).",
+      "adds": "New idea: C = ε₀A/d, so a smaller gap gives a bigger C, and a panel of constant K filling the gap multiplies C by K (Ex 2.5, 2.8).",
       "hints": [
-        "C = ε₀A/d, with A in m² and d in metres. Rearrange for d.",
-        "C is inversely proportional to the gap: half the gap, twice the capacitance.",
-        "A dielectric of constant K multiplies the capacitance by K."
+        "Find the C you need from C = Q/V first.",
+        "C = ε₀A/d with A in m² and d in metres; ε₀ = 8.85 × 10⁻¹² F/m.",
+        "Halving the gap doubles C; a panel of constant K multiplies it by K."
       ]
     },
     {
-      "title": "Slide in a dielectric",
+      "title": "Slide in a panel",
       "tier": "application",
       "kind": "concept",
-      "adds": "New idea: with the battery connected V stays fixed and Q rises by K; disconnected, Q stays fixed and V falls by K (Ex 2.9, Example 2.8).",
+      "adds": "New idea: with the charger connected V stays fixed and Q grows K times; unplugged, Q stays fixed and V falls K times (Ex 2.9).",
       "hints": [
-        "The dielectric multiplies the capacitance by K in both cases.",
-        "Battery connected: V is fixed, so Q = CV grows by the factor K.",
-        "Disconnected: Q cannot change, so V = Q/C falls by the factor K."
+        "The panel multiplies C by K either way.",
+        "Connected: the charger holds V, so Q = KCV.",
+        "Unplugged: Q cannot change, so V = Q/(KC)."
+      ]
+    },
+    {
+      "title": "Flash on cue",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: the energy lives in the field, u = ½ε₀E² per cubic metre; when air breaks down the flash releases u × A × d (Section 2.15).",
+      "hints": [
+        "Air breaks down at E = 3 × 10⁶ V/m, so a gap d fires at V = E·d.",
+        "u = ½ε₀E² is the energy in each cubic metre of field.",
+        "The flash carries U = u × A × d. Solve for the plate area A."
       ]
     }
   ],
@@ -59,7 +72,8 @@
     "The capacitance depends on the charge on the plates",
     "Halving the gap halves the capacitance",
     "A dielectric changes the charge whether or not the battery is connected",
-    "The potential difference rises when a dielectric is inserted"
+    "The potential difference rises when a dielectric is inserted",
+    "The energy of a capacitor sits on its plates, not in the field between them"
   ],
   "author": {
     "name": "Concept Arcade maintainers",

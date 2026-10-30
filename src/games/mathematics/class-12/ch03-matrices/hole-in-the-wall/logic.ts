@@ -5,7 +5,7 @@ import { num, piText } from '@core/mathkit';
 import { shuffle } from '@core/quiz';
 
 export type Mat = number[][];
-export type Kind = 'equal' | 'product' | 'rotate' | 'order';
+export type Kind = 'equal' | 'product' | 'rotate' | 'order' | 'identity';
 /** An entry cx·x + cy·y + c0. */
 export type Form = [number, number, number];
 export interface Round {
@@ -19,6 +19,8 @@ export interface Round {
   /** order: the two machines. */
   S?: Mat;
   T?: Mat;
+  /** identity: the machine A that carved the hole twice (A²P). */
+  M?: Mat;
   /** The hole in the wall. */
   H: Mat;
   /** The winning setting of every dial of the level. */
@@ -30,9 +32,10 @@ export const DIALS: Record<Kind, { key: string; label: string; min: number; max:
   equal: [{ key: 'x', label: 'x', min: 0, max: 9, start: 0 }, { key: 'y', label: 'y', min: 0, max: 9, start: 0 }],
   product: [{ key: 'a', label: 'a', min: -3, max: 9, start: 0 }, { key: 'b', label: 'b', min: -3, max: 9, start: 0 }],
   rotate: [{ key: 'k', label: 'Turn α', min: -11, max: 12, start: 0 }],
-  order: [{ key: 'k', label: 'Shear k', min: 0, max: 6, start: 0 }, { key: 'o', label: 'Order', min: 1, max: 2, start: 1 }],
+  order: [{ key: 'k', label: 'Shear k', min: 0, max: 8, start: 0 }, { key: 'o', label: 'Order', min: 1, max: 2, start: 1 }],
+  identity: [{ key: 'k', label: 'k', min: -6, max: 9, start: 0 }, { key: 'm', label: 'm', min: -6, max: 12, start: 0 }],
 };
-export const KINDS: Kind[] = ['equal', 'product', 'rotate', 'order'];
+export const KINDS: Kind[] = ['equal', 'product', 'rotate', 'order', 'identity'];
 
 const pick = <T>(xs: readonly T[], random: () => number): T => shuffle(xs, random)[0];
 const ri = (lo: number, hi: number, random: () => number) => lo + Math.floor(random() * (hi - lo + 1));
@@ -61,6 +64,10 @@ export function outline(r: Round, v: Record<string, number>): Mat {
     case 'order': {
       const S: Mat = [[1, v.k], [0, 1]];
       return v.o === 1 ? mul(r.T!, mul(S, r.P!)) : mul(S, mul(r.T!, r.P!));
+    }
+    case 'identity': {
+      const M = r.M!;
+      return mul([[v.k * M[0][0] - v.m, v.k * M[0][1]], [v.k * M[1][0], v.k * M[1][1] - v.m]], r.P!);
     }
   }
 }
@@ -98,6 +105,8 @@ export function machineText(r: Round): string {
       return `Machine A = [ cos α  −sin α ; sin α  cos α ], pose P = ${matText(r.P!)}`;
     case 'order':
       return `Shear A = [ 1  k ; 0  1 ], gate B = ${matText(r.T!)}, pose P = ${matText(r.P!)}. Order 1 sends Blocky through A then B (BAP); order 2 through B then A (ABP)`;
+    case 'identity':
+      return `Machine A = ${matText(r.M!)}, pose P = ${matText(r.P!)}. The hole was carved by A twice (A²P). The express machine is kA − mI: set k and m so one pass carves the same hole`;
   }
 }
 
@@ -132,20 +141,39 @@ function rotateRound(random: () => number): Round {
   const P: Mat = [[2, 0, 0], [0, 2, 0]];
   return { kind: 'rotate', P, H: mul(rot(k), P), ans: { k }, assist: 0 };
 }
+/** The gates B that do not commute with a shear: a quarter turn, a swap, a flip, a lower shear and two stretches. */
+export const GATES: Mat[] = [[[0, -1], [1, 0]], [[0, 1], [1, 0]], [[1, 0], [0, -1]], [[1, 0], [1, 1]], [[2, 0], [0, 1]], [[1, 0], [0, 2]]];
+const POSES: Mat[] = [[[1, 2], [1, 1]], [[2, 1], [1, 1]], [[1, 1], [2, 1]]];
+const orderOut = (T: Mat, P: Mat, k: number, o: number): Mat => (o === 1 ? mul(T, mul([[1, k], [0, 1]], P)) : mul([[1, k], [0, 1]], mul(T, P)));
 function orderRound(random: () => number): Round {
-  const T: Mat = pick([[[0, -1], [1, 0]], [[0, 1], [1, 0]], [[1, 0], [0, -1]]] as Mat[], random);
-  const P: Mat = [[1, 2], [1, 1]];
-  const k = ri(1, 4, random);
-  const o = ri(1, 2, random);
-  const S: Mat = [[1, k], [0, 1]];
-  const H = o === 1 ? mul(T, mul(S, P)) : mul(S, mul(T, P));
-  return { kind: 'order', P, T, H, ans: { k, o }, assist: 0 };
+  for (;;) {
+    const T: Mat = pick(GATES, random);
+    const P: Mat = pick(POSES, random);
+    const k = ri(1, 6, random);
+    const o = ri(1, 2, random);
+    const H = orderOut(T, P, k, o);
+    // exactly one (shear, order) pair over the whole dial gives this hole (a gate and pose can make two different settings coincide)
+    let wins = 0;
+    for (let kk = DIALS.order[0].min; kk <= DIALS.order[0].max; kk++) for (const oo of [1, 2]) if (same(orderOut(T, P, kk, oo), H)) wins++;
+    if (wins === 1) return { kind: 'order', P, T, H, ans: { k, o }, assist: 0 };
+  }
+}
+
+const ID_EASY: Mat[] = [[[2, 1], [1, 2]], [[2, 1], [3, 1]], [[3, 2], [1, 1]], [[2, 3], [1, 2]]];
+const ID_MID: Mat[] = [[[2, -1], [1, 3]], [[1, -2], [1, 2]], [[1, 2], [-1, 3]], [[2, -3], [1, -1]], [[0, 1], [-1, 0]]];
+const ID_BOSS: Mat[] = [[[3, 1], [-1, 2]], [[3, -2], [4, -2]], [[3, 2], [-2, 1]]]; // Misc Q5, Ex 3.2 Q17, one more
+/** The hole is A²P; the one pair (k, m) with (kA − mI)P = A²P is k = tr A, m = det A. Round i takes its machine from a pool of growing difficulty. */
+function identityRound(i: number, random: () => number): Round {
+  const M = pick(i === 0 ? ID_EASY : i === 1 ? ID_MID : ID_BOSS, random);
+  const P: Mat = [[1, 2], [1, 3]];
+  return { kind: 'identity', M, P, H: mul(mul(M, M), P), ans: { k: M[0][0] + M[1][1], m: M[0][0] * M[1][1] - M[0][1] * M[1][0] }, assist: 0 };
 }
 
 export function buildRounds(level: number, random: () => number): Round[] {
   const kind = KINDS[level - 1];
-  const make = { equal: equalRound, product: productRound, rotate: rotateRound, order: orderRound }[kind];
   const out: Round[] = [];
+  const make: (random: () => number) => Round =
+    kind === 'identity' ? (rnd) => identityRound(out.length, rnd) : { equal: equalRound, product: productRound, rotate: rotateRound, order: orderRound }[kind];
   for (let i = 0; i < 3; i++) {
     let r = make(random);
     // distinct holes within a level
@@ -164,11 +192,13 @@ export function firstMismatch(r: Round, v: Record<string, number>): { vertex: nu
   return null;
 }
 const at = (p: [number, number], r: Round) => `(${[surdText, surdText].map((f, i) => (r.kind === 'rotate' ? f(p[i]) : num(p[i]))).join(', ')})`;
-/** After a miss: what happened to Blocky, never the setting that fits. */
+/** After a miss: what happened to Blocky, never the setting that fits. Level 5 keeps its reviewed text. Levels 1 to 4 print no coordinates: round 1 (live helper) names the first vertex that jammed, rounds 2 and 3 say only that a corner missed (naming the vertex would be part of the paid test slide). */
 export function missText(r: Round, v: Record<string, number>): string {
   const m = firstMismatch(r, v);
   if (!m) return 'Blocky did not fit.';
-  return `Blocky went through the machine and vertex ${m.vertex} came out at ${at(m.at, r)}, but the hole’s corner is not there: he jammed in the wall.`;
+  if (r.kind === 'identity') return `Blocky went through the machine and vertex ${m.vertex} came out at ${at(m.at, r)}, but the hole’s corner is not there: he jammed in the wall.`;
+  if (r.assist > 0) return 'Blocky jammed in the wall: at least one corner landed outside the hole. Use a test slide, or redo the multiplication, and compare each corner with the hole.';
+  return `Vertex ${m.vertex} landed outside the hole, so Blocky jammed in the wall. Compare that corner of your outline with the hole’s corner.`;
 }
 export function spotText(r: Round, v: Record<string, number>): string {
   return `Test slide: Blocky’s outline would come out as ${matText(outline(r, v), r)}.`;
@@ -198,6 +228,13 @@ export function explain(r: Round): string {
     }
     case 'order':
       return `Matrix products depend on the order: with A = [1 ${r.ans.k}; 0 1], ${r.ans.o === 1 ? 'B·A·P' : 'A·B·P'} fits the hole, and the other order does not, because AB ≠ BA.`;
+    case 'identity': {
+      const M = r.M!;
+      const S = mul(M, M);
+      const { k, m } = r.ans;
+      const rule = m < 0 ? `A² = ${k}A + ${-m}I, that is A² − ${k}A − ${-m}I = O` : `A² = ${k}A − ${m}I, that is A² − ${k}A + ${m}I = O`;
+      return `A² = ${matText(S)}. Match kA − mI to it: the top-right entry gives ${num(M[0][1])}k = ${num(S[0][1])}, so k = ${k}; then the top-left entry gives ${num(M[0][0])}k − m = ${num(S[0][0])}, so m = ${num(m)}. So ${rule}.`;
+    }
   }
 }
 export const intel = (r: Round) => `${machineText(r)}. The hole is ${matText(r.H, r)}.`;

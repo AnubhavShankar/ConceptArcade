@@ -16,11 +16,12 @@
     "Symmetric matrix A′ = A",
     "Skew symmetric matrix A′ = −A",
     "Zero diagonal of a skew matrix",
-    "Symmetric plus skew decomposition"
+    "Symmetric plus skew decomposition",
+    "Transpose of a product: (AB)′ = B′A′"
   ],
-  "learningOutcome": "The student can use A′ = A and A′ = −A to find unknown entries, and write any square matrix as the sum of a symmetric and a skew symmetric matrix.",
+  "learningOutcome": "The student can use A′ = A and A′ = −A to find unknown entries, write a square matrix as a symmetric plus a skew symmetric part, and use (AB)′ = B′A′.",
   "mechanic": "deduce-the-hidden",
-  "estimatedMinutes": 15,
+  "estimatedMinutes": 20,
   "levels": [
     {
       "title": "Make it symmetric",
@@ -54,6 +55,17 @@
         "P is symmetric: its two off-diagonal gems are equal, each the average of A’s two off-diagonal gems.",
         "Q is skew symmetric: its diagonal gems are 0 and its two off-diagonal gems are opposites.",
         "Q’s top right gem is half the difference of A’s off-diagonal gems."
+      ]
+    },
+    {
+      "title": "The reversal law",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the transpose of a product reverses the order, (AB)′ = B′A′; build the crystal the vault reads (Ex 3.3 Q4, Q5; Misc Q1, Q2).",
+      "hints": [
+        "Multiply A by B first, row by column.",
+        "Then reflect the result in the diagonal: rows become columns.",
+        "Check with B′A′: it gives the same crystal, while A′B′ usually does not."
       ]
     }
   ],

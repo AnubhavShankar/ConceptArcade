@@ -1,0 +1,73 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "signal-heist",
+  "title": "Signal Heist",
+  "summary": "Crack a vault lock by rebuilding its signal from pure tones with trigonometric identities, then charge the fuse with the integral.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": { "number": 7, "name": "Integrals" },
+  "ncertRef": "Section 7.3.2, Integration using trigonometric identities",
+  "concepts": [
+    "sin² x and cos² x by the double angle formula",
+    "Products to sums: 2 sin A cos B and the like",
+    "Powers such as sin³ x and cos⁴ x",
+    "Triple products of sines and cosines",
+    "Integrating a sum of pure tones",
+    "Net value of a definite integral that changes sign"
+  ],
+  "learningOutcome": "The student can rewrite powers and products of sines and cosines as sums with trigonometric identities, integrate the result, and evaluate the definite integral.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Double angle locks",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: sin² x = (1 − cos 2x)/2 and cos² x = (1 + cos 2x)/2 turn a square into pure tones you can integrate (Ex 7.3 Q1; Example 7).",
+      "hints": [
+        "Use cos 2x = 1 − 2 sin² x = 2 cos² x − 1.",
+        "A constant is a tone of frequency 0: the first slot.",
+        "sin x cos x = (1/2) sin 2x."
+      ]
+    },
+    {
+      "title": "Product locks",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: products to sums, 2 sin A cos B = sin(A + B) + sin(A − B), and the cos cos and sin sin forms (Ex 7.3 Q2, Q7).",
+      "hints": [
+        "2 sin A cos B = sin(A + B) + sin(A − B); 2 cos A cos B = cos(A + B) + cos(A − B).",
+        "2 sin A sin B = cos(A − B) − cos(A + B).",
+        "If A < B, sin(A − B) is negative: sin(−2x) = −sin 2x."
+      ]
+    },
+    {
+      "title": "Power and triple locks",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Harder: cubes and fourth powers, and products of three, need the identities twice (Ex 7.3 Q3, Q4, Q6, Q10, Q11).",
+      "hints": [
+        "sin 3x = 3 sin x − 4 sin³ x and cos 3x = 4 cos³ x − 3 cos x.",
+        "cos⁴ x = (cos² x)²: use the double angle formula twice.",
+        "For three factors, turn two of them into a sum first, then multiply by the third."
+      ]
+    },
+    {
+      "title": "Charge the fuse",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: evaluate the definite integral from 0 to π/2 after the identity; parts below the axis count as negative (Ex 7.3 with Ex 7.8).",
+      "hints": [
+        "Rewrite the product as a sum of pure tones first.",
+        "Integrate each tone: ∫ sin kx dx = −(cos kx)/k and ∫ cos kx dx = (sin kx)/k.",
+        "Put in π/2 and 0 and subtract; the lock reads the net charge."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "∫ sin² x dx = (sin³ x)/3",
+    "sin x cos 3x = (1/2)(sin 4x + sin 2x)",
+    "A definite integral of a wave is always positive"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

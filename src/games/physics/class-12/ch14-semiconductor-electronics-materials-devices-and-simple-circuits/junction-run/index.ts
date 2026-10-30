@@ -3,9 +3,10 @@
 import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
+import { helperOn, paidFlash } from '@core/aidflash';
 import { fmt, sgn } from '@core/judge';
 import { glow, line, orb, text } from '@core/neon';
-import { SLIDERS, barrierAfter, biasExplain, biasMiss, biasReading, biasRounds, curveExplain, curveMiss, curveReading, curveRounds, judgeBias, judgeCurve, judgeRect, rectExplain, rectMiss, rectReading, rectRounds, type BiasRound, type CurveRound, type RectRound } from './logic';
+import { RECT_START, SLIDERS, barrierAfter, biasExplain, biasMiss, biasReading, biasRounds, curveExplain, curveMiss, curveReading, curveRounds, judgeBias, judgeCurve, judgeRect, rectExplain, rectMiss, rectReading, rectRounds, type BiasRound, type CurveRound, type RectRound } from './logic';
 
 const fromTrack = (px: number, min: number, max: number) => min + ((px - 60) / 520) * (max - min);
 
@@ -13,6 +14,7 @@ function biasLevel(random: () => number): DialLevel<BiasRound> {
   const S = SLIDERS.v;
   const Y = (v: number) => 290 - ((v - S.min) / (S.max - S.min)) * 230;
   const H = (b: number) => 270 - Math.max(0, Math.min(b, 7)) * 30;
+  const flash = paidFlash();
   return {
     hero: {
       name: 'Hopper',
@@ -24,17 +26,17 @@ function biasLevel(random: () => number): DialLevel<BiasRound> {
     charges: [1, 1, 1],
     dials: [{ key: 'v', aria: 'Battery voltage across the junction, positive for forward bias', label: 'Battery (+ forward, − reverse)', unit: '', step: S.step, min: S.min, max: S.max, start: 0, text: (x) => (x > 0 ? `${x.toFixed(2)} V forward` : x < 0 ? `${(-x).toFixed(2)} V reverse` : '0 V') }],
     handles: [{ dial: 'v', at: (_r, v) => [610, Y(v.v)], drag: (_r, _px, py) => S.min + ((290 - py) / 230) * (S.max - S.min), radius: 22 }],
-    test: { button: '🔦 Test shot', aria: 'Test shot: read the built-in barrier and the battery', read: (r, v) => biasReading(r, v.v) },
+    test: { button: '🔦 Test shot', aria: 'Test shot: read the built-in barrier and the battery', read: (r, v) => (flash.paid(), biasReading(r, v.v)) },
     fire: { button: '🐔 Hop', aria: 'Connect the battery and hop' },
     judge: (r, v) => judgeBias(r, v.v),
     miss: (r, v) => biasMiss(r, v.v),
     win: (r) => `${biasExplain(r)[0]} ${biasExplain(r)[1]}`,
-    hint: (r) => `${r.material[0].toUpperCase()}${r.material.slice(1)} junction, V₀ = ${fmt(r.v0)} V. The hopper plans for a barrier of ${fmt(r.target)} V. ${r.assist === 0 ? 'The hill is drawn live.' : r.assist === 1 ? 'The hill is dim: use a test shot.' : 'No hill: work it out.'}`,
+    hint: (r) => `${r.material[0].toUpperCase()}${r.material.slice(1)} junction, V₀ = ${fmt(r.v0)} V. The hopper plans for a barrier of ${fmt(r.target)} V. ${r.assist === 0 ? 'The hill is drawn live.' : r.assist === 1 ? 'The hill shows for a moment after a test shot.' : 'No hill: work it out.'}`,
     hit: (r) => [330, H(r.target)],
     delay: 0.9,
-    draw: ({ g, r, v, t, rt, shot }) => {
-      const live = r.assist === 0 || shot !== null;
-      const dim = r.assist === 1 && shot === null;
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
+      // the true hill: live in round 1, for a moment after a test shot in round 2, never in round 3; a win shows it, a miss does not
+      const live = helperOn(r.assist, !!shot?.ok, flash.since(A.clock, k));
       const used = shot ? shot.v.v : v.v;
       const bar = barrierAfter(r, used);
       g.fillStyle = 'rgba(80,200,255,0.12)';
@@ -46,9 +48,7 @@ function biasLevel(random: () => number): DialLevel<BiasRound> {
       line(g, 60, 270, 580, 270, PAL.white, 2);
       line(g, 290, H(r.v0), 390, H(r.v0), PAL.dim, 2, [5, 5]);
       text(g, `built-in ${fmt(r.v0)} V`, 340, H(r.v0) - 8, PAL.dim, 11);
-      if (live || dim) {
-        g.save();
-        g.globalAlpha = dim ? 0.3 : 1;
+      if (live) {
         const col = shot ? (shot.ok ? PAL.green : PAL.red) : PAL.cyan;
         const w = 100 + Math.max(0, Math.min(bar, 7)) * 6;
         const x0 = 340 - w / 2;
@@ -64,7 +64,21 @@ function biasLevel(random: () => number): DialLevel<BiasRound> {
           g.stroke();
         });
         text(g, `barrier ${fmt(Math.max(0, bar))} V`, 480, H(bar) - 8, col, 12);
-        g.restore();
+      } else if (shot && rt > 0.3) {
+        // a miss without the live hill: a hill of a fixed height above or below the plan line, and no number
+        const high = bar > r.target;
+        const hy = H(r.target) + (high ? -34 : 34);
+        glow(g, PAL.red, 8, () => {
+          g.strokeStyle = PAL.red;
+          g.lineWidth = 3;
+          g.beginPath();
+          g.moveTo(60, 270);
+          g.lineTo(280, 270);
+          g.lineTo(400, hy);
+          g.lineTo(580, hy);
+          g.stroke();
+        });
+        text(g, high ? 'barrier too high ▲' : 'barrier too low ▼', 480, hy + (high ? -8 : 18), PAL.red, 12);
       }
       line(g, 60, H(r.target), 580, H(r.target), PAL.yellow, 2.5, [6, 5]);
       text(g, `plan: ${fmt(r.target)} V`, 120, H(r.target) - 8, PAL.yellow, 12);
@@ -83,6 +97,7 @@ function rectLevel(random: () => number): DialLevel<RectRound> {
   const X = (f: number) => 60 + ((f - S.min) / (S.max - S.min)) * 520;
   const WIN = 0.06;
   const tx = (s: number) => 60 + (s / WIN) * 520;
+  const flash = paidFlash();
   return {
     hero: {
       name: 'Beat',
@@ -92,17 +107,17 @@ function rectLevel(random: () => number): DialLevel<RectRound> {
     },
     rounds: rectRounds(random),
     charges: [1, 1, 1],
-    dials: [{ key: 'f', aria: 'Flash frequency of the lamp in hertz', label: 'Lamp flash rate', unit: 'Hz', step: S.step, min: S.min, max: S.max, start: 30, text: (x) => `${x} Hz` }],
+    dials: [{ key: 'f', aria: 'Flash frequency of the lamp in hertz', label: 'Lamp flash rate', unit: 'Hz', step: S.step, min: S.min, max: S.max, start: RECT_START, text: (x) => `${x} Hz` }],
     handles: [{ dial: 'f', at: (_r, v) => [X(v.f), 312], drag: (_r, px) => fromTrack(px, S.min, S.max), radius: 20 }],
-    test: { button: '🔦 Test shot', aria: 'Test shot: read when the diodes conduct', read: (r) => rectReading(r) },
+    test: { button: '🔦 Test shot', aria: 'Test shot: read when the diodes conduct', read: (r) => (flash.paid(), rectReading(r)) },
     fire: { button: '💡 Flash', aria: 'Run the lamp at this flash rate' },
     judge: (r, v) => judgeRect(r, v.f),
     miss: (r, v) => rectMiss(r, v.f),
     win: (r) => `${rectExplain(r)[0]} ${rectExplain(r)[1]}`,
-    hint: (r) => `${r.kind === 'half' ? 'Half-wave' : 'Full-wave'} rectifier on a ${r.f} Hz supply. ${r.assist === 0 ? 'The output trace is live.' : r.assist === 1 ? 'The trace is dim: use a test shot.' : 'No trace: work it out.'}`,
+    hint: (r) => `${r.kind === 'half' ? 'Half-wave' : 'Full-wave'} rectifier on a ${r.f} Hz supply. ${r.assist === 0 ? 'The output trace is live.' : r.assist === 1 ? 'The trace shows for a moment after a test shot.' : 'No trace: work it out.'}`,
     hit: () => [330, 170],
     delay: 0.9,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
       const used = shot ? shot.v.f : v.f;
       text(g, `supply ${r.f} Hz`, 60, 40, PAL.dim, 12, 'left');
       line(g, 60, 100, 580, 100, PAL.dim, 1);
@@ -117,11 +132,9 @@ function rectLevel(random: () => number): DialLevel<RectRound> {
       }
       g.stroke();
       text(g, `${r.kind === 'half' ? 'one diode' : 'two diodes'}`, 600, 100, PAL.cyan, 11, 'right');
-      const live = r.assist === 0 || shot !== null;
-      const dim = r.assist === 1 && shot === null;
-      g.save();
-      g.globalAlpha = dim ? 0.3 : 1;
-      if (live || dim) {
+      // the true output trace: live in round 1, for a moment after a test shot in round 2, never in round 3; a win shows it, a miss does not
+      const live = helperOn(r.assist, !!shot?.ok, flash.since(A.clock, k));
+      if (live) {
         line(g, 60, 205, 580, 205, PAL.dim, 1);
         g.strokeStyle = PAL.pink;
         g.lineWidth = 2.5;
@@ -135,8 +148,8 @@ function rectLevel(random: () => number): DialLevel<RectRound> {
         }
         g.stroke();
         text(g, 'output', 60, 160, PAL.pink, 12, 'left');
-      } else text(g, 'output trace off', 330, 190, PAL.dim, 12);
-      g.restore();
+      } else if (shot && rt > 0.3) text(g, shot.v.f > r.sol ? 'your lamp is too fast ▲' : 'your lamp is too slow ▼', 330, 190, PAL.red, 13);
+      else text(g, 'output trace off', 330, 190, PAL.dim, 12);
       const col = shot ? (shot.ok ? PAL.green : PAL.red) : PAL.yellow;
       text(g, 'your lamp', 60, 250, col, 12, 'left');
       line(g, 60, 270, 580, 270, PAL.dim, 1);
@@ -164,6 +177,7 @@ function curveLevel(random: () => number): DialLevel<CurveRound> {
   const fy = (i: number) => 260 - i * 7;
   const rx = (v: number) => 500 + v * 18;
   const ry = (i: number) => 100 - i * 25;
+  const flash = paidFlash();
   return {
     hero: {
       name: 'Slope',
@@ -175,17 +189,17 @@ function curveLevel(random: () => number): DialLevel<CurveRound> {
     charges: [1, 1, 1],
     dials: [{ key: 'x', aria: 'Resistance as a power of ten of ohms', label: 'Resistance', unit: '', step: S.step, min: S.min, max: S.max, start: 4, text: (x) => `${fmt(10 ** x)} Ω` }],
     handles: [{ dial: 'x', at: (_r, v) => [X(v.x), 312], drag: (_r, px) => fromTrack(px, S.min, S.max), radius: 20 }],
-    test: { button: '🔦 Test shot', aria: 'Test shot: read the change in voltage and current', read: (r) => curveReading(r) },
+    test: { button: '🔦 Test shot', aria: 'Test shot: read the change in voltage and current', read: (r) => (flash.paid(), curveReading(r)) },
     fire: { button: '🏁 Race', aria: 'Race with this resistance' },
     judge: (r, v) => judgeCurve(r, v.x),
     miss: (r, v) => curveMiss(r, v.x),
     win: (r) => `${curveExplain(r)[0]} ${curveExplain(r)[1]}`,
-    hint: (r) => `${r.kind === 'forward' ? 'Forward bias: resistance at the working point from the two marked points.' : 'Reverse bias: the resistance from the voltage and the current at the marked point.'} ${r.assist === 0 ? 'The slope helper is live.' : r.assist === 1 ? 'The helper is dim: use a test shot.' : 'No helper: work it out.'}`,
+    hint: (r) => `${r.kind === 'forward' ? 'Forward bias: resistance at the working point from the two marked points.' : 'Reverse bias: the resistance from the voltage and the current at the marked point.'} ${r.assist === 0 ? 'The slope helper is live.' : r.assist === 1 ? 'The helper shows for a moment after a test shot.' : 'No helper: work it out.'}`,
     hit: () => [330, 150],
     delay: 0.9,
-    draw: ({ g, r, v, t, rt, shot }) => {
-      const live = r.assist === 0 || shot !== null;
-      const dim = r.assist === 1 && shot === null;
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
+      // the ΔV, ΔI and the working lines: live in round 1, for a moment after a test shot in round 2, never in round 3; a win shows them, a miss does not
+      const live = helperOn(r.assist, !!shot?.ok, flash.since(A.clock, k));
       const col = shot ? (shot.ok ? PAL.green : PAL.red) : PAL.yellow;
       if (r.kind === 'forward') {
         line(g, 100, 260, 560, 260, PAL.white, 2);
@@ -200,14 +214,11 @@ function curveLevel(random: () => number): DialLevel<CurveRound> {
           g.fill();
           text(g, `${fmt(pv)} V, ${fmt(pi)} mA`, fx(pv) + 12, fy(pi) + 4, PAL.white, 11, 'left');
         }
-        if (live || dim) {
-          g.save();
-          g.globalAlpha = dim ? 0.3 : 1;
+        if (live) {
           line(g, fx(r.v1), fy(r.i1), fx(r.v2), fy(r.i1), PAL.pink, 2, [4, 4]);
           line(g, fx(r.v2), fy(r.i1), fx(r.v2), fy(r.i2), PAL.pink, 2, [4, 4]);
           text(g, `ΔV = ${fmt(r.v2 - r.v1)} V`, (fx(r.v1) + fx(r.v2)) / 2, fy(r.i1) + 16, PAL.pink, 11);
           text(g, `ΔI = ${fmt(r.i2 - r.i1)} mA`, fx(r.v2) + 8, (fy(r.i1) + fy(r.i2)) / 2, PAL.pink, 11, 'left');
-          g.restore();
         }
       } else {
         line(g, 80, 100, 560, 100, PAL.white, 2);
@@ -220,12 +231,9 @@ function curveLevel(random: () => number): DialLevel<CurveRound> {
         g.arc(rx(r.v1), ry(r.i1), 5, 0, Math.PI * 2);
         g.fill();
         text(g, `${sgn(r.v1)} V, ${sgn(r.i1)} µA`, rx(r.v1) + 12, ry(r.i1) + 18, PAL.white, 11, 'left');
-        if (live || dim) {
-          g.save();
-          g.globalAlpha = dim ? 0.3 : 1;
+        if (live) {
           line(g, rx(r.v1), 100, rx(r.v1), ry(r.i1), PAL.pink, 2, [4, 4]);
           text(g, 'V and I at this point', rx(r.v1), ry(r.i1) + 36, PAL.pink, 11);
-          g.restore();
         }
       }
       text(g, `${fmt(10 ** v.x)} Ω`, X(v.x), 296, col, 12);

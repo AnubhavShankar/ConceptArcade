@@ -89,8 +89,13 @@ const DEPTH: [number, number, number][] = [[12, 1.2, 1.5], [18, 1.5, 1.2], [20, 
 const SLAB: [number, number][] = [[15, 1.5], [12, 1.5], [9, 1.5], [20, 1.25], [16, 1.6], [12, 1.2], [18, 1.2], [21, 1.75]];
 /** [depth cm, index] */
 const CONE: [number, number][] = [[60, 1.25], [80, 1.33], [100, 1.5], [120, 1.33], [50, 1.6], [90, 1.25]];
-/** [core, cladding] */
+/** [core, cladding] for rounds 1 and 2: every one of them clads the core, so the limit is below 90°. */
 const PIPE: [number, number][] = [[1.68, 1.44], [1.5, 1.3], [1.6, 1.4], [1.5, 1.2], [1.45, 1.4]];
+/**
+ * [core, cladding] for round 3, the boss: wider limits than rounds 1 and 2, and one bare fibre (air outside, limit 90°, the end of
+ * the dial). Only one row in six is bare, so the end of the dial is not the answer of the boss round in general.
+ */
+const PIPE_BOSS: [number, number][] = [[1.5, 1], [1.55, 1.25], [1.62, 1.3], [1.62, 1.28], [1.68, 1.4], [1.58, 1.24]];
 
 export const SLIDER = {
   snell: { min: 1, max: 80, step: 1, start: 20 },
@@ -100,6 +105,22 @@ export const SLIDER = {
 };
 export const coneMax = (d: number) => Math.round(1.5 * d);
 export const CONE_MIN = 5;
+/** Level 4: where the disc starts in a pool of depth d. */
+export const coneStart = (d: number) => Math.round(0.4 * d);
+
+/** Where things sit on the canvas, shared by the scene and the tests. */
+export const GEOM = {
+  snell: { CX: 320, BY: 175, R: 140 },
+  depth: { ex: 550, ey: 120 },
+  slab: { table: 290, fx: 530, span: 120 },
+  cone: { surface: 110, lampDrop: 150 },
+};
+/** Level 1, on a miss: the outgoing leg is drawn this many degrees past the detector (too much bend) or short of it (too little), whatever the player's angle. */
+export const MISS_DEG = 12;
+/** Level 1, on a miss: which side of the detector the ray was heading for. */
+export const snellSide = (r: SnellRound, tried: number): 'over' | 'short' => (refractDeg(r.nA, r.nB, tried) > r.r ? 'over' : 'short');
+/** Level 1: the angle in medium B at which the outgoing leg is drawn: the detector on a hit, a fixed offset beside it on a miss. */
+export const snellLegDeg = (r: SnellRound, tried: number, ok: boolean) => (ok ? r.r : r.r + (snellSide(r, tried) === 'over' ? MISS_DEG : -MISS_DEG));
 
 function snellRound([nA, nB, iSol]: [number, number, number]): SnellRound {
   const r = refractDeg(nA, nB, iSol);
@@ -176,14 +197,15 @@ export function buildGame(level: number, random: () => number): Game {
     };
   }
   const picks = shuffle(PIPE, random).slice(0, 2).sort((a, b) => acceptanceDeg(a[0], a[1]) - acceptanceDeg(b[0], b[1]));
-  const rounds: PipeRound[] = [...picks, [1.5, 1] as [number, number]].map(([n1, n2], i) => ({ n1, n2, maxDeg: acceptanceDeg(n1, n2), assist: assist(i) }));
+  const boss = shuffle(PIPE_BOSS, random)[0];
+  const rounds: PipeRound[] = [...picks, boss].map(([n1, n2], i) => ({ n1, n2, maxDeg: acceptanceDeg(n1, n2), assist: assist(i) }));
   return {
     kind: 'pipe',
     hero: {
       name: 'Pulse',
       role: 'a spark entering an optical fibre',
       story: 'Pulse reaches the far end only if it is totally internally reflected every time it meets the wall of the fibre. The wider the angle it enters at, the steeper it hits the wall.',
-      objective: 'Aim Pulse at the widest angle from the axis that the fibre still guides. The last fibre has no cladding at all.',
+      objective: 'Aim Pulse at the widest angle from the axis that the fibre still guides. The last fibre may have no cladding at all.',
     },
     rounds,
     charges: [0, 0, 0],
@@ -262,9 +284,26 @@ export function resultLine(g: Game, i: number): string {
   return g.rounds[i].maxDeg >= 90 ? 'Pulse is guided at any angle: no cladding, no limit.' : `Pulse is carried to the far end at up to ${fmt(g.rounds[i].maxDeg)}°.`;
 }
 
+/**
+ * Where the burst of points and the "−1 ♥" appear: the end of the drawn outgoing leg (level 1), a fixed point (level 2) or the
+ * player's own setting (levels 3 and 4); never where the answer is. The fibre (level 5) puts it at the end of the player's own path.
+ */
+export function hitPoint(g: Game, i: number, tried: number, ok: boolean): [number, number] | null {
+  const RAD = Math.PI / 180;
+  if (g.kind === 'snell') {
+    const { CX, BY, R } = GEOM.snell;
+    const leg = snellLegDeg(g.rounds[i], tried, ok);
+    return [CX + R * sinD(leg), BY + R * Math.cos(leg * RAD)];
+  }
+  if (g.kind === 'depth') return [GEOM.depth.ex, GEOM.depth.ey];
+  if (g.kind === 'slab') return [GEOM.slab.fx, GEOM.slab.table - (tried * GEOM.slab.span) / g.rounds[i].t];
+  if (g.kind === 'cone') return [320 + (tried * 150) / g.rounds[i].d, GEOM.cone.surface - 10];
+  return null;
+}
+
 /** After a miss: the effect of what the player chose, never the right answer. */
 export function missText(g: Game, i: number, tried: number): string {
-  if (g.kind === 'snell') return 'Ray lands beside the detector.';
+  if (g.kind === 'snell') return snellSide(g.rounds[i], tried) === 'over' ? 'Ray overshoots the detector: it lands farther from the normal than the detector does.' : 'Ray falls short of the detector: it lands nearer the normal than the detector does.';
   if (g.kind === 'depth') return 'Needle is still blurred in the eyepiece.';
   if (g.kind === 'slab') return 'The camera is out of focus: Pin appears at a different height.';
   if (g.kind === 'cone') return tried < g.rounds[i].radius ? 'Light still escapes round the edge of the disc.' : 'The disc blocks all the light, but it is wider than it needs to be: part of it covers surface where no light could leave anyway.';

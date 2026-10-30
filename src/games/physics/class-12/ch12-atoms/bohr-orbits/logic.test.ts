@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { A0, SLIDERS, V1, bigExplain, bigMiss, bigReading, bigRounds, judgeBig, judgeLap, judgeRing, lapExplain, lapMiss, lapReading, lapRounds, period, quantumLog, radius, ringExplain, ringMiss, ringReading, ringRounds, speed } from './logic';
+import { A0, HIT, RING_SCALE, SLIDERS, START, V1, bigExplain, bigMiss, bigReading, bigRounds, judgeBig, judgeLap, judgeRing, lapExplain, lapMiss, lapReading, lapRounds, period, quantumLog, radius, ringExplain, ringMiss, ringReading, ringRounds, speed } from './logic';
 
 const lcg = (seed: number) => {
   let s = seed >>> 0;
@@ -89,6 +89,62 @@ describe('judging: classic mistakes do not win', () => {
   });
   it('level 3: forgetting that ħ is 10⁻³⁴ (giving log of mvr) fails', () => {
     for (const r of bigRounds()) expect(judgeBig(r, Math.log10(r.m * r.v * r.r))).toBe(false);
+  });
+});
+
+describe('no leaks: the start and the hit point', () => {
+  it('the start of every dial wins no round of any level', () => {
+    for (const s of seeds) {
+      for (const r of ringRounds(lcg(s))) expect(judgeRing(r, START.r)).toBe(false);
+    }
+    for (const r of lapRounds()) {
+      expect(judgeLap(r, START.v, START.t).ok).toBe(false);
+      expect(judgeLap(r, START.v, r.tSol).ok).toBe(false);
+      expect(judgeLap(r, r.vSol, START.t).ok).toBe(false);
+    }
+    for (const r of bigRounds()) expect(judgeBig(r, START.x)).toBe(false);
+  });
+  it('the hit point is a fixed point that is not where an answer is drawn', () => {
+    // the rings are drawn round the nucleus, so a ring of any answer is at least 20 px away from the nucleus
+    for (const s of seeds) {
+      for (const r of ringRounds(lcg(s))) expect(Math.abs(Math.hypot(HIT.ring[0] - 330, HIT.ring[1] - 170) - RING_SCALE * r.rSol)).toBeGreaterThan(20);
+    }
+    expect(HIT.ring).toEqual([330, 170]);
+    expect(HIT.lap).toEqual([330, 170]);
+    expect(HIT.big).toEqual([330, 160]);
+  });
+  it('every winner of the ring level is within 1% of the true ring: no other position wins', () => {
+    for (const s of seeds.slice(0, 20)) {
+      for (const r of ringRounds(lcg(s))) {
+        const w = grid(SLIDERS.r.min, SLIDERS.r.max, SLIDERS.r.step).filter((x) => judgeRing(r, x));
+        expect(w.length).toBeGreaterThan(0);
+        expect(Math.min(...w)).toBeGreaterThan(r.rSol * 0.98);
+        expect(Math.max(...w)).toBeLessThan(r.rSol * 1.02);
+      }
+    }
+  });
+  it('two wrong rings on the same side give the same miss text', () => {
+    for (const r of ringRounds(lcg(3))) {
+      expect(ringMiss(r, r.rSol * 1.2)).toBe(ringMiss(r, r.rSol * 1.6));
+      expect(ringMiss(r, r.rSol * 0.8)).toBe(ringMiss(r, r.rSol * 0.4));
+      expect(ringMiss(r, r.rSol * 1.2)).not.toBe(ringMiss(r, r.rSol * 0.8));
+    }
+    const l = lapRounds()[1];
+    expect(lapMiss(l, l.vSol, l.tSol * 1.3)).toBe(lapMiss(l, l.vSol, l.tSol * 2.5));
+    const b = bigRounds()[1];
+    expect(bigMiss(b, b.sol + 3)).toBe(bigMiss(b, b.sol + 9));
+    expect(bigMiss(b, b.sol - 3)).toBe(bigMiss(b, b.sol - 9));
+  });
+  it('a miss text never holds a number', () => {
+    for (const r of ringRounds(lcg(3))) {
+      expect(ringMiss(r, r.rSol * 2)).not.toMatch(/\d/);
+      expect(ringMiss(r, r.rSol / 2)).not.toMatch(/\d/);
+    }
+    const l = lapRounds()[1];
+    for (const [v, t] of [[l.vSol, l.tSol * 2], [l.vSol * 2, l.tSol], [l.vSol * 2, l.tSol * 2]]) expect(lapMiss(l, v, t)).not.toMatch(/\d/);
+    const b = bigRounds()[1];
+    expect(bigMiss(b, b.sol + 5)).not.toMatch(/\d/);
+    expect(bigMiss(b, b.sol - 5)).not.toMatch(/\d/);
   });
 });
 

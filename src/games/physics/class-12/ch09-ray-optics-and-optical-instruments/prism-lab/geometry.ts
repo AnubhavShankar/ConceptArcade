@@ -10,6 +10,13 @@ export const APEX: V = [320, 70];
 export const HEIGHT = 190;
 export const BASE_Y = APEX[1] + HEIGHT;
 
+/** Where the burst of points appears on a 640 × 340 screen: where the player's own beam ends, so it follows their setting and never the answer. */
+export function hitPoint(A: number, nRel: number, i: number): V {
+  const tr = trace3(A, nRel, i);
+  const end: V = tr.out ? add(tr.P2, tr.out, 150) : tr.tirEnd ?? tr.P2;
+  return [Math.max(20, Math.min(620, end[0])), Math.max(30, Math.min(310, end[1]))];
+}
+
 /** The prism, the beam through it and where it ends up, for incidence i and relative index nRel. */
 export function trace3(A: number, nRel: number, i: number) {
   const h = (A / 2) * RAD;

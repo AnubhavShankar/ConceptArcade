@@ -45,11 +45,27 @@ const HUNT: [number, number, number, number][] = [[0.28, 1.4, 4, 12], [0.2, 1, 3
 const LOCK: [number, number][] = [[650, 520], [600, 450], [700, 560], [600, 400], [450, 300], [500, 400]];
 const GAUGE: number[] = [1 / 3, 1 / 4, 1 / 6, 1 / 2, 2 / 3, 3 / 4, 5 / 6];
 
+/** `start` is where each dial begins; it is no round's answer (tested). */
 export const SLIDERS = {
-  lam: { min: 380, max: 760, step: 5 },
-  x: { min: 0.5, max: 12, step: 0.1 },
-  g: { min: 0, max: 1, step: 0.05 },
+  lam: { min: 380, max: 760, step: 5, start: 450 },
+  x: { min: 0.5, max: 12, step: 0.1, start: 1 },
+  g: { min: 0, max: 1, step: 0.05, start: 0.9 },
 };
+
+// ---- where things sit on the 640 × 340 scene: shared by the drawing and by the tests that keep `hit` off the answer -----------
+export const HUNT_GEOM = { AX: 170, PX: 9, SX: 520 };
+export const LOCK_GEOM = { BASE: 300, PX: 22, X: 500 };
+export const GAUGE_GEOM = { CX: 470, CY: 270, R: 130 };
+export const LAMP_GEOM = { SX: 338, MY: 120, MX: 560, BOT: 280, PXH: 30 };
+/** Where the burst and the "−1 ♥" appear: a fixed point in each level, never the target and never the winning position. */
+export const HIT = {
+  hunter: [HUNT_GEOM.SX + 22, HUNT_GEOM.AX + 70] as [number, number],
+  lock: [250, 175] as [number, number],
+  gauge: [GAUGE_GEOM.CX, GAUGE_GEOM.CY + 52] as [number, number],
+  lamp: [LAMP_GEOM.SX + 8, LAMP_GEOM.MY] as [number, number],
+};
+/** How far (px) a missed stripe is drawn past or short of the target: fixed, whatever the error. */
+export const HUNT_MISS_PX = 28;
 export const LOCK_D = 0.5;
 export const LOCK_DD = 1;
 
@@ -91,9 +107,18 @@ export function lockReading(r: LockRound, x: number): string {
   return `At ${fmt(x)} mm you are at fringe order ${fmt(n1)} of ${r.lam1} nm and ${fmt(n2)} of ${r.lam2} nm. A bright fringe needs a whole number of wavelengths.`;
 }
 
+/** After a miss: the side only, never the distance (a distance and the player's own colour would give the target's colour away). */
 export function hunterMiss(r: HunterRound, lam: number): string {
   const x = fringeX(r.n, lam, r.D, r.d);
-  return `The ${r.n}th bright fringe lands ${fmt(Math.abs(x - r.x))} mm ${x > r.x ? 'past' : 'short of'} the target.`;
+  return `The ${r.n}th bright fringe lands ${x > r.x ? 'past' : 'short of'} the target.`;
+}
+/** The y (px) of the target on the wall. */
+export const hunterTargetY = (r: HunterRound) => HUNT_GEOM.AX - r.x * HUNT_GEOM.PX;
+/** The y (px) at which the fired stripe is drawn: on the target for a win, else a fixed HUNT_MISS_PX past it (further out) or short of it. */
+export function hunterStripeY(r: HunterRound, lam: number): number {
+  const ty = hunterTargetY(r);
+  if (judgeHunter(r, lam)) return ty;
+  return fringeX(r.n, lam, r.D, r.d) > r.x ? ty - HUNT_MISS_PX : ty + HUNT_MISS_PX;
 }
 export function lockMiss(r: LockRound, x: number): string {
   const n1 = (x * 1e-3 * r.d * 1e-3) / (r.lam1 * 1e-9 * r.D);
@@ -125,4 +150,70 @@ export function gaugeExplain(r: GaugeRound): string[] {
     `A path difference Δ gives a phase φ = 2πΔ/λ, so I = 4I₀cos²(φ/2). At Δ = λ that is the maximum, K = 4I₀.`,
     `At Δ = ${fmt(r.frac)}λ, I/K = cos²(π × ${fmt(r.frac)}) = ${fmt(r.sol)} (Exercise 10.5).`,
   ];
+}
+
+// ---- level 4: lamps or lasers (Section 10.4) ------------------------------------------------------------------------------
+// The meter is stored in halves of I₀ (0 to 8), so every setting is a whole number and the judge needs no tolerance.
+
+export interface LampRound {
+  /** True for two coherent sources (a laser through two slits), false for two separate bulbs. */
+  coherent: boolean;
+  /** The path difference at the marked point, in wavelengths, as the fraction num/den. */
+  num: number;
+  den: number;
+  frac: number;
+  /** The true brightness in halves of I₀. */
+  sol: number;
+  assist: 0 | 1 | 2;
+}
+/** The meter: halves of I₀ from 0 to 8. The start is an odd number of halves (2.5 I₀), which is the answer of no row, so it never wins. */
+export const LAMP = { min: 0, max: 8, step: 1, start: 5 };
+type LampRow = [boolean, number, number];
+const LAMP_R1: LampRow[] = [[true, 1, 4], [true, 1, 3], [true, 1, 6]];
+/** Round 2 is mixed: the source type decides. Every bulb row has a coherent twin with a different answer (λ/3 → 1, λ/6 → 3). */
+const LAMP_R2: LampRow[] = [[true, 1, 3], [true, 1, 6], [true, 1, 2], [false, 1, 3], [false, 1, 6]];
+/** The boss: for the bulbs row the coherent formula gives 3I₀, not 2I₀. */
+const LAMP_R3: LampRow[] = [[true, 1, 2], [false, 1, 6], [true, 0, 1]];
+
+/** The brightness in units of I₀: 4I₀cos²(φ/2) with φ = 2πΔ/λ for coherent sources, 2I₀ for incoherent ones. */
+export const lampBrightness = (coherent: boolean, frac: number) => (coherent ? 4 * Math.cos(Math.PI * frac) ** 2 : 2);
+
+export function lampRounds(random: () => number): LampRound[] {
+  return [LAMP_R1, LAMP_R2, LAMP_R3].map((pool, k) => {
+    const [coherent, num, den] = shuffle(pool, random)[0];
+    const frac = num / den;
+    return { coherent, num, den, frac, sol: Math.round(2 * lampBrightness(coherent, frac)), assist: aid(k) };
+  });
+}
+
+export const judgeLamp = (r: LampRound, v: number) => Math.abs(v - r.sol) < 0.01;
+/** The path difference as the student reads it: 0, λ/2, λ/3 ... */
+export const lampDelta = (r: LampRound) => (r.num === 0 ? '0' : `λ/${r.den}`);
+/** The phase difference φ = 2πΔ/λ as a multiple of π. */
+export function lampPhiText(r: LampRound): string {
+  if (r.num === 0) return '0';
+  const n = 2 * r.num;
+  const g = gcd(n, r.den);
+  const k = n / g;
+  const m = r.den / g;
+  if (m === 1) return k === 1 ? 'π' : `${k}π`;
+  return k === 1 ? `π/${m}` : `${k}π/${m}`;
+}
+/** Which way the real light lies from a wrong meter setting: dimmer than the setting, or brighter. */
+export const lampSide = (r: LampRound, v: number): 'dimmer' | 'brighter' => (v > r.sol ? 'dimmer' : 'brighter');
+
+/** After a miss: the direction only, in words. The only number is the player's own setting. */
+export function lampMiss(r: LampRound, v: number): string {
+  return `The meter set to ${fmt(v / 2)}I₀ read ${v > r.sol ? 'too high' : 'too low'} for the light at that point.`;
+}
+/** The paid test: is the phase locked? It shows the phase difference of coherent beams and nothing about the brightness. */
+export function lampReading(r: LampRound): string {
+  return r.coherent
+    ? `Phase check: the two beams keep a fixed phase difference of φ = ${fmt(r.frac * 360)}° at this point.`
+    : 'Phase check: the two bulbs never keep a steady phase difference; it drifts through every value, so there is no fixed φ.';
+}
+export function lampExplain(r: LampRound): string {
+  return r.coherent
+    ? `Coherent beams: φ = 2πΔ/λ = ${lampPhiText(r)}, so I = 4I₀cos²(φ/2) = ${fmt(r.sol / 2)}I₀.`
+    : 'Two separate bulbs are incoherent: their phase difference keeps changing, so the cos² term averages to 1/2 and I = 2I₀ everywhere, whatever the path difference.';
 }

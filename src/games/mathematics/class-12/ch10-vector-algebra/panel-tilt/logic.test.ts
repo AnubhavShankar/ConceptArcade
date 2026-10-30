@@ -55,6 +55,70 @@ describe('every round has exactly one winning setting', () => {
   });
 });
 
+describe('a miss and the start never give the answer away', () => {
+  it('every dial starts at 0 in every row of every level, and that start never wins', () => {
+    for (const level of [1, 2, 3]) {
+      for (const r of all(level)) {
+        expect(r.start).toEqual(r.ans.map(() => 0));
+        expect(judge(r, r.start)).toBe(false);
+      }
+    }
+  });
+  it('level 2 answers range over 1 to 9 (not just 1 to 3), differ within a level, and only the answer gives the area over the whole dial', () => {
+    const seen = new Set<number>();
+    for (const s of seeds) {
+      const rs = buildRounds(2, createRng(s));
+      expect(new Set(rs.map((r) => r.ans[0])).size).toBe(3);
+      for (const r of rs) {
+        seen.add(r.ans[0]);
+        const wins = span(r.min, r.max).filter((c) => Math.abs(size(normal(r, [c])) - r.T) < 1e-9);
+        expect(wins).toEqual([r.ans[0]]);
+        expect(Number.isInteger(r.T)).toBe(true);
+        expect(r.ans[0]).toBeGreaterThanOrEqual(1);
+        expect(r.ans[0]).toBeLessThanOrEqual(9);
+      }
+    }
+    expect([...seen].filter((c) => c > 3).length).toBeGreaterThanOrEqual(5);
+    expect(seen.size).toBe(9);
+  });
+  it('levels 2 and 3: the miss text has no number, and every wrong setting on one side of the answer reads the same', () => {
+    for (const level of [2, 3]) {
+      for (const r of all(level)) {
+        const lows = new Set<string>();
+        const highs = new Set<string>();
+        for (const c of span(r.min, r.max)) {
+          if (c === r.ans[0]) continue;
+          const text = missText(r, [c]);
+          expect(text).not.toMatch(/\d/);
+          (c < r.ans[0] ? lows : highs).add(text);
+        }
+        expect(lows.size).toBeLessThanOrEqual(1);
+        expect(highs.size).toBeLessThanOrEqual(1);
+        if (lows.size && highs.size) expect([...lows][0]).not.toBe([...highs][0]);
+      }
+    }
+  });
+  it('level 1: a miss prints no number, and every bolt that is not square reads the same', () => {
+    for (const r of all(1).slice(0, 60)) {
+      const t = cross(r.a, r.b);
+      const notSquare = new Set<string>();
+      for (const d of [[1, 0, 0], [0, 2, 0], [0, 0, -3], [1, 1, 1], [-4, 2, 5]]) {
+        const v = t.map((x, i) => x + d[i]);
+        if (judge(r, v) || dot(v as V3, r.a) === 0 && dot(v as V3, r.b) === 0) continue;
+        const text = missText(r, v);
+        expect(text).not.toMatch(/\d/);
+        notSquare.add(text);
+      }
+      expect(notSquare.size).toBeLessThanOrEqual(1);
+      // square but off in length: only longer or shorter
+      const twice = t.map((x) => 2 * x);
+      expect(missText(r, twice)).toMatch(/longer/);
+      expect(missText(r, twice)).not.toMatch(/\d/);
+      expect(missText(r, t.map((x) => -2 * x))).toMatch(/longer/);
+    }
+  });
+});
+
 describe('words', () => {
   it('the reversed bolt gets the right-hand-rule message; misses and tests read effects; the working is stated', () => {
     for (const r of all(1).slice(0, 30)) {

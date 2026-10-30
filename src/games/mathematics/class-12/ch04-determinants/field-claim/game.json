@@ -16,11 +16,12 @@
     "Both signs of the determinant",
     "Collinear points",
     "Equation of a line through two points",
-    "Expanding a 3 by 3 determinant"
+    "Expanding a 3 by 3 determinant",
+    "Scaling: |kA| = kⁿ|A|"
   ],
   "learningOutcome": "The student can find an unknown vertex from a given area (taking both signs), decide when three points are collinear, and write the equation of the line through two points from a determinant.",
   "mechanic": "tune-to-target",
-  "estimatedMinutes": 15,
+  "estimatedMinutes": 20,
   "levels": [
     {
       "title": "The deed’s area",
@@ -53,6 +54,17 @@
         "A point (x, y) is on the line when the determinant with the two beacons is 0.",
         "Expand along the first row and collect x, y and the constant.",
         "Rewrite as y = mx + c."
+      ]
+    },
+    {
+      "title": "Scale the field",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: scaling every post by k multiplies the area by k², because |kA| = kⁿ|A| for an n × n matrix; find k from the new deed (Ex 4.1 Q3, Q4).",
+      "hints": [
+        "First find the original area with the determinant.",
+        "Multiplying every coordinate by k multiplies the area by k², not by k.",
+        "Solve k² × (original area) = (new area)."
       ]
     }
   ],

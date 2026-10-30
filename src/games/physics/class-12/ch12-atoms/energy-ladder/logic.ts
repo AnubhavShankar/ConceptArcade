@@ -52,6 +52,9 @@ export const SLIDERS = {
   pe: { min: -28, max: 0, step: 0.01 },
 };
 
+/** Where each dial starts: no round of its level has this as its answer. */
+export const START = { lam: 300, e: 9, ke: 5, pe: -5 };
+
 export function absorbRounds(random: () => number): AbsorbRound[] {
   return shuffle(ABSORB, random)
     .slice(0, 3)
@@ -102,13 +105,10 @@ export function absorbMiss(r: AbsorbRound, lam: number): string {
   if (near) return `The photon fits a different rung: the electron jumps, but not to level ${r.to}.`;
   return e > gap ? 'The photon does not match any rung: it carries too much energy for the jump you want and passes through.' : 'The photon does not match any rung: it carries too little energy for the jump you want and passes through.';
 }
-export const beamMiss = (r: BeamRound, e: number) => (linesFor(e) < r.lines ? `The atoms are not lifted high enough: the gas shows only ${linesFor(e)} line${linesFor(e) === 1 ? '' : 's'}.` : `The atoms are lifted too high: the gas shows ${linesFor(e)} lines, more than wanted.`);
-export function budgetMiss(r: BudgetRound, ke: number, pe: number): string {
-  if (Math.abs(ke + pe - level(r.n)) < 0.05) return 'Your two energies add up to the right total, but they are not split the way the electron’s orbit splits them.';
-  const j = judgeBudget(r, ke, pe);
-  if (!j.keOk && !j.peOk) return 'Neither energy matches the level: the total of your two does not make the energy of this level.';
-  return 'Your two energies do not add up to the total energy of this level.';
-}
+/** Direction only: no line count of the player's own beam, no key energy. */
+export const beamMiss = (r: BeamRound, e: number) => (linesFor(e) < r.lines ? 'The atoms are not lifted high enough: the gas shows fewer lines than wanted.' : 'The atoms are lifted too high: the gas shows more lines than wanted.');
+/** One text for every miss: it gives no verdict on either dial, so a miss cannot say which of the two is right. */
+export const budgetMiss = (_r: BudgetRound, _ke: number, _pe: number): string => 'The budget is out of balance: this orbit does not share its energy between kinetic and potential that way.';
 
 export function absorbExplain(r: AbsorbRound): string[] {
   return [

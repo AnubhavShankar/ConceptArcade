@@ -170,11 +170,43 @@ describe('words: the working and the misses', () => {
     const g1 = buildGame(1, lcg(3));
     const r1 = as(g1, 'mag').rounds[0];
     expect(missText(g1, 0, { u: r1.uSol - 1 })).toMatch(/nearer than the eye can focus/);
-    expect(missText(g1, 0, { u: r1.uSol + 0.3 })).toMatch(/Sharp, but Mite only looks/);
+    expect(missText(g1, 0, { u: r1.uSol + 0.3 })).toMatch(/Sharp, but Mite could look bigger/);
     expect(missText(g1, 0, { u: r1.f + 1 })).toMatch(/real image/);
     expect(missText(g1, 0, { u: r1.uSol - 1 })).not.toContain(`${r1.uSol.toFixed(1)}`);
     const g2 = buildGame(2, lcg(3));
-    expect(missText(g2, 0, { u: 2.2, L: 10 })).toMatch(/total magnification|×|No clear picture/);
+    expect(missText(g2, 0, { u: 2.2, L: 10 })).toMatch(/not the picture the lab wants|No clear picture/);
+  });
+  it('miss texts never hold the player’s own magnification or image distance: direction only, no digits', () => {
+    for (const seed of Array.from({ length: 30 }, (_, i) => i * 7919 + 13)) {
+      const g1 = buildGame(1, lcg(seed));
+      for (let k = 0; k < 3; k++) {
+        const r = as(g1, 'mag').rounds[k];
+        for (let u = 1; u <= r.f - 0.1; u += 0.3) expect(missText(g1, k, { u })).not.toMatch(/\d/);
+      }
+    }
+    const g2 = buildGame(2, lcg(3));
+    for (let k = 0; k < 3; k++) for (let uo = 0.5; uo <= 4; uo += 0.3) for (let L = 5; L <= 20; L += 1.7) expect(missText(g2, k, { u: uo, L })).not.toMatch(/\d/);
+  });
+  it('the scope miss texts say too weak, too strong, too near and too far, and all four can happen', () => {
+    const g2 = buildGame(2, lcg(3));
+    const seen = new Set<string>();
+    for (let k = 0; k < 3; k++)
+      for (let uo = 0.5; uo <= 4; uo += 0.1) for (let L = 5; L <= 20; L += 0.5) {
+        const t = missText(g2, k, { u: uo, L });
+        if (/less than/.test(t)) seen.add('weak');
+        if (/more than/.test(t)) seen.add('strong');
+        if (/nearer than the eye/.test(t)) seen.add('near');
+        if (/farther out/.test(t)) seen.add('far');
+      }
+    expect([...seen].sort()).toEqual(['far', 'near', 'strong', 'weak']);
+  });
+  it('the starting dials never win, in any round of either level', () => {
+    for (const seed of Array.from({ length: 80 }, (_, i) => i * 7919 + 13)) {
+      const g1 = buildGame(1, lcg(seed));
+      for (const r of as(g1, 'mag').rounds) expect(judgeMag(r, Math.round(r.f * 0.4 * 10) / 10).ok).toBe(false);
+      const g2 = buildGame(2, lcg(seed));
+      for (const r of as(g2, 'scope').rounds) expect(judgeScope(r, SLIDERS.uo.start, SLIDERS.L.start).ok).toBe(false);
+    }
   });
   it('test shots read out the picture in words', () => {
     expect(magReading(9, 6.6)).toMatch(/virtual image is [\d.]+ cm away/);

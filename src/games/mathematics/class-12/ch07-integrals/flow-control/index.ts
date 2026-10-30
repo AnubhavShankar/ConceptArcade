@@ -3,9 +3,10 @@
 // player works out the moment, then shuts the gate on time. A charge buys slow motion.
 import { PAL, createArcade } from '@core/arcade';
 import { defineGame } from '@core/define';
-import { backdrop, face, num, verdict } from '@core/mathkit';
+import { helperOn, paidFlash } from '@core/aidflash';
+import { backdrop, face, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
-import { SPEED, buildRounds, explain, intel, missText, onTime } from './logic';
+import { MISS_FILL, SPEED, buildRounds, explain, intel, isShort, missText, onTime } from './logic';
 
 type G = CanvasRenderingContext2D;
 type Mood = 'happy' | 'worried' | 'cheer';
@@ -79,6 +80,7 @@ export default defineGame({
     let tNow = 0;
     let shut: number | null = null;
     let lastT: number | null = null;
+    const flash = paidFlash();
     const A = createArcade(
       ctx,
       { name: 'Dewey', role: 'a dam keeper who shuts the gate at the moment the tank holds exactly what the town needs', story: hero.story, objective: hero.objective },
@@ -95,7 +97,7 @@ export default defineGame({
           shut = null;
           A.feedback.hidden = true;
           const r = rounds[k];
-          A.hint.textContent = `${intel(r)} ${r.assist === 0 ? 'The gauge is live.' : r.assist === 1 ? 'The gauge is dim.' : 'Boss round: no gauge.'} Space opens and shuts the gate.`;
+          A.hint.textContent = `${intel(r)} ${r.assist === 0 ? 'The gauge is live.' : r.assist === 1 ? 'No gauge: slow motion costs a charge and lights the gauge for a moment.' : 'Boss round: no gauge.'} Space opens and shuts the gate.`;
         },
       },
     );
@@ -125,6 +127,7 @@ export default defineGame({
           return;
         }
         if (!A.spend()) return;
+        flash.paid();
         slow = true;
         A.say('Slow motion: the flow runs at half speed for the rest of this round.', true);
       }, 'secondary'),
@@ -183,32 +186,42 @@ export default defineGame({
       for (let i = 0; i <= r.max; i++) {
         for (const x of r.sym && i > 0 ? [i, -i] : [i]) {
           line(g, X(x), z - 3, X(x), z + 3, PAL.dim, 1);
-          text(g, String(x), X(x), P.bottom + 12, PAL.dim, 9);
+          text(g, String(x), X(x), P.bottom + 13, PAL.dim, 11);
         }
       }
       line(g, X(tNow), P.top, X(tNow), P.bottom, PAL.yellow, 1.5, [4, 4]);
       if (r.sym) line(g, X(-tNow), P.top, X(-tNow), P.bottom, PAL.yellow, 1.5, [4, 4]);
       // The tank
       const vol = r.c0 + (r.sym ? r.F(tNow) - r.F(-tNow) : r.F(tNow) - r.F(0));
-      const live = shut !== null || r.assist === 0;
-      const dim = shut === null && r.assist === 1;
-      const level01 = live || dim ? Math.max(0, Math.min(1.08, vol / cap)) : 0;
+      // The gauge is the helper: live in round 1, on for a moment after the charge is spent in round 2, never in round 3.
+      const gaugeOn = helperOn(r.assist, false, flash.since(t, Math.min(A.round, 2)));
+      const liveFill = gaugeOn ? Math.max(0, Math.min(1.08, vol / cap)) : 0;
+      // After a miss the tank goes to a fixed fill (0.55 of the need line when short, past the brim when over), never to the true volume.
+      let level01 = liveFill;
+      if (ok === false) {
+        const target = isShort(r, shut!) ? (MISS_FILL.short * r.V) / cap : 1.08;
+        const p = Math.min(1, A.rt / 0.5);
+        level01 = liveFill + (target - liveFill) * p;
+      } else if (ok === true) level01 = Math.max(0, Math.min(1.08, vol / cap));
+      A.canvas.dataset.gauge = gaugeOn ? '1' : '0';
+      A.canvas.dataset.tank = level01.toFixed(3);
       g.strokeStyle = PAL.white;
       g.lineWidth = 2;
       g.strokeRect(TANK.x0, TANK.top, TANK.x1 - TANK.x0, TANK.bottom - TANK.top);
       const wy = Math.max(TANK.top - 10, TANK.bottom - level01 * (TANK.bottom - TANK.top));
-      const flood = ok === false && vol > r.V;
-      g.globalAlpha = dim ? 0.3 : 1;
+      const flood = ok === false && !isShort(r, shut!);
       g.fillStyle = flood ? 'rgba(255,90,90,0.65)' : 'rgba(80,200,255,0.65)';
       g.fillRect(TANK.x0 + 1, wy, TANK.x1 - TANK.x0 - 2, TANK.bottom - wy);
-      g.globalAlpha = 1;
       const my = TANK.bottom - (r.V / cap) * (TANK.bottom - TANK.top);
       line(g, TANK.x0 - 8, my, TANK.x1 + 8, my, PAL.green, 2.5);
       text(g, `need ${r.V}`, TANK.x0 - 10, my - 6, PAL.green, 11, 'right');
-      if (r.c0 > 0) text(g, `starts at ${r.c0}`, (TANK.x0 + TANK.x1) / 2, TANK.bottom + 14, PAL.dim, 10);
-      if (shut !== null && A.rt > 0.5) text(g, `holds ${num(Math.round(vol * 10) / 10)}`, (TANK.x0 + TANK.x1) / 2, TANK.top - 10, flood ? PAL.red : PAL.white, 12);
+      if (r.c0 > 0) text(g, `starts at ${r.c0}`, (TANK.x0 + TANK.x1) / 2, TANK.bottom + 14, PAL.dim, 11);
+      if (ok === false && A.rt > 0.5) text(g, isShort(r, shut!) ? 'SHORT ⬇' : 'OVER ⬆', (TANK.x0 + TANK.x1) / 2, TANK.top - 10, flood ? PAL.red : PAL.white, 12);
+      if (ok === true && A.rt > 0.5) text(g, 'FULL ✓', (TANK.x0 + TANK.x1) / 2, TANK.top - 10, PAL.green, 12);
       if (flood && A.rt > 0.5) for (let i = 0; i < 6; i++) text(g, '💧', TANK.x0 + 8 + i * 14, TANK.top - 22 - ((t * 40 + i * 9) % 18), PAL.red, 11);
-      if (!live && !dim) text(g, 'gauge off', (TANK.x0 + TANK.x1) / 2, (TANK.top + TANK.bottom) / 2, PAL.dim, 11);
+      if (!gaugeOn && shut === null) text(g, 'gauge off', (TANK.x0 + TANK.x1) / 2, (TANK.top + TANK.bottom) / 2, PAL.dim, 11);
+      if (!(ok !== null && A.rt > 0.9)) text(g, r.sym ? `Shut the gate at the half-width h where the canal holds exactly ${r.V}` : `Shut the gate when the tank holds exactly ${r.V}`, 320, 22, PAL.yellow, 12);
+      if (r.kind === 'net') text(g, 'blue area fills the tank, red area drains it', (P.x0 + P.x1) / 2, 296, PAL.dim, 11);
       // The clock and Dewey
       text(g, `${r.sym ? 'h' : 't'} = ${tNow.toFixed(1)}${slow ? '  🐢' : ''}`, 62, 276, running ? PAL.yellow : PAL.dim, 14);
       const mood: Mood = ok === null ? 'happy' : A.rt > 0.5 ? (ok ? 'cheer' : 'worried') : 'happy';

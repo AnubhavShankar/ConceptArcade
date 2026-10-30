@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "warp-lane",
+  "title": "Warp Lane",
+  "summary": "Race a kart through warp pipes: substitute u = g(x), move the limits into u-land and set the du factor so the kart exits on time.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 7,
+    "name": "Integrals"
+  },
+  "ncertRef": "Section 7.9, Evaluation of Definite Integrals by Substitution",
+  "concepts": [
+    "Choosing u = g(x) where g′(x) sits in the integrand",
+    "du = g′(x) dx and the constant factor it brings",
+    "Changing the limits with the substitution",
+    "Limits that come out in reverse order",
+    "Substitutions with logs and exponentials",
+    "Definite integrals by substitution"
+  ],
+  "learningOutcome": "The student can pick a substitution u = g(x) for a definite integral, find the factor from du = g′(x) dx, and change the limits, even when they come out reversed or negative.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Into the warp",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: with u = x² + 1, du = 2x dx; the limits x = a, b become u = g(a), g(b), and x dx = du/2 brings a factor 1/2 (Ex 7.2 Q1 to Q10; Ex 7.9).",
+      "hints": [
+        "Pick u as the inside of the power or the root.",
+        "Put x = a and x = b into u = g(x) to get the new limits.",
+        "Compare du = g′(x) dx with what is left in the integrand to find the factor."
+      ]
+    },
+    {
+      "title": "Log and exp warps",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: u = log x turns dx/x into du, and u = 1 + eˣ turns eˣ dx into du (Ex 7.2; Ex 7.9 Q1 to Q8).",
+      "hints": [
+        "If 1/x multiplies the rest, try u = log x.",
+        "log 1 = 0 and log e = 1, so the limits are often whole numbers.",
+        "For e^(2x), du = 2e^(2x) dx."
+      ]
+    },
+    {
+      "title": "Backwards warp",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: u = cos x or u = 1 − x² decreases, so the new limits run backwards and du brings a minus sign (Ex 7.9; Ex 7.2).",
+      "hints": [
+        "du = −sin x dx, so sin x dx = −du.",
+        "When x runs from 0 to π/2, cos x runs from 1 down to 0: keep that order.",
+        "Do not swap the limits without changing the sign."
+      ]
+    },
+    {
+      "title": "Warp master",
+      "tier": "challenge",
+      "kind": "complexity",
+      "adds": "Harder: factors of 1/3 from u = x³ + 1, and a negative limit from u = −x² (Ex 7.9 Q1 to Q8).",
+      "hints": [
+        "du = 3x² dx, so x² dx = du/3.",
+        "u = −x² takes x = 1 to u = −1.",
+        "Check the factor and both limits before you launch."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "After a substitution the limits stay the same",
+    "The lower limit must always be the smaller number",
+    "du is just dx with a new name"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

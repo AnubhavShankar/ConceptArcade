@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import game from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/refraction-bench/index';
 import { buildGame, sinD, type Game } from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/refraction-bench/logic';
+import { PAL } from '../src/core/arcade';
 import { createRng } from '../src/core/random';
 import type { GameContext } from '../src/core/types';
 import { manifest } from './fixtures';
@@ -178,13 +179,193 @@ describe('level 1: Ray and the detector', () => {
     const detector = Number(/detector sits ([\d.]+)°/.exec($('.note')?.textContent ?? '')![1]);
     expect(Math.round((Math.asin(nB * sinD(detector)) * 180) / Math.PI)).toBe(g.rounds[0].iSol);
   });
-  it('a wrong angle lands beside the detector and never names the right one', () => {
+  it('a wrong angle overshoots or falls short of the detector and never names the right one', () => {
     const g = start(1, 5);
     setSlider(wrong(g, 0));
     commit(1);
     advance(2.6);
-    expect(feedback()).toMatch(/beside the detector/);
+    expect(feedback()).toMatch(/overshoots the detector|falls short of the detector/);
     expect(feedback()).not.toMatch(new RegExp(`\\b${solution(g, 0)}°`));
+  });
+});
+
+// ---- no leaks ------------------------------------------------------------------------------------------------------------------
+
+/** A canvas recorder with paths: every string drawn, and every stroke with its colour, shadow blur and points. Install it before `start`. */
+interface Frame {
+  texts: string[];
+  paths: { style: string; blur: number; pts: [number, number][] }[];
+}
+function pathRecorder() {
+  const store: Record<string, unknown> = {};
+  const rec: Frame = { texts: [], paths: [] };
+  let cur: [number, number][] = [];
+  const proxy = new Proxy(store, {
+    get: (_t, p) => {
+      if (p === 'fillText') return (s: string) => rec.texts.push(String(s));
+      if (p === 'beginPath') return () => (cur = []);
+      if (p === 'moveTo' || p === 'lineTo') return (x: number, y: number) => cur.push([x, y]);
+      if (p === 'stroke') return () => rec.paths.push({ style: String(store.strokeStyle), blur: Number(store.shadowBlur ?? 0), pts: cur.slice() });
+      return () => undefined;
+    },
+    set: (_t, p, v) => {
+      store[String(p)] = v;
+      return true;
+    },
+  });
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(proxy as never);
+  return {
+    rec,
+    /** One drawn frame after the clock has run `dt` more seconds. */
+    frameAfter(dt: number) {
+      if (dt > 0.05) advance(dt - 0.05);
+      rec.texts.length = 0;
+      rec.paths.length = 0;
+      advance(0.05);
+      return rec;
+    },
+  };
+}
+/** Rounds 1 to `round` played right, standing in round `round + 1` (0-based). */
+const playTo = (level: number, g: Game, round: number) => {
+  for (let i = 0; i < round; i++) {
+    solveRound(level, g, i);
+    advance(1);
+  }
+};
+const fire = (level: number, x: number, dt = 2.0) => {
+  setSlider(x);
+  commit(level);
+  advance(dt);
+};
+
+describe('no leaks: a miss shows no true ray, needle, ghost pin or θc fan, and the start never wins', () => {
+  it('level 1: a miss draws the outgoing leg at a fixed offset beside the detector, the same for two wrong angles on the same side; a win lands on the detector', () => {
+    const angleOf = (pts: [number, number][]) => (Math.atan2(pts[2][0] - 320, pts[2][1] - 175) * 180) / Math.PI;
+    const legEnd = (r: Frame) => r.paths.filter((p) => p.style === PAL.yellow && p.pts.length === 3 && Math.abs(p.pts[1][0] - 320) < 1e-6 && Math.abs(p.pts[1][1] - 175) < 1e-6).map((p) => angleOf(p.pts));
+    const pr = pathRecorder();
+    for (const [side, offs] of [['over', [3, 9]], ['short', [-3, -9]]] as const) {
+      const g = start(1, 5) as Extract<Game, { kind: 'snell' }>;
+      const r = g.rounds[0];
+      const ends: number[] = [];
+      for (const off of offs) {
+        fire(1, r.iSol + off);
+        const e = legEnd(pr.frameAfter(0.05));
+        expect(e.length).toBeGreaterThan(0);
+        ends.push(e[e.length - 1]);
+        advance(1);
+      }
+      expect(ends[0]).toBeCloseTo(ends[1], 6);
+      expect(ends[0]).toBeCloseTo(r.r + (side === 'over' ? 12 : -12), 6);
+      fire(1, r.iSol);
+      const e = legEnd(pr.frameAfter(0.05));
+      expect(e[e.length - 1]).toBeCloseTo(r.r, 6);
+    }
+  });
+  it('level 2: the eyepiece is live in round 1 and the red needle mark shows only on a win; in rounds 2 and 3 a miss has a fixed blur and no mark', () => {
+    const pr = pathRecorder();
+    const NEEDLE = 'Needle seems to be here';
+    const eye = (r: Frame) => r.paths.filter((p) => p.style === PAL.red && p.pts.length === 2 && p.pts[0][0] === 550).map((p) => p.blur);
+    for (let round = 0; round < 3; round++) {
+      const g = start(2, 4) as Extract<Game, { kind: 'depth' }>;
+      playTo(2, g, round);
+      const m = g.rounds[round].move;
+      const offs = m > 0 ? [-1.5, -3] : [1.5, 3];
+      const blurs: number[] = [];
+      for (const off of offs) {
+        fire(2, m + off);
+        const f = pr.frameAfter(0.05);
+        expect(f.texts.includes(NEEDLE)).toBe(false);
+        blurs.push(...eye(f));
+        advance(1);
+      }
+      expect(blurs).toHaveLength(2);
+      if (round > 0) expect(blurs[0]).toBe(blurs[1]);
+      fire(2, m);
+      expect(pr.frameAfter(0.05).texts.includes(NEEDLE)).toBe(true);
+    }
+  });
+  it('level 3: the ghost of Pin is live in round 1 and shows on a win; it never shows before or after a miss in rounds 2 and 3', () => {
+    const pr = pathRecorder();
+    const GHOST = 'where Pin seems to be';
+    for (let round = 0; round < 3; round++) {
+      const g = start(3, 4) as Extract<Game, { kind: 'slab' }>;
+      playTo(3, g, round);
+      const s = g.rounds[round].shift;
+      expect(pr.frameAfter(0.1).texts.includes(GHOST)).toBe(round === 0);
+      fire(3, s + 3);
+      expect(pr.frameAfter(0.05).texts.includes(GHOST)).toBe(round === 0);
+      advance(1);
+      expect(pr.frameAfter(0.1).texts.includes(GHOST)).toBe(round === 0);
+      fire(3, s);
+      expect(pr.frameAfter(0.05).texts.includes(GHOST)).toBe(true);
+    }
+  });
+  it('level 4: the live fan is drawn in round 1 and on a win; a miss in rounds 2 and 3 draws no ray and no θc edge, only fixed marks, the same for two wrong discs on a side', () => {
+    const pr = pathRecorder();
+    const rays = (r: Frame) => r.paths.filter((p) => p.pts.length >= 2 && Math.abs(p.pts[0][0] - 320) < 1e-6 && Math.abs(p.pts[0][1] - 260) < 1e-6).length;
+    const own = /^disc [\d.]+ cm$/;
+    const ends: Record<string, string[][]> = {};
+    for (let round = 0; round < 3; round++) {
+      for (const side of ['under', 'over'] as const) {
+        const g = start(4, 4) as Extract<Game, { kind: 'cone' }>;
+        playTo(4, g, round);
+        const rd = g.rounds[round].radius;
+        if (round === 0 && side === 'under') expect(rays(pr.frameAfter(0.1))).toBeGreaterThan(5);
+        else if (round > 0) expect(rays(pr.frameAfter(0.1))).toBe(0);
+        const key = `${round}${side}`;
+        ends[key] = [];
+        for (const f of side === 'under' ? [0.5, 0.6] : [1.06, 1.1]) {
+          fire(4, Math.round(rd * f));
+          const fr = pr.frameAfter(0.05);
+          expect(rays(fr) > 0).toBe(round === 0);
+          expect(fr.texts.some((t) => t === 'light escapes' || t === 'no light here')).toBe(round > 0);
+          ends[key].push(fr.texts.filter((t) => !own.test(t)));
+          advance(1);
+        }
+        expect(ends[key][0]).toEqual(ends[key][1]);
+        fire(4, Math.round(rd));
+        expect(rays(pr.frameAfter(0.05))).toBeGreaterThan(5);
+      }
+      if (round > 0) expect(ends[`${round}under`][0]).not.toEqual(ends[`${round}over`][0]);
+    }
+  });
+  it('level 5: the end of the dial wins the boss round only for the bare fibre; any boss row has a different answer otherwise', () => {
+    let bare = -1;
+    let clad = -1;
+    for (let seed = 1; seed < 80 && (bare < 0 || clad < 0); seed++) {
+      const r = (buildGame(5, createRng(seed)) as Extract<Game, { kind: 'pipe' }>).rounds[2];
+      if (r.n2 === 1) bare = bare < 0 ? seed : bare;
+      else clad = clad < 0 ? seed : clad;
+    }
+    expect(bare).toBeGreaterThan(0);
+    expect(clad).toBeGreaterThan(0);
+    const g = start(5, clad);
+    playTo(5, g, 2);
+    const hearts0 = hearts();
+    fire(5, 90, 2.8);
+    expect(hearts()).toBe(hearts0 - 1);
+    expect(phase()).toBe('play');
+    const g2 = start(5, bare);
+    playTo(5, g2, 2);
+    fire(5, 90, 2.8);
+    expect(phase()).toBe('won');
+  });
+  it('the start never wins: firing at once is a miss in every round of every level', () => {
+    for (const level of [1, 2, 3, 4, 5]) {
+      const g = start(level, 5);
+      for (let round = 0; round < 3; round++) {
+        if (round > 0) {
+          solveRound(level, g, round - 1);
+          advance(1);
+        }
+        const hearts0 = hearts();
+        commit(level);
+        advance(2.8);
+        expect(hearts()).toBe(hearts0 - 1);
+        if (hearts() === 0) break;
+      }
+    }
   });
 });
 
@@ -243,16 +424,16 @@ describe('level 5: Pulse in the fibre', () => {
     expect(feedback()).toMatch(/wider beam/);
     expect(hearts()).toBe(1);
   });
-  it('the last fibre has no cladding: the whole half-space is guided, so 90° wins', () => {
-    const g = start(5, 4) as Extract<Game, { kind: 'pipe' }>;
-    solveRound(5, g, 0);
-    advance(1);
-    solveRound(5, g, 1);
-    advance(1);
-    setSlider(90);
-    commit(5);
-    advance(2.6);
-    expect(phase()).toBe('won');
+  it('the boss fibre is solved at its own limit, whether it is clad or bare', () => {
+    for (const seed of [4, 9, 15, 22]) {
+      const g = start(5, seed) as Extract<Game, { kind: 'pipe' }>;
+      for (let i = 0; i < 3; i++) {
+        solveRound(5, g, i);
+        advance(1);
+      }
+      expect(phase()).toBe('won');
+      expect(hearts()).toBe(3);
+    }
   });
   it('dragging the spark sets the entry angle, snapped to whole degrees', () => {
     start(5, 4);

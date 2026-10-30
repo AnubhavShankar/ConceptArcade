@@ -1,6 +1,7 @@
 // Inspirations: Pokémon Snap (get the creature big and in focus for the photo) and Fallout lockpicking (two dials, warmer or colder).
 import { createArcade, PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
+import { helperOn, paidFlash } from '@core/aidflash';
 import { fmt } from '@core/judge';
 import { glow, line, text } from '@core/neon';
 import { bug, eye, lensIcon, meter } from './art';
@@ -18,6 +19,7 @@ export default defineGame({
       A.feedback.hidden = true;
     };
     const ri = () => Math.min(A.round, 2);
+    const flash = paidFlash();
     const flashOver = (g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, rt: number, from: number) => {
       if (rt >= from && rt < from + 0.35) {
         g.fillStyle = '#fff';
@@ -42,6 +44,7 @@ export default defineGame({
         slider.row,
         A.button('🔦 Test shot', 'Test shot: measure the picture at this distance', () => {
           if (!A.spend()) return;
+          flash.paid();
           A.say(magReading(rounds[ri()].f, u), true);
         }, 'secondary'),
         A.button('📸 Snap!', 'Take the photo at this distance', () => {
@@ -59,7 +62,7 @@ export default defineGame({
         attempt = null;
         clearSay();
         const r = rounds[i];
-        A.hint.textContent = `Magnifying glass: f = ${r.f} cm. Your eye focuses on images from ${D} cm to infinity. ${r.assist === 0 ? 'The eye view is live.' : r.assist === 1 ? 'The eye view is dim: use a test shot.' : 'The eye view is off: work it out.'}`;
+        A.hint.textContent = `Magnifying glass: f = ${r.f} cm. Your eye focuses on images from ${D} cm to infinity. ${r.assist === 0 ? 'The eye view is live.' : r.assist === 1 ? 'The eye view shows for a moment after a test shot.' : 'The eye view is off: work it out.'}`;
       };
       A.scene((g, t) => {
         if (A.phase === 'between') return;
@@ -68,6 +71,9 @@ export default defineGame({
         const resolving = A.phase === 'resolve' && attempt !== null;
         const uu = resolving ? attempt!.u : u;
         const o = magnifier(r.f, uu);
+        // round 1 live, round 2 for a moment after a test shot, round 3 never; a win shows it, a miss does not
+        const won = resolving && attempt!.ok;
+        const live = helperOn(r.assist, won, flash.since(A.clock, ri()));
         line(g, 10, AX, 400, AX, PAL.dim, 1.2, [6, 6]);
         lensIcon(g, lensX, AX, 70);
         text(g, `f = ${r.f} cm`, lensX, AX + 92, PAL.cyan, 11);
@@ -79,12 +85,12 @@ export default defineGame({
         // the virtual image, drawn if it fits on the bench
         if (o.kind === 'virtual') {
           const ix = lensX - o.v * sc;
-          if (ix > 14 && (r.assist === 0 || resolving)) {
+          if (ix > 14 && live) {
             g.globalAlpha = 0.55;
             bug(g, ix, AX, Math.min(40, 11 * o.m), t, 'happy');
             g.globalAlpha = 1;
             text(g, 'image', ix, AX + 18, PAL.dim, 10);
-          } else if (r.assist === 0 || resolving) text(g, `image ${fmt(o.v)} cm away ←`, 150, 60, PAL.dim, 11);
+          } else if (live) text(g, `image ${fmt(o.v)} cm away ←`, 150, 60, PAL.dim, 11);
         }
         // the eye view: a photo frame
         g.fillStyle = 'rgba(0,0,0,0.45)';
@@ -95,11 +101,9 @@ export default defineGame({
         g.lineWidth = 3;
         g.strokeRect(430, 40, 200, 250);
         text(g, 'EYE VIEW', 530, 34, PAL.cyan, 11);
-        const live = r.assist === 0 || resolving;
-        const dim = r.assist === 1 && !resolving;
         if (o.kind === 'real') {
-          if (live || dim) text(g, 'no virtual image', 530, 170, PAL.red, 13);
-        } else if (live || dim) {
+          if (live || resolving) text(g, 'no virtual image', 530, 170, PAL.red, 13);
+        } else if (live) {
           const m = o.kind === 'virtual' ? o.M : 1;
           const rad = Math.min(92, 11 * m);
           const blur = sharp ? 0 : Math.min(20, (D - (o.kind === 'virtual' ? o.v : D)) * 0.9);
@@ -109,10 +113,22 @@ export default defineGame({
           g.clip();
           g.shadowColor = PAL.green;
           g.shadowBlur = blur;
-          g.globalAlpha = dim ? 0.3 : Math.max(0.35, 1 - blur / 26);
+          g.globalAlpha = Math.max(0.35, 1 - blur / 26);
           bug(g, 530, 160 + rad, rad, t, good ? 'cheer' : 'worried');
           g.restore();
-          if (live) text(g, o.kind === 'virtual' ? `${fmt(m)}× ${sharp ? 'sharp' : 'blurred: too near'}` : 'at infinity', 530, 276, sharp ? PAL.green : PAL.red, 12);
+          text(g, o.kind === 'virtual' ? `${fmt(m)}× ${sharp ? 'sharp' : 'blurred: too near'}` : 'at infinity', 530, 276, sharp ? PAL.green : PAL.red, 12);
+        } else if (resolving) {
+          // a miss without the live view: fixed-size effects that show only the direction (too near: a big blur; too far: small and sharp)
+          g.save();
+          g.beginPath();
+          g.rect(431, 41, 198, 248);
+          g.clip();
+          g.shadowColor = PAL.green;
+          g.shadowBlur = sharp ? 0 : 14;
+          g.globalAlpha = sharp ? 0.9 : 0.5;
+          bug(g, 530, 160 + (sharp ? 28 : 70), sharp ? 28 : 70, t, 'worried');
+          g.restore();
+          text(g, sharp ? 'sharp, but small' : 'blurred: too near', 530, 276, PAL.red, 12);
         } else text(g, '?', 530, 190, PAL.dim, 44);
         if (resolving) flashOver(g, 430, 40, 200, 250, A.rt, 0.0);
         if (resolving && A.rt > 0.6) glow(g, attempt!.ok ? PAL.green : PAL.red, 12, () => text(g, attempt!.ok ? 'PERFECT SHOT' : 'BAD SHOT', 530, 316, attempt!.ok ? PAL.green : PAL.red, 15));
@@ -138,6 +154,7 @@ export default defineGame({
         lSlider.row,
         A.button('🔦 Test shot', 'Test shot: measure the picture with these settings', () => {
           if (!A.spend()) return;
+          flash.paid();
           A.say(scopeReading(rounds[ri()], uo, L), true);
         }, 'secondary'),
         A.button('🔓 Crack it!', 'Crack the lock with these settings', () => {
@@ -155,7 +172,7 @@ export default defineGame({
         attempt = null;
         clearSay();
         const r = rounds[i];
-        A.hint.textContent = `Objective f = ${r.fo} cm, eyepiece f = ${r.fe} cm. Wanted: ${r.M}× with the final image at the near point (${D} cm). ${r.assist === 0 ? 'The readout and the signal bar are live.' : r.assist === 1 ? 'Only the warm/cold signal bar is live.' : 'No readout, no signal: work it out.'}`;
+        A.hint.textContent = `Objective f = ${r.fo} cm, eyepiece f = ${r.fe} cm. Wanted: ${r.M}× with the final image at the near point (${D} cm). ${r.assist === 0 ? 'The readout and the signal bar are live.' : r.assist === 1 ? 'The readout and the signal bar show for a moment after a test shot.' : 'No readout, no signal: work it out.'}`;
       };
       A.scene((g, t) => {
         if (A.phase === 'between') return;
@@ -164,6 +181,7 @@ export default defineGame({
         const uu = resolving ? attempt!.uo : uo;
         const LL = resolving ? attempt!.L : L;
         const c = compound(r.fo, r.fe, LL, uu);
+        const live = helperOn(r.assist, resolving && attempt!.ok, flash.since(A.clock, ri()));
         const eyeX = objX + LL * sc;
         line(g, 10, AX, W - 10, AX, PAL.dim, 1.2, [6, 6]);
         // the tube
@@ -177,7 +195,7 @@ export default defineGame({
         text(g, `eyepiece f = ${r.fe} cm`, eyeX, AX + 78, PAL.pink, 11);
         bug(g, objX - uu * sc, AX, 9, t, resolving ? (attempt!.ok ? 'cheer' : 'worried') : 'happy');
         text(g, 'Spec', objX - uu * sc, AX + 16, PAL.white, 10);
-        if (c.vo !== null) {
+        if (c.vo !== null && live) {
           const ix = objX + c.vo * sc;
           if (ix < W - 20) {
             g.globalAlpha = 0.8;
@@ -189,11 +207,11 @@ export default defineGame({
         eye(g, Math.min(W - 40, eyeX + 62), AX - 6, t, resolving && !attempt!.ok ? 'worried' : 'happy');
         // the lock: how close are the dials? (a Fallout-style warm/cold bar)
         const closeness = Math.max(0, 1 - Math.hypot((uu - r.uSol) / 1.5, (LL - r.LSol) / 6));
-        if (r.assist <= 1 || resolving) {
+        if (live) {
           text(g, 'LOCK SIGNAL', 90, 296, PAL.dim, 10);
           meter(g, 20, 302, 140, closeness, closeness > 0.93 ? PAL.green : closeness > 0.6 ? PAL.yellow : PAL.red);
         } else text(g, 'lock signal off', 90, 308, PAL.dim, 11);
-        if (r.assist === 0 || resolving) text(g, c.M !== null && c.ve !== null ? `final image ${Number.isFinite(c.ve) ? `${fmt(c.ve)} cm` : '∞'} · ${fmt(c.M)}×` : 'no clear picture', 400, 296, c.M !== null && c.ve !== null && eyeSees(c.ve) ? PAL.green : PAL.red, 13);
+        if (live) text(g, c.M !== null && c.ve !== null ? `final image ${Number.isFinite(c.ve) ? `${fmt(c.ve)} cm` : '∞'} · ${fmt(c.M)}×` : 'no clear picture', 400, 296, c.M !== null && c.ve !== null && eyeSees(c.ve) ? PAL.green : PAL.red, 13);
         text(g, `wanted ${r.M}×, image at ${D} cm`, 400, 316, PAL.yellow, 12);
         if (resolving && A.rt > 0.9) glow(g, attempt!.ok ? PAL.green : PAL.red, 12, () => text(g, attempt!.ok ? 'UNLOCKED' : 'LOCKED', 320, 40, attempt!.ok ? PAL.green : PAL.red, 18));
       });

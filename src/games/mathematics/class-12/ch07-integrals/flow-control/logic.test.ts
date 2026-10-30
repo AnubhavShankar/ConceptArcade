@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createRng } from '@core/random';
-import { ON, SPEED, buildRounds, explain, intel, judge, missText, onTime, poly, volume, type Round } from './logic';
+import { MISS_FILL, ON, SPEED, buildRounds, explain, intel, isShort, judge, missText, onTime, poly, volume, type Round } from './logic';
 
 const seeds = Array.from({ length: 60 }, (_, i) => i * 7919 + 13);
 const all = (level: number) => seeds.flatMap((s) => buildRounds(level, createRng(s)));
@@ -83,12 +83,58 @@ describe('every round has exactly one winning setting', () => {
   });
 });
 
+describe('a miss gives a direction only', () => {
+  const grid = (r: Round) => Array.from({ length: r.max * 10 + 1 }, (_, i) => i / 10);
+  it('short and over follow the volume at the moment of shutting, and never name a moment (a dipping rate can pass the need and return, so "short" is not "too soon")', () => {
+    let dipping = 0;
+    for (const level of [1, 2, 3, 4]) {
+      for (const r of all(level).slice(0, 60)) {
+        for (const t of grid(r)) {
+          if (onTime(r, t)) continue;
+          const v = r.c0 + (r.sym ? r.F(t) - r.F(-t) : r.F(t) - r.F(0));
+          expect(isShort(r, t)).toBe(v < r.V);
+          if (t < r.ans && v > r.V) dipping++;
+        }
+      }
+    }
+    // this is why the miss text gives no "sooner" or "later": in some rounds an early shut is over the need
+    expect(dipping).toBeGreaterThan(0);
+  });
+  it('the miss text holds no volume and no number but the player’s own moment, and two moments on one side read the same', () => {
+    for (const level of [1, 2, 3, 4]) {
+      for (const r of all(level).slice(0, 60)) {
+        const strip = (s: string) => s.replace(/(from −?[\d.]+ to [\d.]+|at t = [\d.]+)/, 'WHEN');
+        const wrongs = grid(r).filter((t) => !onTime(r, t));
+        for (const side of [wrongs.filter((t) => isShort(r, t)), wrongs.filter((t) => !isShort(r, t))]) {
+          if (side.length < 2) continue;
+          const a = strip(missText(r, side[0]));
+          const b = strip(missText(r, side[side.length - 1]));
+          expect(a).toBe(b);
+          expect(a).not.toMatch(/\d/);
+          expect(a).not.toMatch(/holds|drained|backwards|sooner|longer/);
+        }
+        const shorts = wrongs.filter((t) => isShort(r, t));
+        const overs = wrongs.filter((t) => !isShort(r, t));
+        if (shorts.length) expect(missText(r, shorts[0])).toMatch(/short of/);
+        if (overs.length) expect(missText(r, overs[0])).toMatch(/over what/);
+      }
+    }
+  });
+  it('the fixed fills never equal the true volume of a round', () => {
+    expect(MISS_FILL.short).toBeLessThan(1);
+    expect(MISS_FILL.over).toBeGreaterThan(1);
+  });
+  it('the start (gate closed, t = 0) never wins, and every round has a different winning moment than 0', () => {
+    for (const level of [1, 2, 3, 4]) for (const r of all(level)) expect(onTime(r, r.start)).toBe(false);
+  });
+});
+
 describe('words', () => {
   it('poly writes terms with a true minus sign', () => {
     expect(poly([[3, 2], [-6, 1], [9, 0]])).toBe('3t² − 6t + 9');
     expect(poly([[1, 3], [-1, 1]])).toBe('t³ − t');
   });
-  it('misses report what the tank holds and which way; the rate, the need and the working are stated', () => {
+  it('misses say which way the tank is off; the rate, the need and the working are stated', () => {
     for (const level of [1, 2, 3, 4]) {
       for (const r of all(level).slice(0, 40) as Round[]) {
         const wrong = r.ans === r.max ? r.ans - 1 : r.ans + 1;

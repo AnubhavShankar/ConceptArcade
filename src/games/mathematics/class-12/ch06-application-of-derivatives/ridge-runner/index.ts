@@ -11,6 +11,8 @@ type G = CanvasRenderingContext2D;
 type Mood = 'happy' | 'worried' | 'cheer';
 const VERDICT = 1.8;
 const P = { x0: 60, x1: 580, top: 70, bottom: 270 };
+/** How long a paid survey keeps the ground curve and tangent on screen in round 2 (seconds). */
+const PULSE = 1.5;
 
 const HEROES = [
   { story: 'Pika flies over rolling ground y = f(x). At the top of a hill or the bottom of a valley the slope is zero, and the second derivative tells which: negative at a hilltop (the ground bends down), positive at a valley floor (it bends up). The ground here is a cubic with two such points.', objective: 'Plant the flag at the hilltop or valley floor Pika is told to find, in three rounds. The tangent line shows in round 1; a survey costs a charge.' },
@@ -57,34 +59,44 @@ function level(n: number, random: () => number): DialLevel<Round> {
     const pad = (hi - lo) * 0.12 || 1;
     return { y0: lo - pad, y1: hi + pad };
   });
+  /** The last paid survey: its round, the position surveyed and the clock time it first showed (set by the first frame that draws it). */
+  let pulse: { r: Round; x: number; t0: number | null } | null = null;
   return {
     hero: { name: 'Pika', role: 'a small bird who flies over hilly ground and plants a flag where the slope says the ground turns', story: hero.story, objective: hero.objective },
     rounds,
     charges: [1, 1, 0],
     dials: [{ key: 'x', aria: 'Flag position x', label: 'Flag at x', unit: '', step: 1, min: (r: Round) => r.lo, max: (r: Round) => r.hi, start: (r: Round) => r.start, text: (v: number) => `x = ${v < 0 ? '−' : ''}${Math.abs(v)}` }],
     handles: [trackHandle<Round>('x', (r) => r.lo, (r) => r.hi)],
-    test: { button: '📍 Survey', aria: 'Survey: read the height and slope at the flag', read: (r, v) => spotText(r, v.x) },
+    test: {
+      button: '📍 Survey',
+      aria: 'Survey: read the height and slope at the flag',
+      read: (r, v) => {
+        pulse = { r, x: v.x, t0: null };
+        return spotText(r, v.x);
+      },
+    },
     fire: { button: '🚩 Plant the flag', aria: 'Plant the flag' },
     judge: (r, v) => judge(r, v.x),
     miss: (r, v) => missText(r, v.x),
     win: (r) => `Flag planted! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The tangent line is live.' : r.assist === 1 ? 'The tangent is dim: a survey costs a charge.' : 'Boss round: no tangent, no survey.'}`,
-    hit: (r) => {
-      const gi = rounds.indexOf(r);
-      const { y0, y1 } = geo[gi] ?? geo[0];
-      return [P.x0 + ((r.ans - r.lo) / (r.hi - r.lo)) * (P.x1 - P.x0), P.bottom - ((r.f(r.ans) - y0) / (y1 - y0)) * (P.bottom - P.top)];
-    },
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The tangent line is live.' : r.assist === 1 ? 'No ground or tangent shown: a survey shows them for a moment and costs a charge.' : 'Boss round: no tangent, no survey.'}`,
+    hit: () => [320, 150],
     delay: VERDICT,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, v, t, rt, shot, A }) => {
       backdrop(g);
       const gi = rounds.indexOf(r);
       const { y0, y1 } = geo[gi] ?? geo[0];
       const X = (x: number) => P.x0 + ((x - r.lo) / (r.hi - r.lo)) * (P.x1 - P.x0);
       const Y = (y: number) => P.bottom - ((y - y0) / (y1 - y0)) * (P.bottom - P.top);
       const use = shot ? shot.v.x : v.x;
-      const showCurve = r.assist <= 1 || shot !== null;
+      if (pulse && pulse.r === r && pulse.t0 === null) pulse.t0 = t;
+      // The ground and its tangent show live in round 1, for a moment after a paid survey in round 2, and after a win; never before Fire in the boss round and never after a miss.
+      const frozen = !shot && r.assist === 1 && pulse !== null && pulse.r === r && pulse.t0 !== null && t - pulse.t0 < PULSE;
+      const showCurve = r.assist === 0 || frozen || (shot !== null && shot.ok);
+      const showTangent = r.assist === 0 || frozen;
+      A.canvas.dataset.curve = showCurve ? '1' : '0';
+      A.canvas.dataset.tangent = showTangent ? '1' : '0';
       if (showCurve) {
-        g.globalAlpha = r.assist === 1 && !shot ? 0.35 : 1;
         g.strokeStyle = PAL.cyan;
         g.lineWidth = 4;
         g.beginPath();
@@ -94,7 +106,6 @@ function level(n: number, random: () => number): DialLevel<Round> {
           else g.lineTo(X(x), Y(r.f(x)));
         }
         g.stroke();
-        g.globalAlpha = 1;
       } else {
         line(g, P.x0, P.bottom, P.x1, P.bottom, PAL.dim, 3);
         text(g, 'the ground is hidden: use f′ and f″', 320, 120, PAL.dim, 12);
@@ -110,13 +121,16 @@ function level(n: number, random: () => number): DialLevel<Round> {
       g.lineTo(X(use), fy - 26);
       g.fill();
       // The tangent line
-      if (showCurve && (r.assist === 0 || (r.assist === 1 && !shot))) {
-        const sl = (r.fp(use) * (y1 - y0 ? (P.bottom - P.top) / (y1 - y0) : 1)) / ((P.x1 - P.x0) / (r.hi - r.lo));
+      if (showTangent) {
+        // In round 2 the tangent sits at the surveyed position; in round 1 it follows the flag.
+        const tx = frozen ? pulse!.x : use;
+        const ty = Y(r.f(tx));
+        const sl = (r.fp(tx) * (y1 - y0 ? (P.bottom - P.top) / (y1 - y0) : 1)) / ((P.x1 - P.x0) / (r.hi - r.lo));
         const d = 60;
-        g.globalAlpha = r.assist === 1 ? 0.3 : 0.9;
-        line(g, X(use) - d, fy + sl * d, X(use) + d, fy - sl * d, PAL.yellow, 2);
+        g.globalAlpha = 0.9;
+        line(g, X(tx) - d, ty + sl * d, X(tx) + d, ty - sl * d, PAL.yellow, 2);
         g.globalAlpha = 1;
-        if (r.assist === 0) text(g, `slope ${num(r.fp(use))}`, X(use), fy + 22, PAL.yellow, 12);
+        if (r.assist === 0) text(g, `slope ${num(r.fp(tx))}`, X(tx), ty + 22, PAL.yellow, 12);
       }
       // Pika
       let px = P.x0 + 10;

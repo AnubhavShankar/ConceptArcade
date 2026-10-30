@@ -3,15 +3,16 @@
 import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
+import { helperOn, paidFlash } from '@core/aidflash';
 import { fmt, sgn } from '@core/judge';
 import { glow, line, orb, text, waveColor } from '@core/neon';
-import { E1, HC, SLIDERS, absorbExplain, absorbMiss, absorbReading, absorbRounds, beamExplain, beamMiss, beamReading, beamRounds, budgetExplain, budgetMiss, budgetReading, budgetRounds, jumpEv, judgeAbsorb, judgeBeam, judgeBudget, level, linesFor, topLevel, type AbsorbRound, type BeamRound, type BudgetRound } from './logic';
+import { E1, HC, SLIDERS, START, absorbExplain, absorbMiss, absorbReading, absorbRounds, beamExplain, beamMiss, beamReading, beamRounds, budgetExplain, budgetMiss, budgetReading, budgetRounds, jumpEv, judgeAbsorb, judgeBeam, judgeBudget, level, linesFor, topLevel, type AbsorbRound, type BeamRound, type BudgetRound } from './logic';
 
 const yOf = (e: number) => 290 - (e + 13.6) * 17;
 const colour = (lam: number, a = 1) => (lam < 380 ? `rgba(200,170,255,${a})` : lam > 760 ? `rgba(255,120,120,${a})` : waveColor(lam, a));
 
-/** The ladder of levels n = 1 to 6 on the left, with the electron on level `at`. */
-function ladder(g: CanvasRenderingContext2D, at: number, mark: number[], t: number, ok: boolean | null) {
+/** The ladder of levels n = 1 to 6 on the left, with the electron on level `at` (or at height `elY` when given). */
+function ladder(g: CanvasRenderingContext2D, at: number, mark: number[], t: number, ok: boolean | null, elY?: number) {
   for (let n = 1; n <= 6; n++) {
     const y = yOf(level(n));
     line(g, 70, y, 300, y, mark.includes(n) ? PAL.yellow : PAL.dim, mark.includes(n) ? 3 : 2);
@@ -20,7 +21,7 @@ function ladder(g: CanvasRenderingContext2D, at: number, mark: number[], t: numb
   }
   line(g, 70, yOf(0), 300, yOf(0), PAL.white, 2, [4, 4]);
   text(g, '0 (free)', 20, yOf(0) + 4, PAL.white, 10, 'left');
-  orb(g, 185, yOf(level(at)) - 14, 10, PAL.green, t, ok === null ? 'happy' : ok ? 'cheer' : 'worried');
+  orb(g, 185, elY ?? yOf(level(at)) - 14, 10, PAL.green, t, ok === null ? 'happy' : ok ? 'cheer' : 'worried');
 }
 
 function absorbLevel(random: () => number): DialLevel<AbsorbRound> {
@@ -35,7 +36,7 @@ function absorbLevel(random: () => number): DialLevel<AbsorbRound> {
     },
     rounds: absorbRounds(random),
     charges: [1, 1, 1],
-    dials: [{ key: 'lam', aria: 'Wavelength of the photon in nanometres', label: 'Photon wavelength', unit: 'nm', step: S.step, min: S.min, max: S.max, start: 300, text: (x) => x.toFixed(1) }],
+    dials: [{ key: 'lam', aria: 'Wavelength of the photon in nanometres', label: 'Photon wavelength', unit: 'nm', step: S.step, min: S.min, max: S.max, start: START.lam, text: (x) => x.toFixed(1) }],
     handles: [{ dial: 'lam', at: (_r, v) => [specX(v.lam), 312], drag: (_r, px) => S.min + ((px - 400) / 210) * (S.max - S.min), radius: 22 }],
     test: { button: '🔦 Test shot', aria: 'Test shot: compare the photon with the rung gaps', read: (r, v) => absorbReading(r, v.lam) },
     fire: { button: '🚀 Fire', aria: 'Fire the photon at the atom' },
@@ -84,6 +85,7 @@ function absorbLevel(random: () => number): DialLevel<AbsorbRound> {
 function beamLevel(random: () => number): DialLevel<BeamRound> {
   const S = SLIDERS.beam;
   const kX = (e: number) => 60 + ((e - S.min) / (S.max - S.min)) * 520;
+  const flash = paidFlash();
   return {
     hero: {
       name: 'Key',
@@ -93,30 +95,38 @@ function beamLevel(random: () => number): DialLevel<BeamRound> {
     },
     rounds: beamRounds(random),
     charges: [1, 1, 1],
-    dials: [{ key: 'e', aria: 'Energy of the electron beam in electron volts', label: 'Beam energy', unit: 'eV', step: S.step, min: S.min, max: S.max, start: 9, text: (x) => x.toFixed(2) }],
+    dials: [{ key: 'e', aria: 'Energy of the electron beam in electron volts', label: 'Beam energy', unit: 'eV', step: S.step, min: S.min, max: S.max, start: START.e, text: (x) => x.toFixed(2) }],
     handles: [{ dial: 'e', at: (_r, v) => [kX(v.e), 314], drag: (_r, px) => S.min + ((px - 60) / 520) * (S.max - S.min), radius: 22 }],
-    test: { button: '🔦 Test shot', aria: 'Test shot: see how high the beam lifts the atom', read: (_r, v) => beamReading(v.e) },
+    test: { button: '🔦 Test shot', aria: 'Test shot: see how high the beam lifts the atom', read: (_r, v) => (flash.paid(), beamReading(v.e)) },
     fire: { button: '🔑 Open', aria: 'Fire the electron beam at the gas' },
     judge: (r, v) => judgeBeam(r, v.e),
     miss: (r, v) => beamMiss(r, v.e),
     win: (r) => `${beamExplain(r)[0]} ${beamExplain(r)[1]}`,
-    hint: (r) => `Wanted: exactly ${r.lines} spectral line${r.lines === 1 ? '' : 's'} from hydrogen starting in the ground state (E₁ = −13.6 eV). ${r.assist === 0 ? 'The door panel is live.' : r.assist === 1 ? 'The panel is dim: use a test shot.' : 'No panel: work it out.'}`,
+    hint: (r) => `Wanted: exactly ${r.lines} spectral line${r.lines === 1 ? '' : 's'} from hydrogen starting in the ground state (E₁ = −13.6 eV). ${r.assist === 0 ? 'The door panel is live.' : r.assist === 1 ? 'The panel shows for a moment after a test shot.' : 'No panel: work it out.'}`,
     hit: () => [185, 150],
     delay: 1.0,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
+      const since = flash.since(A.clock, k);
       const nTop = topLevel(v.e);
-      const live = r.assist === 0 || shot !== null;
-      const dim = r.assist === 1 && shot === null;
-      ladder(g, live || dim ? nTop : 1, live || dim ? [nTop] : [], t, shot && rt > 0.9 ? shot.ok : null);
+      // The panel (doors, key energies, line count, the rung reached) is the helper: live in round 1, a moment after a paid check in
+      // round 2, never in round 3, and after a shot only when the beam is right. A miss shows a fixed effect: a hop that falls back
+      // (too weak) or a leap off the top of the ladder (too strong), which does not depend on how far off the beam was.
+      const live = shot ? shot.ok && rt > 0.6 : helperOn(r.assist, false, since);
+      let elY: number | undefined;
+      if (shot && !shot.ok) {
+        const u = Math.min(1, Math.max(0, (rt - 0.3) / 0.5));
+        const base = yOf(level(1)) - 14;
+        elY = linesFor(v.e) < r.lines ? base - 40 * Math.sin(u * Math.PI) : base + (yOf(0) - 8 - base) * u;
+      }
+      ladder(g, live ? nTop : 1, live ? [nTop] : [], t, shot && rt > 0.9 ? shot.ok : null, elY);
       // the doors: the key energy of each rung
       g.fillStyle = 'rgba(0,0,0,0.4)';
       g.fillRect(400, 50, 220, 220);
       text(g, 'DOORS (key energy)', 510, 70, PAL.dim, 11);
       for (let n = 2; n <= 6; n++) {
         const key = E1 * (1 - 1 / (n * n));
-        const open = live || dim ? v.e >= key - 1e-9 : false;
+        const open = live ? v.e >= key - 1e-9 : false;
         const y = 90 + (n - 2) * 34;
-        g.globalAlpha = dim ? 0.4 : 1;
         glow(g, open ? PAL.green : PAL.dim, open ? 8 : 0, () => {
           g.strokeStyle = open ? PAL.green : PAL.dim;
           g.lineWidth = 2.5;
@@ -124,9 +134,8 @@ function beamLevel(random: () => number): DialLevel<BeamRound> {
         });
         text(g, `n = ${n}`, 470, y + 4, open ? PAL.green : PAL.dim, 12, 'left');
         if (live) text(g, `${fmt(key)} eV`, 540, y + 4, PAL.dim, 11, 'left');
-        g.globalAlpha = 1;
       }
-      if (live || dim) text(g, `${linesFor(v.e)} line${linesFor(v.e) === 1 ? '' : 's'}`, 510, 260, dim ? PAL.dim : PAL.yellow, 16);
+      if (live) text(g, `${linesFor(v.e)} line${linesFor(v.e) === 1 ? '' : 's'}`, 510, 260, PAL.yellow, 16);
       else text(g, '?', 510, 200, PAL.dim, 44);
       // the lines the gas can show
       if (live) {
@@ -141,6 +150,7 @@ function beamLevel(random: () => number): DialLevel<BeamRound> {
 
 function budgetLevel(random: () => number): DialLevel<BudgetRound> {
   const KY = (e: number) => 170 - e * 5;
+  const flash = paidFlash();
   return {
     hero: {
       name: 'Orbit',
@@ -151,35 +161,35 @@ function budgetLevel(random: () => number): DialLevel<BudgetRound> {
     rounds: budgetRounds(random),
     charges: [1, 1, 1],
     dials: [
-      { key: 'ke', aria: 'Kinetic energy in electron volts', label: 'Kinetic energy', unit: 'eV', step: SLIDERS.ke.step, min: SLIDERS.ke.min, max: SLIDERS.ke.max, start: 5, text: (x) => x.toFixed(2) },
-      { key: 'pe', aria: 'Potential energy in electron volts', label: 'Potential energy', unit: 'eV', step: SLIDERS.pe.step, min: SLIDERS.pe.min, max: SLIDERS.pe.max, start: -5, text: (x) => x.toFixed(2) },
+      { key: 'ke', aria: 'Kinetic energy in electron volts', label: 'Kinetic energy', unit: 'eV', step: SLIDERS.ke.step, min: SLIDERS.ke.min, max: SLIDERS.ke.max, start: START.ke, text: (x) => x.toFixed(2) },
+      { key: 'pe', aria: 'Potential energy in electron volts', label: 'Potential energy', unit: 'eV', step: SLIDERS.pe.step, min: SLIDERS.pe.min, max: SLIDERS.pe.max, start: START.pe, text: (x) => x.toFixed(2) },
     ],
     handles: [
       { dial: 'ke', at: (_r, v) => [470, KY(v.ke)], drag: (_r, _px, py) => (170 - py) / 5, radius: 22 },
       { dial: 'pe', at: (_r, v) => [560, KY(v.pe)], drag: (_r, _px, py) => (170 - py) / 5, radius: 22 },
     ],
-    test: { button: '🔦 Test shot', aria: 'Test shot: read the total energy of this level', read: (r) => budgetReading(r) },
+    test: { button: '🔦 Test shot', aria: 'Test shot: read the total energy of this level', read: (r) => (flash.paid(), budgetReading(r)) },
     fire: { button: '⚖️ Balance', aria: 'Check the energy budget' },
     judge: (r, v) => judgeBudget(r, v.ke, v.pe).ok,
     miss: (r, v) => budgetMiss(r, v.ke, v.pe),
     win: (r) => `${budgetExplain(r)[0]} ${budgetExplain(r)[1]}`,
-    hint: (r) => `The electron is in level n = ${r.n} of hydrogen, E₁ = −13.6 eV. ${r.assist === 0 ? 'The bars and the total are live.' : r.assist === 1 ? 'The bars are dim: use a test shot.' : 'No bars: work it out.'}`,
+    hint: (r) => `The electron is in level n = ${r.n} of hydrogen, E₁ = −13.6 eV. ${r.assist === 0 ? 'The bars and the total are live.' : r.assist === 1 ? 'The bars show for a moment after a test shot.' : 'No bars: work it out.'}`,
     hit: () => [515, 170],
     delay: 0.9,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
+      const since = flash.since(A.clock, k);
       ladder(g, r.n, [r.n], t, shot && rt > 0.9 ? shot.ok : null);
       line(g, 420, 170, 620, 170, PAL.white, 2);
       text(g, '0', 410, 174, PAL.white, 11, 'right');
-      const live = r.assist === 0 || shot !== null;
-      const dim = r.assist === 1 && shot === null;
+      // The bars are the player's own setting and show with the helper or after a shot; the K + U total line is the helper and,
+      // after a shot, shows only on a win (a miss never says whether the total was right).
+      const live = shot ? shot.ok : helperOn(r.assist, false, since);
       const col = shot ? (shot.ok ? PAL.green : PAL.red) : PAL.cyan;
-      if (live || dim) {
-        g.globalAlpha = dim ? 0.35 : 1;
+      if (live || shot) {
         g.fillStyle = PAL.green;
         g.fillRect(455, Math.min(170, KY(v.ke)), 30, Math.abs(KY(v.ke) - 170));
         g.fillStyle = PAL.pink;
         g.fillRect(545, Math.min(170, KY(v.pe)), 30, Math.abs(KY(v.pe) - 170));
-        g.globalAlpha = 1;
         text(g, 'kinetic', 470, 40, PAL.green, 11);
         text(g, 'potential', 560, 40, PAL.pink, 11);
         if (live) {

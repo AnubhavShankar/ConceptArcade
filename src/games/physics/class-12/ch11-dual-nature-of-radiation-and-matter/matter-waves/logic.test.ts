@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SLIDERS, countExplain, countMiss, countReading, countRounds, electronNm, judgeCount, judgeTube, judgeTune, photonJ, photonsPerSec, tubeExplain, tubeMiss, tubeReading, tubeRounds, tuneExplain, tuneMiss, tuneReading, tuneRounds, xrayMaxF, xrayMinA } from './logic';
+import { HIT, MISS_FRAC, SLIDERS, START, specX, countExplain, countMiss, countReading, countRounds, electronNm, judgeCount, judgeTube, judgeTune, photonJ, photonsPerSec, tubeExplain, tubeMiss, tubeReading, tubeRounds, tuneExplain, tuneMiss, tuneReading, tuneRounds, xrayMaxF, xrayMinA } from './logic';
 
 const lcg = (seed: number) => {
   let s = seed >>> 0;
@@ -87,6 +87,63 @@ describe('judging: classic mistakes do not win', () => {
     for (const r of tubeRounds(lcg(3))) {
       expect(judgeTube(r, r.kvSol * 1000)).toBe(false);
       expect(judgeTube(r, r.kvSol / 10)).toBe(false);
+    }
+  });
+});
+
+describe('no leaks: the start, the hit point and the miss effects', () => {
+  it('the start of every dial wins no round', () => {
+    for (const s of seeds) {
+      for (const r of countRounds(lcg(s))) expect(judgeCount(r, START.n)).toBe(false);
+      for (const r of tuneRounds(lcg(s))) expect(judgeTune(r, START.v)).toBe(false);
+      for (const r of tubeRounds(lcg(s))) expect(judgeTube(r, START.kv)).toBe(false);
+    }
+  });
+  it('the hit point is a fixed point, and on level 3 never where a wanted cut-off is drawn', () => {
+    for (const s of seeds) {
+      for (const r of tubeRounds(lcg(s))) {
+        expect(Math.abs(HIT.kv[0] - specX(r.target))).toBeGreaterThan(60);
+        expect(Math.abs(HIT.kv[0] - specX(xrayMinA(r.kvSol)))).toBeGreaterThan(60);
+      }
+    }
+    expect(HIT.n).toEqual([470, 160]);
+    expect(HIT.v).toEqual([330, 175]);
+  });
+  it('the miss effect is a fixed multiple of the wanted value and never depends on how far off the player was', () => {
+    expect(MISS_FRAC.under).toBeLessThan(1);
+    expect(MISS_FRAC.over).toBeGreaterThan(1);
+    for (const s of seeds.slice(0, 20)) {
+      for (const r of tubeRounds(lcg(s))) {
+        // the fixed over effect still lies on the spectrum axis (0 to 1.2 Å) and the fixed under effect lies right of the axis start
+        expect(r.target * MISS_FRAC.over).toBeLessThan(1.2);
+        expect(r.target * MISS_FRAC.under).toBeGreaterThan(0.05);
+      }
+    }
+  });
+  it('two wrong settings on the same side give the same miss text, and no miss text holds a number', () => {
+    for (const s of seeds.slice(0, 20)) {
+      for (const r of countRounds(lcg(s))) {
+        expect(countMiss(r, r.nSol * 1.3)).toBe(countMiss(r, r.nSol * 3));
+        expect(countMiss(r, r.nSol * 0.8)).toBe(countMiss(r, r.nSol * 0.3));
+        expect(countMiss(r, r.nSol * 1.3)).not.toBe(countMiss(r, r.nSol * 0.8));
+        expect(countMiss(r, r.nSol * 1.3)).not.toMatch(/\d/);
+        expect(countMiss(r, r.nSol * 0.8)).not.toMatch(/\d/);
+      }
+      for (const r of tuneRounds(lcg(s))) {
+        const lo = (f: number) => (6.63e-34 / (r.target * f * 1e-9)) ** 2 / (2 * 9.1e-31 * 1.6e-19);
+        expect(tuneMiss(r, lo(1.3))).toBe(tuneMiss(r, lo(2.2)));
+        expect(tuneMiss(r, lo(0.8))).toBe(tuneMiss(r, lo(0.4)));
+        expect(tuneMiss(r, lo(1.3))).not.toBe(tuneMiss(r, lo(0.8)));
+        expect(tuneMiss(r, lo(1.3))).not.toMatch(/\d/);
+        expect(tuneMiss(r, lo(0.8))).not.toMatch(/\d/);
+      }
+      for (const r of tubeRounds(lcg(s))) {
+        expect(tubeMiss(r, r.kvSol * 0.7)).toBe(tubeMiss(r, r.kvSol * 0.4));
+        expect(tubeMiss(r, r.kvSol * 1.4)).toBe(tubeMiss(r, r.kvSol * 2));
+        expect(tubeMiss(r, r.kvSol * 0.7)).not.toBe(tubeMiss(r, r.kvSol * 1.4));
+        expect(tubeMiss(r, r.kvSol * 0.7)).not.toMatch(/\d/);
+        expect(tubeMiss(r, r.kvSol * 1.4)).not.toMatch(/\d/);
+      }
     }
   });
 });

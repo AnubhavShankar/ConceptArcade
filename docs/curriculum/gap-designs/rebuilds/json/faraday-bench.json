@@ -1,0 +1,82 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "faraday-bench",
+  "title": "The Glowing Hoop",
+  "summary": "Play a stage illusionist: tilt, flip and pick wire hoops over a hidden magnet so the changing flux lights a floating bulb just right.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 6,
+    "name": "Electromagnetic Induction"
+  },
+  "ncertRef": "Section 6.3, Magnetic flux",
+  "order": 1,
+  "concepts": [
+    "Magnetic flux BA cos θ",
+    "Faraday’s law, ε = −N dΦ/dt",
+    "Induced emf in a loop in a solenoid",
+    "Average emf of a turning coil",
+    "Emf from a flux graph",
+    "No change of flux, no emf"
+  ],
+  "learningOutcome": "The student can find the flux BA cos θ and its change, and use ε = N ΔΦ/Δt for a dying field, a solenoid’s rising current, a 180° flip and the slope of a flux graph.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Lights out",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: Φ = BA cos θ through a tilted hoop; when the field dies, ε = NΔΦ/Δt lights the bulb only while the flux changes (Section 6.3, Example 6.2).",
+      "hints": [
+        "θ is the angle between the field and the normal to the hoop: flat is 0°, edge-on is 90°.",
+        "The flux linkage NBA cos θ falls to zero, so ε = NBA cos θ / Δt.",
+        "Solve for cos θ, then find the angle. A bigger tilt means less flux."
+      ]
+    },
+    {
+      "title": "The magic tube",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: inside a long solenoid B = μ₀nI, so a rising current changes the flux and ε = Nμ₀nA ΔI/Δt (Ex 6.3).",
+      "hints": [
+        "Turn n into turns per metre: 20 per cm is 2000 per m.",
+        "The flux through one turn of the ring is μ₀nI × πr².",
+        "ε = N μ₀ n πr² ΔI/Δt; solve for r."
+      ]
+    },
+    {
+      "title": "The flip",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: a 180° flip takes the flux from +BA to −BA, so ε = 2NBA/t and the current is ε/R (Example 6.3).",
+      "hints": [
+        "A = πr² with r in metres.",
+        "The change of flux linkage is 2NBA, not zero.",
+        "I = ε/R = 2NBA/(tR); solve for the flip time t."
+      ]
+    },
+    {
+      "title": "The finale",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: the emf is the slope of the flux graph, so the steepest step, rising or falling, flashes brightest (Section 6.4).",
+      "hints": [
+        "Read the flux at each second from the grid; each step lasts 1 s.",
+        "1 mWb per second is 1 mV per turn. Take the size of the slope.",
+        "The steepest step must give exactly the rating: N = rating ÷ steepest emf per turn."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The emf depends on the flux itself, not on how fast it changes",
+    "A steady flux through a coil induces a steady emf",
+    "Turning a coil through 180° gives no change in flux",
+    "Only a rising flux gives a big emf; a falling one does not count",
+    "Flux is greatest when the coil’s plane is along the field"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

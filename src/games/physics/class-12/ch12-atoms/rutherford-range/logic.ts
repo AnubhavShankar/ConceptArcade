@@ -9,7 +9,16 @@ export const closestFm = (z: number, kMeV: number) => (2 * z * K_E2) / kMeV;
 /** The energy (MeV) that brings an α-particle to a given distance from a nucleus of charge Ze. */
 export const energyFor = (z: number, rFm: number) => (2 * z * K_E2) / rFm;
 
-export const ELEMENTS: Record<number, string> = { 13: 'aluminium', 29: 'copper', 47: 'silver', 79: 'gold' };
+export const ELEMENTS: Record<number, string> = { 13: 'aluminium', 26: 'iron', 29: 'copper', 47: 'silver', 50: 'tin', 79: 'gold', 82: 'lead' };
+
+/** Where each dial starts: no round has this as its answer. */
+export const START = { k: 2, z: 20 };
+/** Where the burst of points appears: one fixed point, never a function of the answer. */
+export const HIT: [number, number] = [330, 110];
+/** On a miss the α-particle stops at a fixed fraction of the wanted distance: inside the ring if it got too close, beyond it if it turned too soon. */
+export const MISS_FRACTION = { tooClose: 0.6, tooSoon: 1.5 };
+/** Where the α-particle stops on screen (fm): its true turning point on a win, a fixed fraction of the wanted distance on a miss. */
+export const stopFm = (dOwn: number, wanted: number, ok: boolean) => (ok ? dOwn : wanted * (dOwn < wanted ? MISS_FRACTION.tooClose : MISS_FRACTION.tooSoon));
 
 export interface RangeRound {
   z: number;
@@ -28,7 +37,7 @@ export interface FoilRound {
 
 /** [Z, K in MeV]: Example 12.2 (gold, 7.7 MeV) and friends. */
 const RANGE: [number, number][] = [[79, 5.5], [79, 7.7], [29, 4.0], [47, 6.0], [13, 4.0], [79, 4.8]];
-const FOIL_Z = [13, 29, 47, 79];
+const FOIL_Z = [13, 26, 29, 47, 50, 79, 82];
 
 export const SLIDERS = {
   k: { min: 1, max: 12, step: 0.01 },

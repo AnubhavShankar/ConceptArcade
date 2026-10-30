@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ELEMENTS, SLIDERS, closestFm, energyFor, foilExplain, foilMiss, foilReading, foilRounds, judgeFoil, judgeRange, rangeExplain, rangeMiss, rangeReading, rangeRounds } from './logic';
+import { ELEMENTS, HIT, SLIDERS, START, closestFm, stopFm, energyFor, foilExplain, foilMiss, foilReading, foilRounds, judgeFoil, judgeRange, rangeExplain, rangeMiss, rangeReading, rangeRounds } from './logic';
 
 const lcg = (seed: number) => {
   let s = seed >>> 0;
@@ -86,5 +86,58 @@ describe('words: the working and the misses', () => {
     expect(rangeReading(r, 5)).toMatch(/turns back at [\d.]+ fm/);
     const f = foilRounds(lcg(3))[0];
     expect(foilReading(f, 30)).toMatch(/it turned at/);
+  });
+});
+
+describe('no leaks: the start, the burst point and the misses', () => {
+  const ringX = (fm: number) => 540 - 6 * fm;
+  it('the start never wins any round of either level', () => {
+    for (const s of seeds) {
+      for (const r of rangeRounds(lcg(s))) expect(judgeRange(r, START.k)).toBe(false);
+      for (const r of foilRounds(lcg(s))) expect(judgeFoil(r, START.z)).toBe(false);
+    }
+  });
+  it('the burst point is one fixed point, far from every ring the game can draw', () => {
+    for (const s of seeds) {
+      for (const r of rangeRounds(lcg(s))) expect(Math.abs(HIT[0] - ringX(r.target))).toBeGreaterThan(20);
+      for (const r of foilRounds(lcg(s))) expect(Math.abs(HIT[0] - ringX(r.turn))).toBeGreaterThan(20);
+    }
+  });
+  it('level 1: every wrong energy on one side gives the same miss text and the same stopping place, and the text holds no number', () => {
+    for (const s of seeds.slice(0, 20)) {
+      for (const r of rangeRounds(lcg(s))) {
+        const wrong = grid(SLIDERS.k.min, SLIDERS.k.max, SLIDERS.k.step * 5).filter((k) => !judgeRange(r, k));
+        for (const close of [true, false]) {
+          const side = wrong.filter((k) => (closestFm(r.z, k) < r.target) === close);
+          expect(new Set(side.map((k) => rangeMiss(r, k))).size).toBe(1);
+          expect(new Set(side.map((k) => stopFm(closestFm(r.z, k), r.target, false))).size).toBe(1);
+          expect(rangeMiss(r, side[0])).not.toMatch(/\d/);
+        }
+      }
+    }
+  });
+  it('level 2: every wrong Z on one side gives the same miss text and the same stopping place, and the text holds no number', () => {
+    for (const s of seeds.slice(0, 20)) {
+      for (const r of foilRounds(lcg(s))) {
+        const wrong = grid(SLIDERS.z.min, SLIDERS.z.max, SLIDERS.z.step).filter((z) => !judgeFoil(r, z));
+        for (const high of [true, false]) {
+          const side = wrong.filter((z) => (z > r.zSol) === high);
+          expect(new Set(side.map((z) => foilMiss(r, z))).size).toBe(1);
+          expect(new Set(side.map((z) => stopFm(closestFm(z, r.k), r.turn, false))).size).toBe(1);
+          expect(foilMiss(r, side[0])).not.toMatch(/\d/);
+        }
+      }
+    }
+  });
+  it('a miss stops inside the ring when too close and beyond it when too soon, a win stops where the turning point is', () => {
+    expect(stopFm(10, 20, false)).toBeLessThan(20);
+    expect(stopFm(30, 20, false)).toBeGreaterThan(20);
+    expect(stopFm(19.9, 20, true)).toBe(19.9);
+  });
+  it('the foil pool is wide: all seven elements come up across plays, and each has a name', () => {
+    const seen = new Set<number>();
+    for (const s of seeds) for (const r of foilRounds(lcg(s))) seen.add(r.zSol);
+    expect(seen.size).toBe(7);
+    for (const z of seen) expect(ELEMENTS[z]).toBeDefined();
   });
 });

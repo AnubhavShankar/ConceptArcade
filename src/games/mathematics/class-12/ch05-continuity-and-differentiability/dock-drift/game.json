@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "dock-drift",
+  "title": "Dock Drift",
+  "summary": "Guide a robot drifting off a space-station rail into its docking clamp, using logarithmic differentiation to find the slope.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": { "number": 5, "name": "Continuity and Differentiability" },
+  "ncertRef": "Section 5.5, Logarithmic Differentiation",
+  "concepts": [
+    "Logarithmic differentiation of products and quotients",
+    "Derivative of u(x)^v(x) by taking logs",
+    "Roots of quotients by taking logs",
+    "Differentiate a sum term by term",
+    "Derivatives of inverse trigonometric functions",
+    "Simplifying by a trigonometric substitution first"
+  ],
+  "learningOutcome": "The student can differentiate products, quotients, roots and powers like u(x)^v(x) by taking logs, and inverse trigonometric functions after a substitution, then evaluate the slope at a point.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 22,
+  "levels": [
+    {
+      "title": "Many factors",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: for a product or quotient take logs, so y′/y is a sum of terms like m/(x − a); multiply by y at the point (Ex 5.5 Q1, Q16, Q17).",
+      "hints": [
+        "log y turns the product into a sum: log y = m log|x − a| + n log|x − b|.",
+        "Differentiate: y′/y = m/(x − a) + n/(x − b), and a factor in the denominator gives a minus sign.",
+        "Find y at the release point, multiply, then times the distance to the wall."
+      ]
+    },
+    {
+      "title": "Power towers",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: y = u^v. Take logs, log y = v log u, so y′/y = v′ log u + v u′/u; when u = 1 the log term vanishes (Ex 5.5 Q3, Q4, Q7).",
+      "hints": [
+        "Neither the power rule nor the exponential rule works when both base and exponent vary.",
+        "log y = v log u, so y′ = y(v′ log u + v u′/u).",
+        "At the release point the base is 1, so log u = 0 and y = 1."
+      ]
+    },
+    {
+      "title": "Root rails",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Harder: a square root of a quotient. log y = ½[log|x − a| + log|x − b| − log|x − c| …] (Ex 5.5 Q2).",
+      "hints": [
+        "Take logs first: the root becomes a factor ½ in front of the sum.",
+        "Each factor under the root gives ±1/(x − r) inside the bracket.",
+        "Work out y itself at the point: it is a whole number here."
+      ]
+    },
+    {
+      "title": "Sums of towers",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: for a sum such as x^x + (2x − 1)^x, differentiate each term on its own; log of a sum does not split (Ex 5.5 Q5 to Q11).",
+      "hints": [
+        "Write y = u + v and find u′ and v′ separately.",
+        "Take logs of each term, never of the whole sum.",
+        "Add the two slopes at the release point."
+      ]
+    },
+    {
+      "title": "Inverse trig rails",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: derivatives of sin⁻¹, cos⁻¹ and tan⁻¹; substitute x = tan θ or sin θ to simplify first (Ex 5.3 Q9 to Q15).",
+      "hints": [
+        "(sin⁻¹ x)′ = 1/√(1 − x²), (cos⁻¹ x)′ = −1/√(1 − x²), (tan⁻¹ x)′ = 1/(1 + x²).",
+        "With x = tan θ, 2x/(1 + x²) = sin 2θ, so sin⁻¹(2x/(1 + x²)) = 2 tan⁻¹ x here.",
+        "Check the range of x: it decides which simplification is true."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The derivative of x^x is x·x^(x − 1)",
+    "log(u + v) = log u + log v",
+    "sin⁻¹(2x/(1 + x²)) is always 2 tan⁻¹ x"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

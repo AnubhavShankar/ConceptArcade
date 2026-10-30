@@ -17,6 +17,7 @@ const HEROES = [
   { story: 'When we are told that B has happened, the sample space shrinks to the outcomes of B. The chance of A given B is the number of outcomes in both A and B, out of the number in B. So mark the reduced sample space first, then count what also fits A. Do not count the cards outside B.', objective: 'Mark every card that fits B, then mark again the ones that also fit A, in three rounds. The count shows live in round 1; a peek costs a charge.' },
   { story: 'Two events are independent when P(A ∩ B) = P(A)·P(B). If the chance of A and the chance of both are known, the chance of B follows by dividing. Here P(B) is a whole number of twelfths.', objective: 'Set k so that P(B) = k/12 makes A and B independent, in three rounds. The rectangles show in round 1; a check costs a charge.' },
   { story: 'Drawing without replacement changes the deck after the first card: P(both red) = (r/N)·((r − 1)/(N − 1)). For at least one red, take 1 minus the chance that both are black. The number of red cards r is the unknown.', objective: 'Set the number of red cards so the chance of the draw is exactly the chance stated, in three rounds. The boss round asks for at least one red.' },
+  { story: 'The audience now names compound events on the reduced deck: not A, A or C, neither. The rules of probability still hold once B is given: P(not A | B) = 1 − P(A | B), and for a union add and take off the overlap.', objective: 'Mark the reduced deck and the cards of the compound event exactly, in three rounds.' },
 ];
 
 /** Ace: a stage magician in a top hat and cape with a card fan in one hand and a sparkling wand in the other. */
@@ -59,9 +60,9 @@ function ace(g: G, x: number, y: number, t: number, mood: Mood, spark: boolean) 
   if (spark) for (let i = 0; i < 5; i++) text(g, '✦', wx + 12 + Math.random() * 18 - 6, wy - 10 + Math.random() * 20 - 12, PAL.yellow, 10);
 }
 
-function mountBoard(ctx: Parameters<typeof mountDialLevel>[0]) {
-  const rounds = buildRounds(1, ctx.random);
-  const hero = HEROES[0];
+function mountBoard(ctx: Parameters<typeof mountDialLevel>[0], lvl: 1 | 4) {
+  const rounds = buildRounds(lvl, ctx.random);
+  const hero = HEROES[lvl - 1];
   const state = Array.from({ length: CARDS }, () => 0);
   let peek = -10;
   let shown = false;
@@ -140,7 +141,7 @@ function mountBoard(ctx: Parameters<typeof mountDialLevel>[0]) {
     const r = cur();
     backdrop(g);
     text(g, `B: ${r.textB}`, 380, 40, PAL.yellow, 13);
-    text(g, `A: ${r.textA}`, 380, 56, PAL.green, 13);
+    text(g, `${r.ev ? 'Event' : 'A'}: ${r.textA}`, 380, 56, PAL.green, r.ev ? 12 : 13);
     const showPeek = t - peek < 1.8;
     for (let i = 0; i < CARDS; i++) {
       const c = cell(i);
@@ -256,8 +257,8 @@ function level(n: number, random: () => number): DialLevel<Round> {
 
 export default defineGame({
   mount(ctx) {
-    const n = Math.max(1, Math.min(3, ctx.level));
-    if (n === 1) return mountBoard(ctx as never);
+    const n = Math.max(1, Math.min(4, ctx.level));
+    if (n === 1 || n === 4) return mountBoard(ctx as never, n);
     return mountDialLevel(ctx as never, level(n, ctx.random) as never, 'A stage magician beside two bands of probability or a row of red and black cards, with a number to set.');
   },
 });

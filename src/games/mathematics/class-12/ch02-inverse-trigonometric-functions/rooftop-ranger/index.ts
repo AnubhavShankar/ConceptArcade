@@ -4,7 +4,7 @@ import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
 import { along, glow, line, text } from '@core/neon';
-import { DIAL, GROUND, KINDS, ORIGIN, STEP, angleText, buildRounds, explain, intel, judge, missText, piText, rayEnd, spotterText, surdText, type Kind, type Round } from './logic';
+import { DIAL, GROUND, KINDS, ORIGIN, STEP, absSurd, angleText, buildRounds, explain, frame, intel, judge, missEnd, missText, piText, rayEnd, spotterText, surdText, type Frame, type Kind, type Round } from './logic';
 
 type G = CanvasRenderingContext2D;
 const SCENE_W = 480;
@@ -29,6 +29,10 @@ const HEROES: Record<Kind, { story: string; objective: string }> = {
   turret: {
     story: 'The robots’ leader hides in the square in front of a long wall. Hawk bolts a turret to the wall. It swings from due east (0) through straight out (π/2) to due west (π), and never behind the wall. The cosine of the bearing is the east offset over the range; offsets to the west are negative.',
     objective: 'Swing the turret to the one bearing that hits the robot, in three rounds. The boss hides on the west side.',
+  },
+  gadget: {
+    story: 'Hawk’s new gadget scope is wired backwards: it shows sec, cosec or cot of the angle instead of the angle. Each reciprocal function has its own principal branch, and only the angle in that branch hits.',
+    objective: 'Read the gadget, find the angle in the right branch, and stun all three targets.',
   },
 };
 const FIRE = { button: '🎯 Fire', aria: 'Fire the shot' };
@@ -200,7 +204,7 @@ function rifle(g: G, sx: number, sy: number, a: number, len: number, t: number, 
  * (turret, seen from above). While aiming the rifle stays in its rest pose, so the picture never shows the tilt;
  * when the shot is fired it swings to the shot's line, kicks back and flashes. Returns the muzzle for the tracer.
  */
-function shooter(g: G, kind: Kind, t: number, mood: Mood, aim: number | null, rt: number): [number, number] {
+function shooter(g: G, kind: Frame, t: number, mood: Mood, aim: number | null, rt: number): [number, number] {
   const [ox, oy] = ORIGIN[kind];
   const kick = aim === null ? 0 : Math.max(0, 1 - rt * 6) * 4;
   const flash = aim !== null && rt < 0.12;
@@ -260,8 +264,8 @@ function shooter(g: G, kind: Kind, t: number, mood: Mood, aim: number | null, rt
 }
 
 function sceneStreet(g: G, r: Round) {
-  const [ox, oy] = ORIGIN[r.kind];
-  const gy = GROUND[r.kind];
+  const [ox, oy] = ORIGIN[frame(r)];
+  const gy = GROUND[frame(r)];
   g.fillStyle = '#141a4a';
   g.fillRect(14, oy + 4, ox - 14, gy - oy - 4);
   g.fillStyle = 'rgba(255,210,63,0.35)';
@@ -287,9 +291,11 @@ function sceneSky(g: G, r: Round) {
   line(g, 14, oy + 4, ox + 12, oy + 4, PAL.cyan, 3);
   line(g, ox + 8, oy, SCENE_W, oy, 'rgba(255,255,255,0.18)', 1, [3, 6]);
   if (r.k < 0) line(g, r.vx - 26, r.vy, r.vx + 26, r.vy, PAL.dim, 3);
-  arrowLabel(g, r.vx + 26, oy, r.vx + 26, r.vy, `${r.y!.c > 0 ? 'up' : 'down'} ${surdText({ c: Math.abs(r.y!.c), root: r.y!.root })} m`, r.vx + 32, (oy + r.vy) / 2, 'left');
+  // A gadget round names the sides but gives no numbers: the scope's screen is the only reading.
+  const gad = r.kind === 'gadget';
+  arrowLabel(g, r.vx + 26, oy, r.vx + 26, r.vy, gad ? 'height y' : `${r.y!.c > 0 ? 'up' : 'down'} ${surdText(absSurd(r.y!))} m`, r.vx + 32, (oy + r.vy) / 2, 'left');
   line(g, ox + 8, oy, r.vx, r.vy, 'rgba(255,210,63,0.35)', 1, [2, 6]);
-  text(g, `range ${r.r} m`, (ox + r.vx) / 2 - 10, (oy + r.vy) / 2 + (r.k > 0 ? 18 : -10), PAL.yellow, 12);
+  text(g, gad ? 'range r' : `range ${r.r} m`, (ox + r.vx) / 2 - 10, (oy + r.vy) / 2 + (r.k > 0 ? 18 : -10), PAL.yellow, 12);
 }
 
 function sceneTurret(g: G, r: Round) {
@@ -303,12 +309,42 @@ function sceneTurret(g: G, r: Round) {
   text(g, 'WALL', 40, oy + 26, PAL.dim, 11);
   text(g, '← west', 70, 24, PAL.dim, 11);
   text(g, 'east →', 410, 24, PAL.dim, 11);
-  if (r.x!.c !== 0) arrowLabel(g, ox, r.vy, r.vx, r.vy, `${surdText({ c: Math.abs(r.x!.c), root: r.x!.root })} m ${r.x!.c > 0 ? 'east' : 'west'}`, (ox + r.vx) / 2, r.vy - 22);
+  // A gadget round names the sides but gives no numbers: the scope's screen is the only reading.
+  const gad = r.kind === 'gadget';
+  if (r.x!.c !== 0) arrowLabel(g, ox, r.vy, r.vx, r.vy, gad ? 'east offset x' : `${surdText({ c: Math.abs(r.x!.c), root: r.x!.root })} m ${r.x!.c > 0 ? 'east' : 'west'}`, (ox + r.vx) / 2, r.vy - 22);
   line(g, ox, oy, r.vx, r.vy, 'rgba(255,210,63,0.35)', 1, [2, 6]);
-  text(g, `range ${r.r} m`, (ox + r.vx) / 2 + (r.vx >= ox ? 36 : -36), (oy + r.vy) / 2 + 10, PAL.yellow, 12);
+  if (gad && r.fn === 'cot') arrowLabel(g, r.vx, oy, r.vx, r.vy, 'height y', r.vx + (r.vx >= ox ? 6 : -6), (oy + r.vy) / 2, r.vx >= ox ? 'left' : 'right');
+  else text(g, gad ? 'range r' : `range ${r.r} m`, (ox + r.vx) / 2 + (r.vx >= ox ? 36 : -36), (oy + r.vy) / 2 + 10, PAL.yellow, 12);
 }
 
-function knob(g: G, kind: Kind, k: number, range?: number) {
+/**
+ * The gadget scope's cracked screen, bolted beside the shooter: it shows sec θ, cosec θ or cot θ, never θ.
+ * It sits at the same place whatever the dial says, so it carries no hint of the angle.
+ */
+function gadgetScreen(g: G, r: Round, f: Frame, t: number) {
+  const [ox, oy] = ORIGIN[f];
+  const w = 128;
+  const h = 26;
+  const [px, py] = f === 'sky' ? [20, 40] : [ox - 176, oy + 8];
+  const [tx, ty, hx, hy] = f === 'sky' ? [px + w / 2, py + h, 49, oy - 42] : [px + w, py + h / 2, ox - 17, oy + 18];
+  line(g, tx, ty, hx, hy, PAL.dim, 1.5);
+  g.fillStyle = '#04081c';
+  g.fillRect(px, py, w, h);
+  glow(g, PAL.green, 6, () => {
+    g.strokeStyle = PAL.green;
+    g.lineWidth = 1.5;
+    g.strokeRect(px, py, w, h);
+  });
+  const flick = 0.8 + 0.2 * Math.sin(t * 37) * Math.sin(t * 5.3);
+  g.globalAlpha = Math.max(0.55, Math.min(1, flick));
+  glow(g, PAL.green, 6, () => text(g, `${r.fn} θ = ${r.ratio}`, px + w / 2, py + 18, PAL.green, 13));
+  g.globalAlpha = 1;
+  line(g, px + w - 30, py, px + w - 22, py + 10, PAL.dim, 1);
+  line(g, px + w - 22, py + 10, px + w - 27, py + 15, PAL.dim, 1);
+  line(g, px + w - 22, py + 10, px + w - 12, py + h, PAL.dim, 1);
+}
+
+function knob(g: G, kind: Frame, k: number, range?: number) {
   g.fillStyle = 'rgba(8,12,40,0.85)';
   g.fillRect(486, 0, 154, 340);
   line(g, 486, 0, 486, 340, PAL.grid, 2);
@@ -339,9 +375,13 @@ function knob(g: G, kind: Kind, k: number, range?: number) {
 }
 
 function level(kind: Kind, random: () => number): DialLevel<Round> {
-  const pan = kind === 'turret';
-  const dial = pan ? DIAL.pan : DIAL.tilt;
-  const K = pan ? KNOB.pan : KNOB.tilt;
+  // The dial is a bearing (pan) in a turret scene and a tilt in the others. A gadget level switches per round.
+  const gad = kind === 'gadget';
+  const isPan = (r: Round) => frame(r) === 'turret';
+  const dialOf = (r: Round) => (isPan(r) ? DIAL.pan : DIAL.tilt);
+  const knobOf = (r: Round) => (isPan(r) ? KNOB.pan : KNOB.tilt);
+  // What the last shot did, so a miss can pop where the player's own shot ended (never on the true target).
+  let fired: { ok: boolean; k: number; range?: number } = { ok: false, k: 0 };
   const toRange = (px: number) => DIAL.range.min + ((px - TRACK.x0) / (TRACK.x1 - TRACK.x0)) * (DIAL.range.max - DIAL.range.min);
   const fromRange = (v: number) => TRACK.x0 + ((v - DIAL.range.min) / (DIAL.range.max - DIAL.range.min)) * (TRACK.x1 - TRACK.x0);
   const L: DialLevel<Round> = {
@@ -349,14 +389,32 @@ function level(kind: Kind, random: () => number): DialLevel<Round> {
     rounds: buildRounds(KINDS.indexOf(kind) + 1, random),
     charges: [1, 1, 0],
     dials: [
-      { key: 'k', aria: pan ? 'Turret bearing in steps of pi over 12' : 'Scope tilt in steps of pi over 12', label: pan ? 'Turret bearing' : 'Scope tilt', unit: '', step: 1, min: dial.min, max: dial.max, start: pan ? 6 : 0, text: angleText },
+      {
+        key: 'k',
+        aria: gad ? 'Aim angle in steps of pi over 12' : kind === 'turret' ? 'Turret bearing in steps of pi over 12' : 'Scope tilt in steps of pi over 12',
+        label: gad ? 'Aim angle' : kind === 'turret' ? 'Turret bearing' : 'Scope tilt',
+        unit: '',
+        step: 1,
+        min: (r: Round) => dialOf(r).min,
+        max: (r: Round) => dialOf(r).max,
+        // One constant start in every round and level: 0 is never an answer (a tilt answer is never level, a bearing answer is never due east or due
+        // west), so the start never wins and, being the same everywhere, tells nothing. (A start of straight out, 6, moved to 0 on the rounds whose
+        // answer was 6, and that move told the answer.)
+        start: () => 0,
+        text: angleText,
+      },
       ...(kind === 'range' ? [{ key: 'r', aria: 'Range turret in metres', label: 'Range turret', unit: 'm', step: 1, min: DIAL.range.min, max: DIAL.range.max, start: 20 }] : []),
     ],
     handles: [
       {
         dial: 'k',
-        at: (_r, v) => [K.cx + K.R * Math.cos(v.k * STEP), K.cy - K.R * Math.sin(v.k * STEP)],
-        drag: (_r, px, py) => {
+        at: (r, v) => {
+          const K = knobOf(r);
+          return [K.cx + K.R * Math.cos(v.k * STEP), K.cy - K.R * Math.sin(v.k * STEP)];
+        },
+        drag: (r, px, py) => {
+          const K = knobOf(r);
+          const pan = isPan(r);
           let a = Math.atan2(K.cy - py, px - K.cx);
           if (pan && a < 0) a = px >= K.cx ? 0 : Math.PI;
           if (!pan && Math.abs(a) > Math.PI / 2) a = Math.sign(a) * (Math.PI / 2);
@@ -368,21 +426,33 @@ function level(kind: Kind, random: () => number): DialLevel<Round> {
     ],
     test: { button: '📡 Spotter', aria: 'Call the spotter: where would this shot go', read: (r, v) => spotterText(r, { k: v.k, range: v.r }) },
     fire: FIRE,
-    judge: (r, v) => judge(r, { k: v.k, range: v.r }),
+    judge: (r, v) => {
+      const ok = judge(r, { k: v.k, range: v.r });
+      fired = { ok, k: v.k, range: v.r };
+      return ok;
+    },
     miss: (r, v) => missText(r, { k: v.k, range: v.r }),
     win: (r) => `Stunned! ${explain(r)}`,
     hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The laser sight is on this round.' : r.assist === 1 ? 'Laser sight off: a spotter call costs a charge.' : 'Boss round: no sight, no spotter.'}`,
-    hit: (r) => [r.vx, r.vy - (r.kind === 'street' || r.kind === 'range' ? 24 : 0)],
+    hit: (r) => {
+      if (gad && !fired.ok) {
+        // A gadget miss pops where the tracer of the miss ends (a fixed spot for the side the shot went), never on the target.
+        const [ex, ey] = missEnd(r, { k: fired.k, range: fired.range });
+        return [Math.max(40, Math.min(440, ex)), Math.max(50, Math.min(310, ey))];
+      }
+      return [r.vx, r.vy - (r.kind === 'street' || r.kind === 'range' ? 24 : 0)];
+    },
     delay: FLIGHT,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, v, t, rt, shot, A }) => {
       const mood: Mood = shot ? (rt > FLIGHT ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
+      const f = frame(r);
       backdrop(g, t);
-      if (kind === 'street' || kind === 'range') sceneStreet(g, r);
-      else if (kind === 'sky') sceneSky(g, r);
+      if (f === 'street' || f === 'range') sceneStreet(g, r);
+      else if (f === 'sky') sceneSky(g, r);
       else sceneTurret(g, r);
       const stunned = shot?.ok && rt > FLIGHT ? Math.min(1, (rt - FLIGHT) * 2) : 0;
-      if (kind === 'sky' && r.k > 0) drone(g, r.vx, r.vy, t, stunned);
-      else if (kind === 'turret') {
+      if (f === 'sky' && r.k > 0) drone(g, r.vx, r.vy, t, stunned);
+      else if (f === 'turret') {
         if (stunned > 0) robot(g, r.vx, r.vy + 16, t, stunned);
         else {
           glow(g, PAL.red, 10, () => {
@@ -396,13 +466,17 @@ function level(kind: Kind, random: () => number): DialLevel<Round> {
           g.fillRect(r.vx + 2, r.vy - 3, 4, 4);
         }
       } else robot(g, r.vx, r.vy, t, stunned);
-      const O = ORIGIN[kind];
+      const O = ORIGIN[f];
       if (!shot && r.assist === 0) {
         const end = rayEnd(r, v.k, SCENE_W);
         line(g, O[0], O[1], end[0], end[1], 'rgba(77,225,255,0.55)', 1.5, [6, 5]);
       }
-      const end = shot ? rayEnd(r, shot.v.k, SCENE_W) : null;
-      const muzzle = shooter(g, kind, t, mood, end ? Math.atan2(end[1] - O[1], end[0] - O[0]) : null, rt);
+      // A hit ends on the target. A miss ends a fixed distance from it on the side the shot went, never in the true geometry (the offsets from the
+      // target at two settings would give the angle).
+      const end = shot ? (shot.ok ? rayEnd(r, shot.v.k, SCENE_W) : missEnd(r, { k: shot.v.k, range: shot.v.r })) : null;
+      A.canvas.dataset.tracer = end ? `${Math.round(end[0])},${Math.round(end[1])}` : '';
+      const muzzle = shooter(g, f, t, mood, end ? Math.atan2(end[1] - O[1], end[0] - O[0]) : null, rt);
+      if (gad) gadgetScreen(g, r, f, t);
       if (shot && end) {
         const p = Math.min(1, rt / FLIGHT);
         const [bx, by] = along([muzzle, end], p);
@@ -410,7 +484,7 @@ function level(kind: Kind, random: () => number): DialLevel<Round> {
         glow(g, PAL.yellow, 10, () => line(g, tx, ty, bx, by, PAL.yellow, 3));
         if (rt > FLIGHT) glow(g, shot.ok ? PAL.green : PAL.red, 12, () => text(g, shot.ok ? 'TARGET STUNNED' : 'MISS', 240, 50, shot.ok ? PAL.green : PAL.red, 18));
       }
-      knob(g, kind, v.k, kind === 'range' ? v.r : undefined);
+      knob(g, f, v.k, kind === 'range' ? v.r : undefined);
       text(g, 'not to scale', 440, 336, PAL.dim, 9);
     },
   };
@@ -419,7 +493,7 @@ function level(kind: Kind, random: () => number): DialLevel<Round> {
 
 export default defineGame({
   mount(ctx) {
-    const kind = KINDS[Math.max(0, Math.min(3, ctx.level - 1))];
+    const kind = KINDS[Math.max(0, Math.min(4, ctx.level - 1))];
     return mountDialLevel(ctx as never, level(kind, ctx.random) as never, 'A night street seen from a rooftop: a ranger, a robot or drone target, and a scope dial that turns only through its principal range.');
   },
 });

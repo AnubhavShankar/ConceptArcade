@@ -64,7 +64,13 @@ const DECAY: { name: string; a: number; z: number; kind: DecayRound['kind'] }[] 
   { name: 'caesium-137', a: 137, z: 55, kind: 'beta-' },
   { name: 'carbon-11', a: 11, z: 6, kind: 'beta+' },
   { name: 'cobalt-60', a: 60, z: 27, kind: 'beta-' },
+  // more β⁺ emitters, so that round 3 is not always ¹¹C → ¹¹B: ¹³N → ¹³C, ¹⁵O → ¹⁵N and ¹⁸F → ¹⁸O (a proton turns into a neutron, so Z falls by 1 and A stays)
+  { name: 'nitrogen-13', a: 13, z: 7, kind: 'beta+' },
+  { name: 'oxygen-15', a: 15, z: 8, kind: 'beta+' },
+  { name: 'fluorine-18', a: 18, z: 9, kind: 'beta+' },
 ];
+/** Level 3: where the two dials start (A = 100, Z = 50). No decay in the pool has that daughter. */
+export const DECAY_START = { a: 100, z: 50 };
 
 export const SLIDERS = {
   r: { min: 1, max: 9, step: 0.01 },
@@ -101,17 +107,39 @@ export function judgeDecay(r: DecayRound, a: number, z: number): { ok: boolean; 
   return { ok: aOk && zOk, aOk, zOk };
 }
 
-export const sizeReading = (r: SizeRound) => `A^⅓ for A = ${r.a} is ${fmt(Math.cbrt(r.a))}, and R₀ = 1.2 fm.`;
+// ---- fixed miss effects for levels 1 and 2 ---------------------------------------------------------------------------------
+
+/** Start radius (fm): outside the tolerance of every row (the smallest answer is 3.02 fm). Start barrier height (keV): no row has it. */
+export const SIZE_START = 2;
+export const BARRIER_START = 200;
+/** Where the burst and the "−1 ♥" appear: fixed points, never an answer position. */
+export const SIZE_HIT: [number, number] = [330, 170];
+export const BARRIER_HIT: [number, number] = [330, 110];
+/** On a miss the nucleon pack is drawn this many fm smaller (ring too big) or larger (ring too small) than the player's own ring. */
+export const PACK_STEP = 1.2;
+/** The radius (fm) of the nucleon pack during a shot: the true one only on a win. */
+export const packRadius = (r: SizeRound, rad: number, ok: boolean) => (ok ? r.sol : rad > r.sol ? rad - PACK_STEP : rad + PACK_STEP);
+/** What the climbing nucleus does: meet the other (win), bounce off a hill set too high, or overshoot a hill set too low. */
+export type BarrierEffect = 'meet' | 'bounce' | 'overshoot';
+export const barrierEffect = (r: BarrierRound, u: number): BarrierEffect => (judgeBarrier(r, u) ? 'meet' : u > r.sol ? 'bounce' : 'overshoot');
+
+export const sizeReading =(r: SizeRound) => `A^⅓ for A = ${r.a} is ${fmt(Math.cbrt(r.a))}, and R₀ = 1.2 fm.`;
 export const barrierReading = (r: BarrierRound, u: number) => `With the centres ${fmt(r.d)} fm apart the repulsion energy is ${fmt(r.z1 * r.z2 * K_E2)} MeV fm / ${fmt(r.d)} fm; you set ${fmt(u)} keV.`;
 export const decayReading = (r: DecayRound) => `${r.name} emits ${PARTICLE[r.kind].name}, which carries away mass number ${PARTICLE[r.kind].a} and charge ${PARTICLE[r.kind].z > 0 ? '+' : ''}${PARTICLE[r.kind].z}.`;
 
 export const sizeMiss = (r: SizeRound, rad: number) => (rad > r.sol ? 'Your nucleus is bigger than the real one: its nucleons would be spread thin.' : 'Your nucleus is smaller than the real one: its nucleons would be squeezed together too tightly.');
 export const barrierMiss = (r: BarrierRound, u: number) => (u > r.sol ? 'You built the hill too high: the nuclei would be stopped by a barrier that is not really there.' : 'You built the hill too low: the nuclei would slip over a barrier that is really higher.');
+/** After the decay, is there more (+1), the same (0) or less (−1) mass number and charge than the parent had? Counting the daughter and the emitted particle together. */
+export function decaySides(r: DecayRound, a: number, z: number): [-1 | 0 | 1, -1 | 0 | 1] {
+  const p = PARTICLE[r.kind];
+  return [Math.sign(a + p.a - r.a) as -1 | 0 | 1, Math.sign(z + p.z - r.z) as -1 | 0 | 1];
+}
+export const SIDE_NUCLEONS = { '-1': 'fewer nucleons than before', '0': 'the same number of nucleons', '1': 'more nucleons than before' };
+export const SIDE_CHARGE = { '-1': 'a lower total charge than before', '0': 'the same total charge', '1': 'a higher total charge than before' };
+/** After a miss: the effect of the player's daughter, counted against the parent, in fixed words: the direction of each count and never a number. */
 export function decayMiss(r: DecayRound, a: number, z: number): string {
-  const j = judgeDecay(r, a, z);
-  if (j.aOk && !j.zOk) return 'The mass number balances, but the charge does not: the total charge before and after the decay differs.';
-  if (!j.aOk && j.zOk) return 'The charge balances, but the mass number does not: nucleons would be created or destroyed.';
-  return 'Neither the mass number nor the charge balances: the decay would break both conservation laws.';
+  const [sa, sz] = decaySides(r, a, z);
+  return `After that decay there would be ${SIDE_NUCLEONS[String(sa) as '-1' | '0' | '1']} and ${SIDE_CHARGE[String(sz) as '-1' | '0' | '1']}, counting the daughter and the emitted particle together.`;
 }
 
 export function sizeExplain(r: SizeRound): string[] {
@@ -124,3 +152,137 @@ export function decayExplain(r: DecayRound): string[] {
   const p = PARTICLE[r.kind];
   return [`Mass number and charge are both conserved: A = ${r.a} → ${r.aSol} + ${p.a}, and Z = ${r.z} → ${r.zSol} + (${p.z}).`, `So the daughter has A = ${r.aSol} and Z = ${r.zSol} (Example 13.4). The number of protons and neutrons is conserved, but not the number of atoms of each element.`];
 }
+
+// ---- level 4: nuclide twins (Section 13.2) ------------------------------------------------------------------------------
+// The player sets the number of protons Z (1 to 30) and neutrons N (0 to 40); A = Z + N.
+
+export type Relation = 'isotope' | 'isobar' | 'isotone';
+/** What the clue's extra fact gives: the number of neutrons ('n'), the mass number ('a') or Z ('z'). */
+export type ExtraKind = 'n' | 'a' | 'z';
+
+export interface TwinRound {
+  /** The reference nuclide: its symbol as written in the clue, and its numbers. */
+  ref: string;
+  refA: number;
+  refZ: number;
+  relation: Relation;
+  /** The extra fact, as printed in the clue. */
+  extra: string;
+  extraKind: ExtraKind;
+  extraValue: number;
+  /** The answer: protons and neutrons, and the nuclide’s name (the element letters are shown only after a win). */
+  z: number;
+  n: number;
+  name: string;
+  assist: 0 | 1 | 2;
+}
+
+const SUPS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+const SUBS = '₀₁₂₃₄₅₆₇₈₉';
+const digits = (x: number, set: string) => [...String(x)].map((c) => set[Number(c)]).join('');
+/** The mass number as a superscript. */
+export const sup = (x: number) => digits(x, SUPS);
+/** The charge number as a subscript. */
+export const sub = (x: number) => digits(x, SUBS);
+/** The full symbol ᴬ_Z X of a nuclide. */
+export const nuclideSymbol = (a: number, z: number, sym: string) => `${sup(a)}${sub(z)}${sym}`;
+/** The short name ᴬX of a nuclide. */
+export const nuclideName = (a: number, sym: string) => `${sup(a)}${sym}`;
+
+interface TwinRow {
+  refA: number;
+  refZ: number;
+  refSym: string;
+  relation: Relation;
+  extraKind: ExtraKind;
+  extraValue: number;
+  z: number;
+  n: number;
+  sym: string;
+}
+const extraText = (kind: ExtraKind, value: number) => (kind === 'n' ? `with ${value} neutrons` : kind === 'a' ? `with mass number ${value}` : `with Z = ${value}`);
+/** The nine nuclide twins, three per round: isotopes, isobars, then isotones (the boss). */
+export const TWIN_ROWS: TwinRow[][] = [
+  [
+    { refA: 35, refZ: 17, refSym: 'Cl', relation: 'isotope', extraKind: 'n', extraValue: 20, z: 17, n: 20, sym: 'Cl' },
+    { refA: 56, refZ: 26, refSym: 'Fe', relation: 'isotope', extraKind: 'a', extraValue: 54, z: 26, n: 28, sym: 'Fe' },
+    { refA: 1, refZ: 1, refSym: 'H', relation: 'isotope', extraKind: 'a', extraValue: 3, z: 1, n: 2, sym: 'H' },
+  ],
+  [
+    { refA: 14, refZ: 6, refSym: 'C', relation: 'isobar', extraKind: 'z', extraValue: 7, z: 7, n: 7, sym: 'N' },
+    { refA: 40, refZ: 18, refSym: 'Ar', relation: 'isobar', extraKind: 'z', extraValue: 20, z: 20, n: 20, sym: 'Ca' },
+    { refA: 3, refZ: 1, refSym: 'H', relation: 'isobar', extraKind: 'z', extraValue: 2, z: 2, n: 1, sym: 'He' },
+  ],
+  [
+    { refA: 16, refZ: 8, refSym: 'O', relation: 'isotone', extraKind: 'a', extraValue: 17, z: 9, n: 8, sym: 'F' },
+    { refA: 13, refZ: 6, refSym: 'C', relation: 'isotone', extraKind: 'z', extraValue: 7, z: 7, n: 7, sym: 'N' },
+    { refA: 40, refZ: 18, refSym: 'Ar', relation: 'isotone', extraKind: 'a', extraValue: 42, z: 20, n: 22, sym: 'Ca' },
+  ],
+];
+export const TWIN_SLIDERS = { z: { min: 1, max: 30, step: 1 }, n: { min: 0, max: 40, step: 1 } };
+/** Where both dials start: no row has this (Z, N) as its answer. */
+export const TWIN_START = { z: 10, n: 10 };
+
+export function twinRound(row: TwinRow, k: number): TwinRound {
+  return {
+    ref: nuclideSymbol(row.refA, row.refZ, row.refSym),
+    refA: row.refA,
+    refZ: row.refZ,
+    relation: row.relation,
+    extra: extraText(row.extraKind, row.extraValue),
+    extraKind: row.extraKind,
+    extraValue: row.extraValue,
+    z: row.z,
+    n: row.n,
+    name: nuclideName(row.z + row.n, row.sym),
+    assist: aid(k),
+  };
+}
+/** One pick per round; a pick whose (Z, N) an earlier round already had is skipped, so the rounds never share an answer. */
+export function twinRounds(random: () => number): TwinRound[] {
+  const rounds: TwinRound[] = [];
+  TWIN_ROWS.forEach((rows, k) => {
+    const row = shuffle(rows, random).find((c) => !rounds.some((p) => p.z === c.z && p.n === c.n)) ?? rows[0];
+    rounds.push(twinRound(row, k));
+  });
+  return rounds;
+}
+
+/** The relation to the reference holds (isotope: same Z, isobar: same A, isotone: same N). */
+export const twinRelationOk = (r: TwinRound, z: number, n: number) => (r.relation === 'isotope' ? z === r.refZ : r.relation === 'isobar' ? z + n === r.refA : n === r.refA - r.refZ);
+/** The clue's extra fact holds. */
+export const twinExtraOk = (r: TwinRound, z: number, n: number) => (r.extraKind === 'n' ? n === r.extraValue : r.extraKind === 'a' ? z + n === r.extraValue : z === r.extraValue);
+export function judgeTwin(r: TwinRound, z: number, n: number): { ok: boolean; relOk: boolean; extraOk: boolean } {
+  const relOk = twinRelationOk(r, z, n);
+  const extraOk = twinExtraOk(r, z, n);
+  return { ok: relOk && extraOk, relOk, extraOk };
+}
+/** What must match, in the words of the light on the screen. */
+export const TWIN_MATCH: Record<Relation, string> = { isotope: 'same Z', isobar: 'same A', isotone: 'same N' };
+
+export const twinIntel = (r: TwinRound) => `Build an ${r.relation} of ${r.ref} ${r.extra}. Set the number of protons Z and neutrons N.`;
+/** The first failed condition, in the player's own numbers; the rule is from the book and no answer is given. */
+export function twinMiss(r: TwinRound, z: number, n: number): string {
+  const j = judgeTwin(r, z, n);
+  const rule = r.relation === 'isotope' ? `an isotope of ${r.ref} (Z must match)` : r.relation === 'isobar' ? `an isobar of ${r.ref} (A must match)` : `an isotone of ${r.ref} (N must match)`;
+  const problem = !j.relOk ? `is not ${rule}` : `does not have ${r.extra.replace(/^with /, '')}`;
+  return `You rolled Z = ${z}, N = ${n}, so A = ${z + n}: that ${problem}.`;
+}
+/** The paid test run: which conditions hold. */
+export function twinReading(r: TwinRound, z: number, n: number): string {
+  const j = judgeTwin(r, z, n);
+  return `Test run: ${TWIN_MATCH[r.relation]} as ${r.ref}: ${j.relOk ? 'yes' : 'no'}; ${r.extra}: ${j.extraOk ? 'yes' : 'no'}.`;
+}
+export function twinExplain(r: TwinRound): string {
+  const a = r.z + r.n;
+  if (r.relation === 'isotope') {
+    return r.extraKind === 'n'
+      ? `Isotopes share Z = ${r.z}; with N = ${r.n}, A = Z + N = ${a}: the nuclide is ${r.name}.`
+      : `Isotopes share Z = ${r.z}; with A = ${a}, N = A − Z = ${a} − ${r.z} = ${r.n}: the nuclide is ${r.name}.`;
+  }
+  if (r.relation === 'isobar') return `Isobars share A = ${a}; with Z = ${r.z}, N = A − Z = ${a} − ${r.z} = ${r.n}: ${r.name}.`;
+  return r.extraKind === 'a'
+    ? `Isotones share N = ${r.n}; with A = ${a}, Z = A − N = ${a} − ${r.n} = ${r.z}: the nuclide is ${r.name}.`
+    : `Isotones share N = ${r.n}; with Z = ${r.z}, A = Z + N = ${a}: the nuclide is ${r.name}.`;
+}
+export const twinWin = (r: TwinRound) => `Both clues match! ${twinExplain(r)}`;

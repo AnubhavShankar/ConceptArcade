@@ -2,11 +2,12 @@
 // lands). Petri is a lab robot with a dish for a head. Level 1 is a real-time specimen drop: set the scanner to the order and degree before the card lands.
 // Levels 2 and 3 set the growth lamp and the dish frequency from the equation the colony or the dish obeys.
 import { PAL, createArcade } from '@core/arcade';
+import { FLASH, helperOn, paidFlash } from '@core/aidflash';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
 import { backdrop, face, num, track, trackHandle, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
-import { buildRounds, degreeWord, explain, intel, judge, judgeScan, magnify, missText, spotText, type Round } from './logic';
+import { buildRounds, degreeWord, explain, intel, judge, judgeScan, magnify, missText, overshoot, spotText, type Round } from './logic';
 
 type G = CanvasRenderingContext2D;
 type Mood = 'happy' | 'worried' | 'cheer';
@@ -99,7 +100,7 @@ function mountScan(ctx: Parameters<typeof mountDialLevel>[0]) {
       const ok = judgeScan(r, order, degree);
       frozen = A.clock - born;
       scanned = { ok };
-      A.resolve(ok, ok ? `Scanned! ${explain(r)}` : missText(r, 0, order, degree), { x: 320, y: 190 }, 1.1);
+      A.resolve(ok, ok ? `Scanned! ${explain(r)}` : missText(r), { x: 320, y: 190 }, 1.1);
     }),
   );
   A.scene((g, t) => {
@@ -163,26 +164,41 @@ function level(n: number, random: () => number): DialLevel<Round> {
   const rounds = buildRounds(n, random);
   const key = n === 2 ? 'k' : 'm';
   const RUN = 1.8;
+  /** The growth line or swing curve is the helper: live in round 1, for 1.5 s after a paid test in round 2 (at the tested setting), on a win. */
+  const flash = paidFlash();
+  let tested = 0;
   return {
     hero: { name: 'Petri', role: n === 2 ? 'a lab robot with a dish for a head who sets the growth lamp' : 'a lab robot with a dish for a head who tunes the spring under the dish', story: hero.story, objective: hero.objective },
     rounds,
     charges: [1, 1, 0],
     dials: [{ key, aria: n === 2 ? 'Lamp setting k' : 'Dish frequency m', label: n === 2 ? 'Lamp k' : 'Frequency m', unit: '', step: 1, min: (r: Round) => r.min, max: (r: Round) => r.max, start: (r: Round) => r.start, text: (v: number) => `${key} = ${num(v)}` }],
     handles: [trackHandle<Round>(key, (r) => r.min, (r) => r.max)],
-    test: { button: n === 2 ? '🧫 Incubator test' : '🌀 Swing test', aria: n === 2 ? 'Incubator test: read the colony for this lamp setting' : 'Swing test: count the swings for this frequency', read: (r, v) => spotText(r, v[key]) },
+    test: { button: n === 2 ? '🧫 Incubator test' : '🌀 Swing test', aria: n === 2 ? 'Incubator test: read the colony for this lamp setting' : 'Swing test: count the swings for this frequency', read: (r, v) => {
+        tested = v[key];
+        flash.paid();
+        return spotText(r, v[key]);
+      },
+    },
     fire: { button: n === 2 ? '💡 Switch on the lamp' : '🎛️ Start the dish', aria: n === 2 ? 'Switch on the lamp' : 'Start the dish' },
     judge: (r, v) => judge(r, v[key]),
     miss: (r, v) => missText(r, v[key]),
     win: (r) => `${n === 2 ? 'Colony on target!' : 'Dish in time!'} ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The curve is live.' : r.assist === 1 ? 'The curve is dim: a test costs a charge.' : 'Boss round: no curve, no test.'}`,
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The curve is live.' : r.assist === 1 ? 'No curve: a test shows it for a moment and costs a charge.' : 'Boss round: no curve, no test.'}`,
     hit: () => [320, 150],
     delay: RUN + 0.3,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
       backdrop(g);
-      const val = shot ? shot.v[key] : v[key];
+      // The helper (the growth line or the swing curve at the setting): live in round 1, for 1.5 s after a paid test in round 2 (at the tested
+      // setting), on a win. A miss in rounds 2 and 3 plays a fixed effect in the right direction instead, never one that scales with the setting.
+      const since = flash.since(t, k);
+      const won = shot !== null && shot.ok;
+      const help = helperOn(r.assist, won, shot ? Infinity : since);
+      A.canvas.dataset.helper = help ? '1' : '0';
+      const miss = shot !== null && !shot.ok;
+      const up = miss && overshoot(r, shot!.v[key]);
+      const frozen = !shot && r.assist === 1 && since < FLASH;
+      const val = frozen ? tested : shot ? shot.v[key] : v[key];
       const p = shot ? Math.min(1, rt / RUN) : 0;
-      const live = r.assist <= 1 || shot !== null;
-      const alpha = r.assist === 1 && !shot ? 0.3 : 1;
       const Px = { x0: 170, x1: 560, top: 70, bottom: 250 };
       line(g, Px.x0, (Px.top + Px.bottom) / 2, Px.x1, (Px.top + Px.bottom) / 2, PAL.dim, 1);
       let dishY = 0;
@@ -199,31 +215,32 @@ function level(n: number, random: () => number): DialLevel<Round> {
         g.fill();
         text(g, `wanted c·e^${num(r.exp)}`, X(r.T) - 12, Y(r.exp) - 12, PAL.green, 11, 'right');
         text(g, 'height = ln(y / c)', Px.x0 + 4, Px.top - 6, PAL.dim, 10, 'left');
-        if (live) {
-          g.globalAlpha = alpha;
-          line(g, X(0), Y(0), X(r.T * p || (shot ? 0 : r.T)), Y(val * (r.T * p || (shot ? 0 : r.T))), PAL.yellow, 3);
-          g.globalAlpha = 1;
+        if (help || miss) {
+          // The line ends at the setting's own height while the helper is on; a hidden-helper miss ends a fixed 34 px above or below the target dot.
+          const full = shot ? p : 1;
+          const ey = help ? Y(val * r.T) : Y(r.exp) + (up ? -34 : 34);
+          line(g, X(0), Y(0), X(0) + full * (X(r.T) - X(0)), Y(0) + full * (ey - Y(0)), PAL.yellow, 3);
         }
-        dishR = 18 + Math.max(-6, Math.min(24, val * r.T * p * 1.6));
+        dishR = !shot ? 18 : help ? 18 + Math.max(-6, Math.min(24, val * r.T * p * 1.6)) : up ? 18 + 22 * p : 18 - 8 * p;
       } else {
         const X = (tt: number) => Px.x0 + (tt / (2 * Math.PI)) * (Px.x1 - Px.x0);
         const Y = (y: number) => (Px.top + Px.bottom) / 2 - y * 70;
         text(g, `wanted: ${r.swings} full swings in 2π`, Px.x1, Px.top - 6, PAL.green, 11, 'right');
-        if (live) {
-          g.globalAlpha = alpha;
+        // The swings drawn are the setting's own while the helper is on; a hidden-helper miss draws a fixed 7 swings (too many) or 1 (too few).
+        const swings = help ? val : up ? 7 : 1;
+        if (help || miss) {
           g.strokeStyle = PAL.yellow;
           g.lineWidth = 3;
           g.beginPath();
           const end = shot ? p : 1;
           for (let i = 0; i <= 240 * end; i++) {
             const tt = (i / 240) * 2 * Math.PI;
-            if (i === 0) g.moveTo(X(tt), Y(Math.cos(val * tt)));
-            else g.lineTo(X(tt), Y(Math.cos(val * tt)));
+            if (i === 0) g.moveTo(X(tt), Y(Math.cos(swings * tt)));
+            else g.lineTo(X(tt), Y(Math.cos(swings * tt)));
           }
           g.stroke();
-          g.globalAlpha = 1;
         }
-        dishY = shot ? Math.cos(val * p * 2 * Math.PI) * 40 : Math.sin(t * 3) * 3;
+        dishY = shot ? Math.cos(swings * p * 2 * Math.PI) * 40 : Math.sin(t * 3) * 3;
       }
       // The dish itself
       g.fillStyle = 'rgba(180,230,255,0.2)';

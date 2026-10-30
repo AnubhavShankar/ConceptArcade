@@ -70,7 +70,8 @@ export function buildRounds(level: number, random: () => number): Round[] {
   for (let i = 0; i < 3; i++) {
     let r = make(random);
     for (let t = 0; t < 50 && out.some((o) => o.ans === r.ans && o.k === r.k && o.o.join() === r.o.join() && o.u.join() === r.u.join()); t++) r = make(random);
-    out.push({ ...r, start: r.ans === 0 ? 1 : 0, assist: aid(i) });
+    // One constant start for every round (no answer is 0: the generators refuse it), so the start tells nothing and never wins.
+    out.push({ ...r, start: 0, assist: aid(i) });
   }
   return out;
 }
@@ -102,12 +103,12 @@ export function spotText(r: Round, l: number): string {
   if (r.kind === 'dot') return `Energy meter with λ = ${num(l)}: the dot product of the two paths is ${num(measure(r, l))}.`;
   return `Shadow meter with λ = ${num(l)}: the shadow on the rail is ${one(measure(r, l))}.`;
 }
-/** After a miss: what the shot did, never the right λ. */
+/** After a miss: the direction of the error only, never a number (the meter, which costs a charge, gives the numbers) and never the right λ. */
 export function missText(r: Round, l: number): string {
-  if (r.kind === 'perp') return `The paths met at ${one(angle(r, l))}°, not a right angle, so the cue ball scratched. The dot product was ${num(measure(r, l))}, not 0.`;
   const m = measure(r, l);
-  if (r.kind === 'dot') return `The dot product of the paths was ${num(m)}, ${m > r.T ? 'more' : 'less'} than the ${num(r.T)} wanted.`;
-  return `The shadow on the rail was ${one(m)}, ${m > r.T ? 'longer' : 'shorter'} than the ${num(r.T)} wanted.`;
+  if (r.kind === 'perp') return `The paths met at ${m > 0 ? 'less' : 'more'} than a right angle, so the cue ball scratched.`;
+  if (r.kind === 'dot') return `The dot product of the paths came out ${m > r.T ? 'greater' : 'smaller'} than the number wanted.`;
+  return `The shadow on the rail came out ${m > r.T ? 'greater' : 'smaller'} than the length wanted.`;
 }
 /** After a hit: the working. */
 export function explain(r: Round): string {

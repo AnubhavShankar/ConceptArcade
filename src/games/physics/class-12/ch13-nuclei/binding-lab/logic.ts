@@ -60,6 +60,17 @@ export const SLIDERS = {
   e: { min: 0, max: 30, step: 0.01 },
 };
 
+/** Where each dial starts: no round has this as its answer. */
+export const START = { be: 300, q: 0, e: 5 };
+/** Where the burst of points appears: a fixed point per level, never a function of the answer. */
+export const HIT: Record<'be' | 'q' | 'e', [number, number]> = { be: [200, 170], q: [330, 170], e: [330, 150] };
+/** The x position of a value on the level's bar or track (canvas pixels), for the marks and the tests. */
+export const BAR = { be: { x0: 340, w: 260 }, q: { x0: 60, w: 520 }, e: { x0: 300, w: 300 } };
+export const markX = (level: 'be' | 'q' | 'e', v: number) => {
+  const S = SLIDERS[level];
+  return level === 'q' ? 60 + ((v - S.min) / (S.max - S.min)) * 520 : BAR[level].x0 + (BAR[level].w * v) / S.max;
+};
+
 export function bindRounds(): BindRound[] {
   return NUCLEI.map((n, k) => ({ ...n, dm: massDefect(n.z, n.a, n.m), sol: Math.round(bindingMeV(n.z, n.a, n.m) * 100) / 100, assist: aid(k) }));
 }

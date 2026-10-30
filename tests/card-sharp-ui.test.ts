@@ -5,7 +5,7 @@ import { CARDS, RANKS, SUITS, buildRounds, type Round } from '../src/games/mathe
 import { createRng } from '../src/core/random';
 import { arcadeHarness, shellTests } from './helpers/arcade-harness';
 
-const h = arcadeHarness(game, 'card-sharp', 3);
+const h = arcadeHarness(game, 'card-sharp', 4);
 const build = (level: number, seed: number) => buildRounds(level, createRng(seed));
 const wrong = (r: Round) => (r.ans === r.max ? r.ans - 1 : r.ans + 1);
 const name = (i: number) => `Card ${RANKS[i % RANKS.length]}${SUITS[Math.floor(i / RANKS.length)]}`;
@@ -28,13 +28,14 @@ function markBoard(r: Round, bad: boolean) {
     setCard(i, x);
   });
 }
-const commitLabel = (level: number) => (level === 1 ? 'Show the cards' : 'Show the trick');
+const isBoard = (level: number) => level === 1 || level === 4;
+const commitLabel = (level: number) => (isBoard(level) ? 'Show the cards' : 'Show the trick');
 
 shellTests<Round[]>(h, {
-  levels: [1, 2, 3],
+  levels: [1, 2, 3, 4],
   build,
-  setRight: (g, k, level) => (level === 1 ? markBoard(g[k], false) : h.setSlider(g[k].ans)),
-  setWrong: (g, k, level) => (level === 1 ? markBoard(g[k], true) : h.setSlider(wrong(g[k]))),
+  setRight: (g, k, level) => (isBoard(level) ? markBoard(g[k], false) : h.setSlider(g[k].ans)),
+  setWrong: (g, k, level) => (isBoard(level) ? markBoard(g[k], true) : h.setSlider(wrong(g[k]))),
   commit: (level) => h.click(commitLabel(level)),
 });
 
@@ -72,5 +73,37 @@ describe('Card Sharp', () => {
       h.click('Check: see the chance this setting gives');
       expect(h.feedback()).toMatch(/Check/);
     }
+  });
+  it('level 4 is the tap board with a compound event: 24 cards, the event in the note, a clean start, a miss that says what was left out', () => {
+    h.start(4, 5);
+    const g = build(4, 5);
+    expect(h.$('.lab-controls')?.querySelectorAll('button[aria-label^="Card"]').length).toBe(CARDS);
+    expect(h.note()).toContain(g[0].textB);
+    expect(h.note()).toContain(g[0].textA);
+    expect(g[0].textA).toMatch(/^not /);
+    // the start board is blank, so it is not the answer
+    expect([...document.querySelectorAll('button[aria-label^="Card"]')].every((b) => b.getAttribute('aria-pressed') === 'false')).toBe(true);
+    markBoard(g[0], true);
+    h.click('Show the cards');
+    h.advance(3.6);
+    expect(h.feedback()).toMatch(/left out/);
+    expect(h.feedback()).not.toMatch(/\d\/\d/);
+  });
+  it('level 4 shows the rule in the working in all three rounds, and the boss round has no peek', () => {
+    h.start(4, 5);
+    const g = build(4, 5);
+    const want = [/P\(not A \| B\) = 1 − P\(A \| B\)/, /P\(A ∪ C \| B\) = P\(A \| B\) \+ P\(C \| B\) − P\(A ∩ C \| B\)/, /P\(neither \| B\) = 1 − P\(A ∪ C \| B\)/];
+    for (let k = 0; k < 3; k++) {
+      if (k === 2) {
+        h.click('Peek: the cards that fit B glow for a moment');
+        expect(h.feedback()).toMatch(/No charges left/);
+      }
+      markBoard(g[k], false);
+      h.click('Show the cards');
+      h.advance(2.8);
+      expect(h.feedback()).toMatch(want[k]);
+      h.advance(1);
+    }
+    expect(h.phase()).toBe('won');
   });
 });

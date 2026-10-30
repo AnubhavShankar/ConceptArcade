@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "splash-patrol",
+  "title": "Splash Patrol",
+  "summary": "Inspect a tube water-slide built from function pieces: flag every gap and every kink before the test duck rides it.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 5,
+    "name": "Continuity and Differentiability"
+  },
+  "ncertRef": "Section 5.2, Continuity",
+  "order": 3,
+  "concepts": [
+    "Continuity at a point: left limit, right limit and value",
+    "Finding all points of discontinuity",
+    "A removable gap: limits agree but the value does not",
+    "Differentiability: left and right slopes",
+    "Corners of |x − c| and of |cos x|, sin|x|",
+    "Jumps of the greatest integer function [x]"
+  ],
+  "learningOutcome": "The student can find every point where a piecewise, modulus or greatest-integer function is not continuous, and every point where it is continuous but not differentiable.",
+  "mechanic": "deduce-the-hidden",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Find the gaps",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: f is continuous at c when the left limit, the right limit and f(c) agree; flag every joint where they do not (Ex 5.1 Q6 to Q16).",
+      "hints": [
+        "At each joint, put x = c into the piece on the left and the piece on the right.",
+        "If the two give different numbers, the slide has a gap there.",
+        "Also check the value f(c) itself: a single wrong point is a gap too."
+      ]
+    },
+    {
+      "title": "Gaps and kinks",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: a joined slide can still have a kink: compare the slopes from the left and the right, as for |x − 1| at 1 (Ex 5.2 Q9; Ex 5.1 Q34).",
+      "hints": [
+        "First check the values: a gap beats everything.",
+        "If the values agree, differentiate each piece and put in x = c.",
+        "Equal slopes: smooth. Different slopes: a kink."
+      ]
+    },
+    {
+      "title": "Steps and folds",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: [x] jumps at every integer, and |g(x)| can fold into a kink where g = 0 but not where g touches its peak (Ex 5.1 Q19, Q31 to Q33; Ex 5.2 Q10).",
+      "hints": [
+        "[x] has a jump at each integer and is flat in between.",
+        "|g(x)| can have a kink only where g(x) = 0 and changes sign.",
+        "At a peak such as |cos x| at π, the slope is 0 on both sides: smooth."
+      ]
+    },
+    {
+      "title": "Chief inspector",
+      "tier": "challenge",
+      "kind": "complexity",
+      "adds": "Harder: sums and products of [x], |x| and pieces, such as [x] + |x − 1| and x[x]; some joints are traps (Ex 5.1 Q19, Q34; Misc Q20).",
+      "hints": [
+        "Check each joint for a jump first, from any part of the sum.",
+        "x|x| is smooth at 0: its slope is 0 from both sides.",
+        "|x| + |x − 2| is flat between 0 and 2, so x = 1 is smooth."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A function that is continuous is also differentiable",
+    "If the left and right limits agree, the function is continuous whatever f(c) is",
+    "|g(x)| has a corner wherever g(x) has a turning point"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

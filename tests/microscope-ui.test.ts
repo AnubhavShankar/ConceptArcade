@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import game from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/microscope-lab/index';
-import { buildGame, type Game } from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/microscope-lab/logic';
+import { buildGame, judgeMag, judgeScope, missText, type Game } from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/microscope-lab/logic';
 import { createRng } from '../src/core/random';
 import type { GameContext } from '../src/core/types';
 import { manifest } from './fixtures';
+import { canvasRecorder, texts } from './helpers/canvas-rec';
 
 let step: (ms: number) => void;
 let clock = 0;
@@ -73,8 +74,13 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
 const FIRE = ['Take the photo at this distance', 'Crack the lock with these settings'];
 const TEST = ['Test shot: measure the picture at this distance', 'Test shot: measure the picture with these settings'];
 const setRight = (g: Game, k: number) => {
-  if (g.kind === 'mag') setSlider(r1(g.rounds[k].uSol));
-  else {
+  if (g.kind === 'mag') {
+    // the winning dial value nearest the exact spot (the window is a step or two wide, and the sharpness edge sits a hair inside it)
+    const r = g.rounds[k];
+    let best = 1;
+    for (let u = 1; u <= r.f - 0.1; u = r1(u + 0.1)) if (judgeMag(r, u).ok && (!judgeMag(r, best).ok || Math.abs(u - r.uSol) < Math.abs(best - r.uSol))) best = u;
+    setSlider(best);
+  } else {
     setSlider(r1(g.rounds[k].uSol), 0);
     setSlider(r1(g.rounds[k].LSol), 1);
   }
@@ -165,7 +171,7 @@ describe('level 1: bug safari', () => {
     setSlider(r1(r.uSol) + 0.3);
     click(FIRE[0]);
     advance(2.8);
-    expect(feedback()).toMatch(/Sharp, but Mite only looks/);
+    expect(feedback()).toMatch(/Sharp, but Mite could look bigger/);
     expect(hearts()).toBe(1);
     expect(feedback()).not.toContain(`${r1(r.uSol)} cm`);
   });
@@ -180,7 +186,7 @@ describe('level 1: bug safari', () => {
     solveRound(1, g, 0);
     advance(1);
     expect(sliders()[0].max).toBe(String(Math.round((g.rounds[1].f - 0.1) * 10) / 10));
-    expect($('.note')?.textContent).toMatch(/dim/);
+    expect($('.note')?.textContent).toMatch(/for a moment after a test shot/);
   });
   it('dragging Mite along the bench sets his distance in 0.1 cm steps', () => {
     const g = start(1, 5) as Extract<Game, { kind: 'mag' }>;
@@ -202,7 +208,7 @@ describe('level 2: cracking the microscope', () => {
     setSlider(r1(r.LSol) + 2, 1);
     click(FIRE[1]);
     advance(2.8);
-    expect(feedback()).toMatch(/With those settings|No clear picture/);
+    expect(feedback()).toMatch(/not the picture the lab wants|No clear picture/);
     expect(hearts()).toBe(2);
     expect(feedback()).not.toMatch(/Exercise/);
   });
@@ -228,6 +234,130 @@ describe('level 2: cracking the microscope', () => {
     pointer('pointerdown', 170 + 10 * 18, 97);
     pointer('pointermove', 170 + 14.96 * 18, 97);
     expect(sliders()[1].value).toBe('15');
+  });
+});
+
+/** One drawn frame after the clock has run `dt` seconds. */
+const frameAfter = (rc: ReturnType<typeof canvasRecorder>, dt: number) => {
+  if (dt > 0.05) advance(dt - 0.05);
+  rc.clear();
+  advance(0.05);
+  return texts(rc.rec);
+};
+const HELPER = [/× (sharp|blurred)|^at infinity$|^image .* cm away/, /^LOCK SIGNAL|^final image|^first image/];
+const has = (t: string[], level: number) => t.some((s) => HELPER[level - 1].test(s));
+const playTo = (level: number, g: Game, round: number) => {
+  for (let k = 0; k < round; k++) {
+    solveRound(level, g, k);
+    advance(1);
+  }
+};
+
+describe('no leaks: the helper fades, and a miss shows no number or true picture', () => {
+  it('round 1 has the live view; round 2 only for about 1.5 s after a test shot; round 3 never, even after a test shot', () => {
+    for (const level of [1, 2]) {
+      const rc = canvasRecorder();
+      const g = start(level, 5);
+      expect(has(frameAfter(rc, 0.1), level)).toBe(true);
+      playTo(level, g, 1);
+      expect(has(frameAfter(rc, 0.1), level)).toBe(false);
+      click(TEST[level - 1]);
+      expect(has(frameAfter(rc, 0.3), level)).toBe(true);
+      expect(has(frameAfter(rc, 1.5), level)).toBe(false);
+      setRight(g, 1);
+      click(FIRE[level - 1]);
+      advance(2.8);
+      advance(1);
+      expect(hud()).toMatch(/Round 3 of 3/);
+      expect(has(frameAfter(rc, 0.1), level)).toBe(false);
+      click(TEST[level - 1]);
+      expect(has(frameAfter(rc, 0.3), level)).toBe(false);
+    }
+  });
+  it('a miss in round 2 or 3 draws no view, readout, signal bar or first image; a win draws them', () => {
+    for (const level of [1, 2]) {
+      for (const round of [1, 2]) {
+        const rc = canvasRecorder();
+        const g = start(level, 5);
+        playTo(level, g, round);
+        setWrong(g, round);
+        click(FIRE[level - 1]);
+        advance(2.0);
+        expect(has(frameAfter(rc, 0.05), level)).toBe(false);
+        advance(1);
+        setRight(g, round);
+        click(FIRE[level - 1]);
+        advance(2.0);
+        expect(has(frameAfter(rc, 0.05), level)).toBe(true);
+        advance(1);
+      }
+    }
+  });
+  it('miss texts carry no number, and two wrong settings on the same side give the same words and the same drawn end', () => {
+    // level 1: both nearer than the eye can focus, then both sharp but too far from the lens
+    const rc = canvasRecorder();
+    const g1 = buildGame(1, createRng(5)) as Extract<Game, { kind: 'mag' }>;
+    for (const sets of [[1, 2], [r1(g1.rounds[1].uSol) + 0.3, r1(g1.rounds[1].uSol) + 0.6]]) {
+      playTo(1, start(1, 5), 1);
+      const ends: string[][] = [];
+      const says: string[] = [];
+      for (const u of sets) {
+        setSlider(u);
+        click(FIRE[0]);
+        advance(2.0);
+        ends.push(frameAfter(rc, 0.05));
+        advance(1);
+        says.push(feedback());
+      }
+      expect(says[0]).toBe(says[1]);
+      expect(says[0]).not.toMatch(/\d/);
+      expect(ends[0]).toEqual(ends[1]);
+    }
+    // level 2: search for two settings with the same direction words
+    const g2 = start(2, 5) as Extract<Game, { kind: 'scope' }>;
+    playTo(2, g2, 1);
+    const r = g2.rounds[1];
+    const byText = new Map<string, [number, number][]>();
+    for (let a = 5; a <= 40; a++)
+      for (let b = 50; b <= 200; b += 5) {
+        const uo = a / 10;
+        const L = b / 10;
+        if (judgeScope(r, uo, L).ok) continue;
+        const txt = missText(g2, 1, { u: uo, L });
+        if (/No clear picture/.test(txt)) continue;
+        byText.set(txt, [...(byText.get(txt) ?? []), [uo, L]]);
+      }
+    const group = [...byText.entries()].sort((x, y) => y[1].length - x[1].length)[0][1];
+    expect(group.length).toBeGreaterThan(2);
+    const ends: string[][] = [];
+    const says: string[] = [];
+    for (const [uo, L] of [group[0], group[group.length - 1]]) {
+      expect(judgeScope(r, uo, L).ok).toBe(false);
+      setSlider(uo, 0);
+      setSlider(L, 1);
+      click(FIRE[1]);
+      advance(2.0);
+      ends.push(frameAfter(rc, 0.05));
+      advance(1);
+      says.push(feedback());
+    }
+    expect(says[0]).toBe(says[1]);
+    expect(says[0]).not.toMatch(/\d/);
+    expect(ends[0]).toEqual(ends[1]);
+  });
+  it('the start never wins: firing at once costs a heart in every round of both levels', () => {
+    for (const level of [1, 2]) {
+      const g = start(level, 5);
+      for (let k = 0; k < 3; k++) {
+        playTo(level, g, k);
+        const before = hearts();
+        click(FIRE[level - 1]);
+        advance(2.8);
+        expect(hearts()).toBe(before - 1);
+        if (hearts() === 0) break;
+        start(level, 5);
+      }
+    }
   });
 });
 

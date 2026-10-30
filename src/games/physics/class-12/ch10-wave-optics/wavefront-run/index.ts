@@ -3,15 +3,17 @@
 import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
+import { helperOn, paidFlash } from '@core/aidflash';
 import { fmt } from '@core/judge';
 import { glow, line, orb, text } from '@core/neon';
-import { C, SLIDERS, asinD, bandExplain, bandMiss, bandRounds, judgeBand, judgeMud, mudExplain, mudMiss, mudReading, mudRounds, sinD, type BandRound, type MudRound } from './logic';
+import { C, HEAD, SLIDERS, asinD, bandExplain, bandMiss, bandRounds, fmtHead, judgeBand, judgeMud, judgeRainbow, mudExplain, mudMiss, mudReading, mudRounds, rainbowDelay, rainbowExplain, rainbowLeader, rainbowMiss, rainbowRounds, rainbowTest, raceTimes, sinD, type BandRound, type MudRound, type RainbowRound } from './logic';
 
 const RAD = Math.PI / 180;
 
 function mudLevel(random: () => number): DialLevel<MudRound> {
   const XB = 330;
   const AX = 170;
+  const flash = paidFlash();
   return {
     hero: {
       name: 'Kart',
@@ -28,20 +30,20 @@ function mudLevel(random: () => number): DialLevel<MudRound> {
     handles: [
       { dial: 'lam', at: (_r, v) => [XB + 0.2 * v.lam + 12, AX - 62], drag: (_r, px) => (px - XB - 12) / 0.2, radius: 22 },
     ],
-    test: { button: '🔦 Test shot', aria: 'Test shot: check the frequency of these settings', read: (r, v) => mudReading(r, v.lam, v.v) },
+    test: { button: '🔦 Test shot', aria: 'Test shot: check the frequency of these settings', read: (r, v) => (flash.paid(), mudReading(r, v.lam, v.v)) },
     fire: { button: '🏁 Go!', aria: 'Send the wave into the mud' },
     judge: (r, v) => judgeMud(r, v.lam, v.v).ok,
     miss: (r, v) => mudMiss(r, v.lam, v.v),
     win: (r) => `${mudExplain(r)[0]} ${mudExplain(r)[1]}`,
-    hint: (r) => `Wave in air: λ = ${r.lambda} nm, c = 3 × 10⁸ m/s. The mud has refractive index n = ${r.n}. ${r.assist === 0 ? 'The crest view is live.' : r.assist === 1 ? 'The crest view is dim: use a test shot.' : 'The crest view is off: work it out.'}`,
+    hint: (r) => `Wave in air: λ = ${r.lambda} nm, c = 3 × 10⁸ m/s. The mud has refractive index n = ${r.n}. ${r.assist === 0 ? 'The crest view is live.' : r.assist === 1 ? 'The crest view shows for a moment after a test shot.' : 'The crest view is off: work it out.'}`,
     hit: () => [XB + 80, AX],
     delay: 1.6,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
       const lamPx = 0.2 * r.lambda;
       const lam2Px = 0.2 * v.lam;
       const v2Px = (v.v / C) * lamPx;
-      const showCrests = r.assist === 0 || shot !== null;
-      const dim = r.assist === 1 && shot === null;
+      // the crests and karts: live in round 1, for a moment after a test shot in round 2, never in round 3 before the run; every run shows what it did
+      const showCrests = helperOn(r.assist, shot !== null, flash.since(A.clock, k));
       // the road and the mud
       g.fillStyle = 'rgba(160,170,230,0.1)';
       g.fillRect(0, 70, XB, 210);
@@ -54,9 +56,8 @@ function mudLevel(random: () => number): DialLevel<MudRound> {
       const P = 1.6;
       const phase = (t / P) * Math.PI * 2;
       const wave = (x: number) => (x < XB ? Math.sin((x / lamPx) * Math.PI * 2 - phase) : Math.sin((XB / lamPx) * Math.PI * 2 + ((x - XB) / lam2Px) * Math.PI * 2 - phase));
-      if (showCrests || dim) {
+      if (showCrests) {
         g.save();
-        g.globalAlpha = dim ? 0.35 : 1;
         glow(g, PAL.cyan, 8, () => {
           g.strokeStyle = PAL.cyan;
           g.lineWidth = 3;
@@ -134,8 +135,11 @@ function bandLevel(random: () => number): DialLevel<BandRound> {
         line(g, sx - 140 * dir[0], BY - 140 * dir[1], sx, BY, PAL.cyan, 1.4);
       }
       // the wavelets
+      // the true wavelets follow the hint: live help in round 1, shown before the march in round 2, never in round 3, and during a
+      // shot only on a win (a miss must not draw the true construction)
+      const showWavelets = shot !== null ? shot.ok : r.assist <= 1;
       const live = shot !== null ? 1 : Math.min(1, (t % 4) / 1.5 + 0.2);
-      for (let xj = x0; xj < xEnd; xj += 24) {
+      for (let xj = x0; showWavelets && xj < xEnd; xj += 24) {
         const R = sp2 * (T0 - ((xj - x0) * Math.sin(i)) / sp1);
         if (R <= 1) continue;
         g.strokeStyle = PAL.orange;
@@ -151,7 +155,9 @@ function bandLevel(random: () => number): DialLevel<BandRound> {
       if (showFront) {
         const rr = v.r * RAD;
         const n: [number, number] = [Math.sin(rr), Math.cos(rr)];
-        const R0 = sp2 * T0;
+        // on a miss the player's own front is shifted by a FIXED fraction along its normal: inside the wavelets' reach when too steep
+        // ("cuts through"), outside when too shallow ("floats clear"); never a shift that grows with the error
+        const R0 = sp2 * T0 * (shot && !shot.ok ? (v.r > r.rSol ? 0.9 : 1.1) : 1);
         const px = x0 + n[0] * R0;
         const py = BY + n[1] * R0;
         const tan: [number, number] = [n[1], -n[0]];
@@ -172,9 +178,190 @@ function bandLevel(random: () => number): DialLevel<BandRound> {
   };
 }
 
+// ---- level 3: Rainbow race (two kart pulses through a glass block) -------------------------------------------------------------
+const VIOLET = '#b57bff';
+
+/** A small racing kart with a pulse-faced driver: wheels that turn, a helmet stripe, exhaust puffs, and a sweat drop when worried. */
+function kart(g: CanvasRenderingContext2D, x: number, y: number, color: string, t: number, mood: 'happy' | 'worried' | 'cheer', moving: boolean) {
+  const bob = Math.sin(t * (moving ? 18 : 5) + x * 0.05) * (moving ? 0.8 : 1.2);
+  const by = y + bob;
+  // exhaust puffs, idle and moving
+  for (let i = 0; i < 3; i++) {
+    const ph = (t * (moving ? 3 : 1.2) + i / 3) % 1;
+    g.globalAlpha = 0.45 * (1 - ph);
+    g.fillStyle = PAL.white;
+    g.beginPath();
+    g.arc(x - 28 - ph * (moving ? 22 : 10), by + 2 - ph * 6, 2 + ph * 3, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.globalAlpha = 1;
+  // body, nose and spoiler
+  g.fillStyle = color;
+  g.fillRect(x - 26, by - 2, 30, 9);
+  g.beginPath();
+  g.moveTo(x + 4, by - 2);
+  g.lineTo(x + 14, by + 5);
+  g.lineTo(x + 4, by + 7);
+  g.closePath();
+  g.fill();
+  g.fillStyle = PAL.white;
+  g.fillRect(x - 28, by - 8, 4, 8);
+  // wheels with a turning spoke
+  for (const wx of [x - 19, x - 2]) {
+    g.fillStyle = '#1b1030';
+    g.beginPath();
+    g.arc(wx, by + 8, 5.5, 0, Math.PI * 2);
+    g.fill();
+    const a = (moving ? t * 22 : t * 2) + wx;
+    line(g, wx - 4 * Math.cos(a), by + 8 - 4 * Math.sin(a), wx + 4 * Math.cos(a), by + 8 + 4 * Math.sin(a), PAL.dim, 1.4);
+  }
+  // the driver: a pulse face under a helmet stripe
+  orb(g, x - 11, by - 13, 8, color, t, mood);
+  glow(g, PAL.white, 4, () => {
+    g.strokeStyle = PAL.white;
+    g.lineWidth = 2;
+    g.beginPath();
+    g.arc(x - 11, by - 13, 8.5, Math.PI * 1.15, Math.PI * 1.85);
+    g.stroke();
+  });
+  if (mood === 'worried') {
+    g.fillStyle = PAL.cyan;
+    g.beginPath();
+    g.arc(x - 1, by - 20 + ((t * 8) % 6), 2, 0, Math.PI * 2);
+    g.fill();
+  }
+}
+
+function rainbowLevel(random: () => number): DialLevel<RainbowRound> {
+  const X0 = 44;
+  const XG = 250;
+  const XE = 450;
+  const YR = 150;
+  const YV = 225;
+  const KR = 0.6;
+  const KV = 0.55;
+  /** Where a kart is: waiting, riding (fast in air, slow in the glass), then coasting past the finish. */
+  const place = (start: number, dur: number, slow: number, rt: number) => {
+    if (rt < start) return X0;
+    const e = rt - start;
+    if (e >= dur) return XE + Math.min(120, 110 * (e - dur));
+    const u = e / dur;
+    const fa = (XG - X0) / (XG - X0 + (XE - XG) / slow);
+    return u < fa ? X0 + ((XG - X0) * u) / fa : XG + ((XE - XG) * (u - fa)) / (1 - fa);
+  };
+  const crests = (g: CanvasRenderingContext2D, y: number, color: string, n: number) => {
+    g.globalAlpha = 0.5;
+    for (let x = X0 + 20; x < XG; x += 22) line(g, x, y - 7, x, y + 7, color, 1.5);
+    for (let x = XG + 4; x < XE; x += 22 / n) line(g, x, y - 7, x, y + 7, color, 1.5);
+    for (let x = XE + 10; x < 620; x += 22) line(g, x, y - 7, x, y + 7, color, 1.5);
+    g.globalAlpha = 1;
+  };
+  const lamp = (g: CanvasRenderingContext2D, y: number, green: boolean) => {
+    g.fillStyle = '#1b1030';
+    g.fillRect(X0 - 30, y - 12, 14, 24);
+    glow(g, green ? PAL.green : PAL.red, 8, () => {
+      g.fillStyle = green ? PAL.green : PAL.red;
+      g.beginPath();
+      g.arc(X0 - 23, y + (green ? 5 : -5), 4, 0, Math.PI * 2);
+      g.fill();
+    });
+  };
+  return {
+    hero: {
+      name: 'Pulse twins',
+      role: 'a red and a violet light pulse racing through a block of glass',
+      story: 'In glass, light slows down to c/n, and n is a little bigger for violet than for red. That is dispersion: the colours do not travel together.',
+      objective: 'Give the violet pulse the head start that makes both colours leave the glass together, in three rounds.',
+    },
+    rounds: rainbowRounds(random),
+    charges: [1, 1, 0],
+    dials: [
+      { key: 'head', aria: 'Head start of the violet pulse in tenths of a nanosecond, negative if red goes first', label: 'Violet head start', unit: 'ns', step: HEAD.step, min: HEAD.min, max: HEAD.max, start: HEAD.start, text: fmtHead },
+    ],
+    handles: [{ dial: 'head', at: (_r, v) => [320 + v.head * 7, 52], drag: (_r, px) => Math.round((px - 320) / 7), radius: 20 }],
+    test: { button: '🏁 Test race', aria: 'Test race: see how long each colour takes in the glass', read: (r, v) => rainbowTest(r, v.head) },
+    fire: { button: '🚦 Release both pulses', aria: 'Release the violet and red pulses' },
+    judge: (r, v) => judgeRainbow(r, v.head),
+    miss: (r, v) => rainbowMiss(r, v.head),
+    win: (r) => `${rainbowExplain(r)[0]} ${rainbowExplain(r)[1]}`,
+    hint: (r) => `A ${r.d} m block of glass: n = ${r.nr} for red and n = ${r.nv} for violet, c = 3 × 10⁸ m/s. ${r.assist === 0 ? 'The speed of each colour in the glass is shown.' : r.assist === 1 ? 'The speeds are hidden: a test race costs a charge.' : 'No speeds and no test race: work it out.'}`,
+    hit: () => [XE, 188],
+    delay: (r, v) => rainbowDelay(r, v.head),
+    draw: ({ g, r, v, t, rt, shot }) => {
+      const x = v.head;
+      const tm = raceTimes(r, x);
+      const lead = rainbowLeader(r, x);
+      const go = shot !== null;
+      // the head-start track, with the player's own setting
+      line(g, 110, 52, 530, 52, PAL.dim, 2);
+      for (let k = -3; k <= 3; k++) line(g, 320 + k * 70, 46, 320 + k * 70, 58, PAL.dim, 1.5);
+      text(g, 'red first', 110, 80, PAL.red, 11);
+      text(g, '0', 320, 80, PAL.dim, 11);
+      text(g, 'violet first', 530, 80, VIOLET, 11);
+      glow(g, PAL.yellow, 8, () => {
+        g.fillStyle = PAL.yellow;
+        g.beginPath();
+        g.arc(320 + x * 7, 52, 8, 0, Math.PI * 2);
+        g.fill();
+      });
+      text(g, `${fmtHead(x)} ns`, 320 + x * 7, 30, PAL.yellow, 13);
+      // the glass block and the lanes
+      g.fillStyle = 'rgba(120,220,255,0.12)';
+      g.fillRect(XG, 98, XE - XG, 180);
+      line(g, XG, 98, XG, 278, PAL.cyan, 2);
+      line(g, XE, 98, XE, 278, PAL.cyan, 2);
+      text(g, 'glass', (XG + XE) / 2, 116, PAL.cyan, 12);
+      text(g, `thickness d = ${r.d} m`, (XG + XE) / 2, 296, PAL.cyan, 12);
+      line(g, X0 - 10, YR, 620, YR, 'rgba(255,90,90,0.25)', 22);
+      line(g, X0 - 10, YV, 620, YV, 'rgba(181,123,255,0.25)', 22);
+      crests(g, YR, PAL.red, r.nr);
+      crests(g, YV, VIOLET, r.nv);
+      text(g, 'red pulse', 80, YR - 24, PAL.red, 11);
+      text(g, 'violet pulse', 88, YV - 24, VIOLET, 11);
+      text(g, `n = ${r.nr}`, 350, YR + 28, PAL.red, 12);
+      text(g, `n = ${r.nv}`, 350, YV + 28, VIOLET, 12);
+      if (r.assist === 0) {
+        text(g, `v = ${(Math.round((C / r.nr) * 100) / 100).toFixed(2)} × 10⁸ m/s`, 350, YR + 44, PAL.red, 11);
+        text(g, `v = ${(Math.round((C / r.nv) * 100) / 100).toFixed(2)} × 10⁸ m/s`, 350, YV + 44, VIOLET, 11);
+      }
+      // the finish line and the start lights (each goes green when its pulse is released)
+      for (let k = 0; k < 17; k++) {
+        g.fillStyle = k % 2 ? PAL.white : '#1b1030';
+        g.fillRect(XE + 2, 100 + k * 10, 6, 10);
+      }
+      lamp(g, YR, go && rt >= tm.sr);
+      lamp(g, YV, go && rt >= tm.sv);
+      // the karts
+      const t0 = go ? rt : 0;
+      const xr = go ? place(tm.sr, tm.durR, KR, t0) : X0;
+      const xv = go ? place(tm.sv, tm.durV, KV, t0) : X0;
+      const first = Math.min(tm.exitR, tm.exitV);
+      const done = (exit: number) => go && rt >= exit;
+      const moodOf = (me: 'red' | 'violet'): 'happy' | 'worried' | 'cheer' => {
+        if (!go || rt < first) return 'happy';
+        if (shot!.ok) return 'cheer';
+        return lead === me ? 'cheer' : 'worried';
+      };
+      kart(g, xr, YR, PAL.red, t, moodOf('red'), go && rt >= tm.sr && !done(tm.exitR));
+      kart(g, xv, YV, VIOLET, t, moodOf('violet'), go && rt >= tm.sv && !done(tm.exitV));
+      // a photo-finish flash on a win, and the verdict once the later pulse is out
+      if (go && shot!.ok && rt >= tm.exitR && rt < tm.exitR + 0.3) {
+        g.globalAlpha = 0.5 * (1 - (rt - tm.exitR) / 0.3);
+        g.fillStyle = PAL.white;
+        g.fillRect(XE - 20, 98, 40, 180);
+        g.globalAlpha = 1;
+      }
+      if (go && rt >= Math.max(tm.exitR, tm.exitV)) {
+        const ok = shot!.ok;
+        glow(g, ok ? PAL.green : PAL.red, 12, () => text(g, ok ? 'PHOTO FINISH!' : lead === 'red' ? 'RED LEADS' : 'VIOLET LEADS', 320, 326, ok ? PAL.green : PAL.red, 16));
+      }
+    },
+  };
+}
+
 export default defineGame({
   mount(ctx) {
-    const level = ctx.level === 1 ? mudLevel(ctx.random) : bandLevel(ctx.random);
-    return mountDialLevel(ctx as never, level as never, 'An arcade screen showing a wave or a column of marchers crossing into a slower medium.');
+    const level = ctx.level === 1 ? mudLevel(ctx.random) : ctx.level === 2 ? bandLevel(ctx.random) : rainbowLevel(ctx.random);
+    return mountDialLevel(ctx as never, level as never, 'An arcade screen showing a wave, a column of marchers, or two coloured kart pulses crossing into a slower medium.');
   },
 });

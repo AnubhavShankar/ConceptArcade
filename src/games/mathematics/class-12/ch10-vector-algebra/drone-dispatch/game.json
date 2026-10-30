@@ -16,7 +16,8 @@
     "Magnitude and unit vector",
     "A vector of given magnitude in a given direction",
     "Section formula, internal division",
-    "Section formula, external division"
+    "Section formula, external division",
+    "Adding vectors: triangle law, wind"
   ],
   "learningOutcome": "The student can write the vector joining two points, scale a unit vector to a given size, and use the section formula for internal and external division.",
   "mechanic": "tune-to-target",
@@ -53,6 +54,17 @@
         "Internal division puts R between P and Q; external puts it outside.",
         "Plug the coordinates into the formula one at a time.",
         "For external division the denominator is m − n."
+      ]
+    },
+    {
+      "title": "Crosswind",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the triangle law. Two legs add tip to tail, and a wind adds to the drone’s own vector, so own vector = target − wind (Ex 10.2 Q6; Misc Q3).",
+      "hints": [
+        "Add vectors component by component.",
+        "Ground track = own vector + wind.",
+        "If the target is two minutes away, each minute covers half of it."
       ]
     }
   ],

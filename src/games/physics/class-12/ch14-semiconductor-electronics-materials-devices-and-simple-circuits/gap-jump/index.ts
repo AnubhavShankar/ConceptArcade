@@ -3,6 +3,7 @@
 import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
+import { helperOn, paidFlash } from '@core/aidflash';
 import { fmt } from '@core/judge';
 import { glow, line, orb, text } from '@core/neon';
 import { LOG_NI2, SLIDERS, dopeExplain, dopeMiss, dopeReading, dopeRounds, gapExplain, gapMiss, gapReading, gapRounds, judgeDope, judgeGap, photonEv, type DopeRound, type GapRound } from './logic';
@@ -13,6 +14,7 @@ function gapLevel(random: () => number): DialLevel<GapRound> {
   const S = SLIDERS.l;
   const X = (l: number) => 60 + ((l - S.min) / (S.max - S.min)) * 520;
   const Y = (e: number) => 270 - 35 * Math.min(e, 6.2);
+  const flash = paidFlash();
   return {
     hero: {
       name: 'Sparky',
@@ -24,15 +26,15 @@ function gapLevel(random: () => number): DialLevel<GapRound> {
     charges: [1, 1, 1],
     dials: [{ key: 'l', aria: 'Wavelength of the photon in nanometres', label: 'Photon wavelength', unit: 'nm', step: S.step, min: S.min, max: S.max, start: 600, text: (x) => `${x} nm` }],
     handles: [{ dial: 'l', at: (_r, v) => [X(v.l), 312], drag: (_r, px) => fromTrack(px, S.min, S.max), radius: 20 }],
-    test: { button: '🔦 Test shot', aria: 'Test shot: read the photon energy and the gap', read: (r, v) => gapReading(r, v.l) },
+    test: { button: '🔦 Test shot', aria: 'Test shot: read the photon energy and the gap', read: (r, v) => (flash.paid(), gapReading(r, v.l)) },
     fire: { button: '🚀 Jump', aria: 'Fire the photon at the electron' },
     judge: (r, v) => judgeGap(r, v.l),
     miss: (r, v) => gapMiss(r, v.l),
     win: (r) => `${gapExplain(r)[0]} ${gapExplain(r)[1]}`,
-    hint: (r) => `${r.name[0].toUpperCase()}${r.name.slice(1)} has a gap of ${fmt(r.eg)} eV. λ = hc/E with hc = 1240 eV nm. ${r.assist === 0 ? 'The energy meter is live.' : r.assist === 1 ? 'The meter is dim: use a test shot.' : 'No meter: work it out.'}`,
+    hint: (r) => `${r.name[0].toUpperCase()}${r.name.slice(1)} has a gap of ${fmt(r.eg)} eV. λ = hc/E with hc = 1240 eV nm. ${r.assist === 0 ? 'The energy meter is live.' : r.assist === 1 ? 'The meter shows for a moment after a test shot.' : 'No meter: work it out.'}`,
     hit: (r) => [330, Y(r.eg)],
     delay: 1.1,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
       const e = photonEv(shot ? shot.v.l : v.l);
       const top = Y(r.eg);
       g.fillStyle = 'rgba(255,255,255,0.08)';
@@ -43,23 +45,23 @@ function gapLevel(random: () => number): DialLevel<GapRound> {
       line(g, 150, 270, 490, 270, PAL.white, 2);
       line(g, 150, top, 490, top, PAL.white, 2);
       text(g, `${r.name}`, 70, 150, PAL.white, 14);
-      const live = r.assist === 0 || shot !== null;
-      const dim = r.assist === 1 && shot === null;
-      g.globalAlpha = dim ? 0.3 : 1;
-      if (live || dim) {
+      // the energy meter: live in round 1, for a moment after a test shot in round 2, never in round 3; a win shows it, a miss does not
+      const live = helperOn(r.assist, !!shot?.ok, flash.since(A.clock, k));
+      if (live) {
         const col = e >= r.eg ? PAL.green : PAL.red;
         glow(g, col, 8, () => line(g, 530, 270, 530, Y(e), col, 6));
         text(g, `photon ${fmt(e)} eV`, 530, Y(e) - 10, col, 12);
         text(g, `gap ${fmt(r.eg)} eV`, 320, (top + 270) / 2, PAL.yellow, 13);
         line(g, 320, 270, 320, top, PAL.yellow, 2, [5, 5]);
       } else text(g, 'energy meter off', 530, 150, PAL.dim, 12);
-      g.globalAlpha = 1;
       let rise = 0;
       if (shot) {
+        // a miss shows only the direction: a photon that is too weak lifts the electron to a fixed 55% of the gap and drops it; one with energy to spare clears the gap by a fixed margin
+        const jumped = shot.ok || e >= r.eg;
         const p = Math.min(1, rt / 0.8);
-        const peak = e >= r.eg ? r.eg + 0.4 : e;
+        const peak = jumped ? r.eg + 0.4 : 0.55 * r.eg;
         rise = 35 * Math.min(peak, 6.2) * Math.sin((p * Math.PI) / 2);
-        if (e < r.eg && rt > 0.8) rise *= Math.max(0, 1 - (rt - 0.8) * 2);
+        if (!jumped && rt > 0.8) rise *= Math.max(0, 1 - (rt - 0.8) * 2);
       }
       orb(g, 320, Math.max(46, 262 - rise), 13, PAL.pink, t, shot ? (shot.ok ? 'cheer' : 'worried') : 'happy');
       line(g, 60, 312, 580, 312, PAL.dim, 3);
@@ -73,6 +75,7 @@ function gapLevel(random: () => number): DialLevel<GapRound> {
 function dopeLevel(random: () => number): DialLevel<DopeRound> {
   const S = SLIDERS.c;
   const X = (c: number) => 60 + ((c - S.min) / (S.max - S.min)) * 520;
+  const flash = paidFlash();
   return {
     hero: {
       name: 'Doper',
@@ -90,15 +93,15 @@ function dopeLevel(random: () => number): DialLevel<DopeRound> {
       { dial: 'e', at: (_r, v) => [X(v.e), 296], drag: (_r, px) => fromTrack(px, S.min, S.max), radius: 20 },
       { dial: 'h', at: (_r, v) => [X(v.h), 326], drag: (_r, px) => fromTrack(px, S.min, S.max), radius: 20 },
     ],
-    test: { button: '🔦 Test shot', aria: 'Test shot: read the dopant and the silicon atoms', read: (r) => dopeReading(r) },
+    test: { button: '🔦 Test shot', aria: 'Test shot: read the dopant and the silicon atoms', read: (r) => (flash.paid(), dopeReading(r)) },
     fire: { button: '🧪 Dope', aria: 'Dope the crystal with these carrier counts' },
     judge: (r, v) => judgeDope(r, v.e, v.h).ok,
     miss: (r, v) => dopeMiss(r, v.e, v.h),
     win: (r) => `${dopeExplain(r)[0]} ${dopeExplain(r)[1]}`,
-    hint: (r) => `${r.dopant.name[0].toUpperCase()}${r.dopant.name.slice(1)}: ${fmt(r.ppm)} ppm of 5 × 10²⁸ silicon atoms/m³. Majority carriers ≈ dopant atoms; n_e n_h = n_i². ${r.assist === 0 ? 'The live checks are on.' : r.assist === 1 ? 'The checks are dim: use a test shot.' : 'No checks: work it out.'}`,
+    hint: (r) => `${r.dopant.name[0].toUpperCase()}${r.dopant.name.slice(1)}: ${fmt(r.ppm)} ppm of 5 × 10²⁸ silicon atoms/m³. Majority carriers ≈ dopant atoms; n_e n_h = n_i². ${r.assist === 0 ? 'The live checks are on.' : r.assist === 1 ? 'The checks and the dopant’s carrier show for a moment after a test shot.' : 'No checks: work it out.'}`,
     hit: () => [330, 150],
     delay: 0.9,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
       for (let i = 0; i < 6; i++) {
         for (let j = 0; j < 4; j++) {
           const x = 50 + i * 38;
@@ -110,7 +113,10 @@ function dopeLevel(random: () => number): DialLevel<DopeRound> {
           g.fill();
         }
       }
-      if (r.type === 'n') {
+      // what the dopant adds (a spare electron or a hole) and the checks: live in round 1, for a moment after a test shot in round 2, never in round 3; a win shows them, a miss does not
+      const live = helperOn(r.assist, !!shot?.ok, flash.since(A.clock, k));
+      if (!live) text(g, 'dopant atom', 164, 214, PAL.dim, 11);
+      else if (r.type === 'n') {
         glow(g, PAL.yellow, 8, () => {
           g.fillStyle = PAL.yellow;
           g.beginPath();
@@ -128,10 +134,7 @@ function dopeLevel(random: () => number): DialLevel<DopeRound> {
       }
       text(g, `silicon + ${r.dopant.name}, ${fmt(r.ppm)} ppm`, 150, 60, PAL.white, 13);
       const col = shot ? (shot.ok ? PAL.green : PAL.red) : PAL.yellow;
-      const live = r.assist === 0 || shot !== null;
-      const dim = r.assist === 1 && shot === null;
-      g.globalAlpha = dim ? 0.35 : 1;
-      if (live || dim) {
+      if (live) {
         const sum = v.e + v.h;
         const prod = Math.abs(sum - LOG_NI2) <= 0.05;
         const maj = r.type === 'n' ? v.e : v.h;
@@ -139,7 +142,6 @@ function dopeLevel(random: () => number): DialLevel<DopeRound> {
         text(g, `n_e n_h = 10^${sum.toFixed(2)}  vs n_i² = 10^${LOG_NI2.toFixed(2)}  ${prod ? '✓' : '✗'}`, 430, 130, prod ? PAL.green : PAL.red, 13);
         text(g, `${r.type === 'n' ? 'electrons' : 'holes'} ≤ dopant atoms?  ${majOk ? '✓' : '✗'}`, 430, 164, majOk ? PAL.green : PAL.red, 13);
       } else text(g, 'checks off', 430, 146, PAL.dim, 12);
-      g.globalAlpha = 1;
       orb(g, 540, 60, 14, PAL.pink, t, shot ? (shot.ok ? 'cheer' : 'worried') : 'happy');
       line(g, 60, 296, 580, 296, col, 3);
       line(g, 60, 326, 580, 326, col, 3);

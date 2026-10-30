@@ -21,7 +21,8 @@
     "Threshold wavelength",
     "Einstein’s photoelectric equation",
     "Stopping potential",
-    "The V₀–f line and Planck’s constant"
+    "The V₀–f line and Planck’s constant",
+    "Intensity sets the current, frequency sets V₀"
   ],
   "learningOutcome": "The student can find the threshold wavelength hc/φ, the maximum kinetic energy hf − φ and the stopping potential, and read h and φ from a straight V₀–f line.",
   "estimatedMinutes": 25,
@@ -57,6 +58,17 @@
         "The slope between the points is ΔV₀/Δf = h/e, so h = e × slope.",
         "Convert the units: Δf is in 10¹⁴ Hz, so h comes out in units of 10⁻³⁴ J s once you use e = 1.6 × 10⁻¹⁹ C.",
         "Then φ = hf₁ − eV₁ for either point."
+      ]
+    },
+    {
+      "title": "Brightness and colour",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the saturation current grows with intensity, but the stopping potential does not; it follows the photon energy, eV₀ = hν − φ (Sections 11.4.1 to 11.4.3).",
+      "hints": [
+        "The saturation current is proportional to the intensity.",
+        "A brighter lamp of the same colour does not change the stopping potential.",
+        "A new colour changes V₀ by the change in photon energy, in eV."
       ]
     }
   ],

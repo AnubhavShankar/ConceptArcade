@@ -107,7 +107,9 @@ function campRound(wantEnd: boolean | null, random: () => number): Round {
     const atEnd = winners[0] === lo || winners[0] === hi;
     if (wantEnd !== null && atEnd !== wantEnd) continue;
     const ans = winners[0];
-    return { kind: 'camp', ask, ...g, crit: [p, q], lo, hi, ans, start: ans === lo ? hi : lo, assist: 0 };
+    // The start is drawn from the other positions at random, so it says nothing about the answer except that it is not the answer.
+    const others = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).filter((x) => x !== ans);
+    return { kind: 'camp', ask, ...g, crit: [p, q], lo, hi, ans, start: pick(others, random), assist: 0 };
   }
 }
 
@@ -115,7 +117,11 @@ export function buildRounds(level: number, random: () => number): Round[] {
   let rs: Round[];
   if (level === 1) rs = [localRound('peak', 1, random), localRound('valley', 1, random), localRound('peak', -1, random)];
   else if (level === 2) rs = [trapRound(random), trapRound(random), trapRound(random)];
-  else rs = [campRound(false, random), campRound(true, random), campRound(null, random)];
+  else {
+    // Every level has an interior answer and an end-point answer, in an order the seed chooses; the third round is either.
+    const kinds = shuffle([false, true, random() < 0.5], random);
+    rs = kinds.map((wantEnd) => campRound(wantEnd, random));
+  }
   return rs.map((r, i) => ({ ...r, start: r.start === r.ans ? r.hi : r.start, assist: aid(i) }));
 }
 
@@ -125,15 +131,17 @@ const WHAT: Record<Ask, string> = { peak: 'the top of a hill', valley: 'the bott
 export const askText = (r: Round) => WHAT[r.ask];
 const dir = (s: number) => (s > 0 ? 'climbing' : s < 0 ? 'falling' : 'flat');
 
-/** After a miss: what the bird found at the flag, never the right position. */
+/**
+ * After a miss: what the bird found at the flag, in words only. It never prints the height or the slope (a paid survey does that) and never the right position.
+ */
 export function missText(r: Round, x: number): string {
-  if (r.kind === 'camp') return `Pika camped at ${x}, where the ground is ${num(r.f(x))} high, but ${r.ask === 'highest' ? 'higher' : 'lower'} ground could be reached elsewhere on the walk, so the camp was moved.`;
+  if (r.kind === 'camp') return `Pika camped at ${x}, but ${r.ask === 'highest' ? 'higher' : 'lower'} ground could be reached elsewhere on the walk, so the camp was moved.`;
   const s = r.fp(x);
-  if (s !== 0) return `At the flag the slope is ${num(s)}: the ground is still ${dir(s)}, so it is not ${r.ask === 'peak' || r.ask === 'valley' ? (r.ask === 'peak' ? 'a hilltop' : 'a valley floor') : 'a turning point'}.`;
+  if (s !== 0) return `At the flag the ground is still ${dir(s)}, so it is not ${r.ask === 'peak' ? 'a hilltop' : 'a valley floor'}.`;
   const before = r.fp(x - 0.5);
   const after = r.fp(x + 0.5);
-  if (before * after > 0) return `At the flag the slope is 0, but it is ${before > 0 ? 'positive' : 'negative'} just before and just after: the ground only flattens for a moment and keeps ${before > 0 ? 'climbing' : 'falling'}.`;
-  return `At the flag the slope is 0 and it goes from ${before > 0 ? 'positive to negative: a hilltop' : 'negative to positive: a valley floor'}. That is the other kind of turning point.`;
+  if (before * after > 0) return `At the flag the ground is level, but it was ${before > 0 ? 'climbing' : 'falling'} just before and just after: it only flattens for a moment and keeps ${before > 0 ? 'climbing' : 'falling'}.`;
+  return `At the flag the ground is level and it turns from ${before > 0 ? 'climbing to falling: a hilltop' : 'falling to climbing: a valley floor'}. That is the other kind of turning point.`;
 }
 export function spotText(r: Round, x: number): string {
   return `Survey at x = ${x}: ground height ${num(r.f(x))}, slope ${num(r.fp(x))}.`;

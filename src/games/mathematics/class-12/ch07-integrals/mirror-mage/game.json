@@ -1,0 +1,90 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "mirror-mage",
+  "title": "Mirror Mage",
+  "summary": "Break rune barriers with exactly the right mana, using the properties of definite integrals: splitting, mirroring and symmetry.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 7,
+    "name": "Integrals"
+  },
+  "ncertRef": "Section 7.10, Some Properties of Definite Integrals",
+  "concepts": [
+    "Splitting an integral where |x − c| changes sign",
+    "∫₀^a f(x) dx = ∫₀^a f(a − x) dx",
+    "Adding the mirrored integral: 2I = ∫₀^a [f(x) + f(a − x)] dx",
+    "∫₀^2a f(x) dx = 2∫₀^a f(x) dx when f(2a − x) = f(x)",
+    "Odd functions over symmetric limits give 0",
+    "King’s trick on log integrals"
+  ],
+  "learningOutcome": "The student can evaluate definite integrals with their properties: split at a corner, replace x by a − x and add, use symmetry over [0, 2a] or [−a, a], and crack log integrals.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 24,
+  "levels": [
+    {
+      "title": "Split at the corner",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: split ∫|x − c| dx at x = c, where the sign changes, and add the two pieces (Ex 7.10 Q5, Q6, Q18).",
+      "hints": [
+        "|x − c| is c − x to the left of c and x − c to the right.",
+        "Each piece of |x − c| is a triangle: half base times height.",
+        "For |x² − 1|, split at x = 1 (and at −1 if the interval reaches it)."
+      ]
+    },
+    {
+      "title": "Mirror pairs",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: ∫₀^a f(x) dx = ∫₀^a f(a − x) dx; when f(x) + f(a − x) = 1, adding the two gives 2I = a (Ex 7.10 Q1 to Q4, Q17).",
+      "hints": [
+        "Call the integral I and write it again with a − x in place of x.",
+        "Add the two forms of I: the integrand often becomes 1.",
+        "Then 2I = a, so I = a/2."
+      ]
+    },
+    {
+      "title": "Mirror the power",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: replacing x by 1 − x turns ∫₀¹ x(1 − x)ⁿ dx into ∫₀¹ (1 − x)xⁿ dx, which is easy (Ex 7.10 Q7).",
+      "hints": [
+        "∫₀¹ x(1 − x)ⁿ dx = ∫₀¹ (1 − x)xⁿ dx.",
+        "Expand: ∫₀¹ (xⁿ − xⁿ⁺¹) dx = 1/(n + 1) − 1/(n + 2).",
+        "Combine into one fraction 1/m and set m."
+      ]
+    },
+    {
+      "title": "Full turns",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: ∫₀^2a f = 2∫₀^a f if f(2a − x) = f(x), and 0 if f(2a − x) = −f(x); odd functions vanish (Ex 7.10 Q11, Q13, Q14).",
+      "hints": [
+        "Check whether f(2a − x) is f(x) or −f(x).",
+        "Over [−a, a], an odd integrand gives 0 and an even one gives twice ∫₀^a.",
+        "sin² x and cos² x average 1/2 over any whole number of half turns."
+      ]
+    },
+    {
+      "title": "Log runes",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: King’s trick on logs: ∫₀^(π/4) log(1 + tan x) dx = (π/8) log 2, and log sin x over [0, π/2] (Ex 7.10 Q8, Q10, Q16).",
+      "hints": [
+        "Replace x by a − x; for tan, (1 + tan(π/4 − x)) = 2/(1 + tan x).",
+        "Add the two forms: the logs combine into log 2.",
+        "For log sin x on [0, π/2], use log sin 2x = log 2 + log sin x + log cos x."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "∫ |f(x)| dx = |∫ f(x) dx|",
+    "Replacing x by a − x changes the value of the integral",
+    "An integral of a positive-looking curve cannot be simplified by symmetry"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
