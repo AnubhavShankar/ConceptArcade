@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "flow-control",
+  "title": "Flow Control",
+  "summary": "Shut a dam gate so the tank holds exactly the volume needed, using definite integrals, net flow, substitution and symmetric limits.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 1,
+  "chapter": {
+    "number": 7,
+    "name": "Integrals"
+  },
+  "ncertRef": "Section 7.8, Definite integral by the second fundamental theorem",
+  "concepts": [
+    "Definite integral as F(b) − F(a)",
+    "Constant of integration and an initial value",
+    "Net area when the integrand changes sign",
+    "Integration by substitution",
+    "Even and odd integrands over symmetric limits"
+  ],
+  "learningOutcome": "The student can evaluate a definite integral from an antiderivative, count a negative part as negative, use substitution, and use symmetry to cancel the odd terms over limits −a to a.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 18,
+  "levels": [
+    {
+      "title": "Fill the tank",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the integral of a power is F(t) = t^(n+1)/(n+1), and the volume is F(b) − F(0), plus what the tank already holds (Ex 7.8 Q1 to Q8; Example 25).",
+      "hints": [
+        "Find an antiderivative F of the rate, term by term.",
+        "The volume that arrives is F(b) − F(0).",
+        "If the tank already holds water, add that to the integral."
+      ]
+    },
+    {
+      "title": "The drain",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: where the rate is negative the integral subtracts, so it gives net volume, not the total that flowed (Section 7.8; Ex 7.8 Q9 to Q14).",
+      "hints": [
+        "Find where the rate crosses zero: before it the water drains.",
+        "The definite integral already counts that part as negative.",
+        "Take F(b) − F(0) and compare it with the volume needed."
+      ]
+    },
+    {
+      "title": "A hidden power",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: integration by substitution, with u = t² + c and u′ = 2t, then the definite integral (Ex 7.2 Q1 to Q10; Examples 5, 6, 26).",
+      "hints": [
+        "Look for a function whose derivative is also in the rate.",
+        "Put u = t² + c, so du = 2t dt.",
+        "The new antiderivative is a power of u: take its value at b minus at 0."
+      ]
+    },
+    {
+      "title": "The canal",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: over −a to a, odd terms integrate to 0 and even terms to twice the integral from 0 to a (Ex 7.10 Q8 to Q14; Example 29).",
+      "hints": [
+        "Split f into even terms (x², x⁴) and odd terms (x, x³).",
+        "The odd terms cancel between −h and h.",
+        "Double the integral of the even terms from 0 to h."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The integral is always the total area",
+    "A definite integral needs a constant of integration",
+    "A negative integral means a mistake"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

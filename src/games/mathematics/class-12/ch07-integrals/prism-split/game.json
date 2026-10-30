@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "prism-split",
+  "title": "Prism Split",
+  "summary": "Split one beam into simple beams by partial fractions: two factors, a repeated factor and three factors, checked by a scanner.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 2,
+  "chapter": {
+    "number": 7,
+    "name": "Integrals"
+  },
+  "ncertRef": "Section 7.5, Integration by partial fractions",
+  "concepts": [
+    "Partial fractions with distinct linear factors",
+    "A repeated linear factor",
+    "Three linear factors",
+    "The cover-up method",
+    "Matching coefficients"
+  ],
+  "learningOutcome": "The student can write a proper rational function as a sum of simple fractions for distinct, repeated and three linear factors, and find each strength by covering a factor or by matching coefficients.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Two beams",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: (px + q)/((x − a)(x − b)) = A/(x − a) + B/(x − b); find A and B by covering a factor or by matching (Ex 7.5 Q1 to Q8; Examples 11, 12).",
+      "hints": [
+        "Write the split with unknown A and B and clear the bottoms.",
+        "Put x = a to remove B, then x = b to remove A.",
+        "Check: A + B must equal the coefficient of x on top."
+      ]
+    },
+    {
+      "title": "A repeated factor",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: (px + q)/(x − a)² = A/(x − a) + B/(x − a)²; two pieces for one repeated factor (Ex 7.5 Q9 to Q14; Examples 13, 14).",
+      "hints": [
+        "A repeated factor needs one piece for each power.",
+        "Multiply through by (x − a)²: the top is A(x − a) + B.",
+        "Matching the x terms gives A, then x = a gives B."
+      ]
+    },
+    {
+      "title": "Three beams",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: three distinct linear factors give three pieces A, B and C, each found by covering its own factor (Ex 7.5 Q15 to Q23; Examples 15, 16).",
+      "hints": [
+        "Cover one factor at a time and put its zero into the other two.",
+        "The three strengths add up to the coefficient of the top power.",
+        "Put the pieces over the common bottom to check the whole top."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A repeated factor needs only one piece",
+    "The strengths can be read off the top",
+    "A proper fraction splits into pieces with the same bottom"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

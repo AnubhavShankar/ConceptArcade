@@ -53,6 +53,15 @@ export function compareGames(x: GameManifest, y: GameManifest): number {
   );
 }
 
+/** The games before and after this one in textbook order, within the same subject and class (null at either end). */
+export function neighbours<E extends EntryLike>(entries: E[], id: string): { prev: E | null; next: E | null } {
+  const me = entries.find((e) => e.manifest.id === id);
+  if (!me) return { prev: null, next: null };
+  const course = entries.filter((e) => e.manifest.subject === me.manifest.subject && e.manifest.classLevel === me.manifest.classLevel).sort((a, b) => compareGames(a.manifest, b.manifest));
+  const i = course.findIndex((e) => e.manifest.id === id);
+  return { prev: i > 0 ? course[i - 1] : null, next: i < course.length - 1 ? course[i + 1] : null };
+}
+
 export interface GameNumber {
   /** 1-based position of the game within its chapter, in textbook order. */
   n: number;

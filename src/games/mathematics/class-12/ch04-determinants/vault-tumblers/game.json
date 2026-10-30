@@ -1,0 +1,78 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "vault-tumblers",
+  "title": "Vault Tumblers",
+  "summary": "Crack vaults whose clue plates are linear equations: find the code with the inverse A⁻¹ = adj A / |A|, and spot the jammed ones.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 4,
+    "name": "Determinants"
+  },
+  "ncertRef": "Section 4.6, Applications of determinants and matrices",
+  "concepts": [
+    "Determinant of order 2 and 3",
+    "Adjoint and inverse of a matrix",
+    "Solving AX = B by X = A⁻¹B",
+    "Singular and non-singular matrices",
+    "Consistency of a system"
+  ],
+  "learningOutcome": "The student can find the determinant and adjoint, solve AX = B with the inverse, and tell from |A| and (adj A)B whether a system has one, no, or many solutions.",
+  "mechanic": "deduce-the-hidden",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Two plates",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: write two equations as AX = B and solve with X = A⁻¹B, using |A| = ad − bc and adj A = [d −b; −c a] (Ex 4.4 Q1, Q5; Ex 4.5 Q7 to Q10).",
+      "hints": [
+        "Write the plates as a matrix A and a column B.",
+        "|A| = ad − bc. If it is not zero, A⁻¹ = adj A / |A|.",
+        "Swap the diagonal of A, negate the other two entries to get adj A, then multiply by B."
+      ]
+    },
+    {
+      "title": "Three plates",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Harder: 3 by 3 systems: expand |A| along a row, build the cofactors, take the transpose to get adj A (Ex 4.4 Q7 to Q11; Ex 4.5 Q11 to Q14).",
+      "hints": [
+        "Expand |A| along a row, with the signs + − + from the checkerboard.",
+        "Each cofactor is (−1)^(i+j) times a 2 by 2 minor.",
+        "adj A is the transpose of the cofactor matrix; X = (adj A)B / |A|."
+      ]
+    },
+    {
+      "title": "Shopping bills",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: a word problem becomes AX = B, with the prices as the unknowns (Ex 4.5 Q16; Example 18).",
+      "hints": [
+        "Each bill is one equation: units of each good times its price.",
+        "The coefficients are the quantities in each shopper’s basket.",
+        "Then solve AX = B as before."
+      ]
+    },
+    {
+      "title": "The jammed vault",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: when |A| = 0 there is no inverse; (adj A)B = O means many solutions, otherwise none (Ex 4.5 Q1 to Q6).",
+      "hints": [
+        "Find |A| first. A non-zero value means exactly one code.",
+        "If |A| = 0, look at the plates: can one be made from the others?",
+        "(adj A)B = O means consistent with many codes; (adj A)B ≠ O means no code."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Every system of equations has exactly one solution",
+    "A matrix with |A| = 0 has an inverse",
+    "The adjoint is just the transpose of A"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

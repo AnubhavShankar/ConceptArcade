@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "track-joiner",
+  "title": "Track Joiner",
+  "summary": "Set the constants of a stunt track so the pieces join with no gap and no corner: continuity and differentiability at a point.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 2,
+  "chapter": {
+    "number": 5,
+    "name": "Continuity and Differentiability"
+  },
+  "ncertRef": "Section 5.2, Continuity",
+  "concepts": [
+    "Continuity at a point",
+    "Left and right limits",
+    "Finding constants for continuity",
+    "Differentiability and corners",
+    "Differentiable implies continuous"
+  ],
+  "learningOutcome": "The student can find the constants that make a piecewise function continuous at its joins, and that make it differentiable by matching values and slopes.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 18,
+  "levels": [
+    {
+      "title": "Close the gap",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: a function is continuous at x = c when the left limit, right limit and value agree, so k comes from one equation (Ex 5.1 Q26 to Q28).",
+      "hints": [
+        "Find the height where the left piece ends at the join.",
+        "The right piece must start at the same height: put x = c into it.",
+        "Solve that one equation for k."
+      ]
+    },
+    {
+      "title": "Two joins",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Harder: two joins give two equations for two constants a and b (Ex 5.1 Q29, Q30; Examples 10 to 13).",
+      "hints": [
+        "Write the continuity equation at each join.",
+        "Each equation has a and b in it. Subtract them.",
+        "Then find b from either equation."
+      ]
+    },
+    {
+      "title": "No corners",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: differentiable at a join needs equal slopes as well as equal values, so match the derivative first (Ex 5.2 Q9, Q10; Misc Q18, Q20).",
+      "hints": [
+        "Differentiate the left piece and put x = c in: that is the slope k must have.",
+        "Then match the values to find m.",
+        "A track with equal values but different slopes has a corner."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A continuous function is always differentiable",
+    "Matching the values at a join is enough for a smooth track",
+    "A function can be differentiable where it has a gap"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "field-claim",
+  "title": "Field Claim",
+  "summary": "Stake out fields with a determinant: place a post for a given area, make three posts collinear, and find the line through two beacons.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 1,
+  "chapter": {
+    "number": 4,
+    "name": "Determinants"
+  },
+  "ncertRef": "Section 4.3, Area of a triangle",
+  "concepts": [
+    "Area of a triangle by a determinant",
+    "Both signs of the determinant",
+    "Collinear points",
+    "Equation of a line through two points",
+    "Expanding a 3 by 3 determinant"
+  ],
+  "learningOutcome": "The student can find an unknown vertex from a given area (taking both signs), decide when three points are collinear, and write the equation of the line through two points from a determinant.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "The deed’s area",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: area = ½|x₁(y₂ − y₃) + x₂(y₃ − y₁) + x₃(y₁ − y₂)|, and the absolute value gives two possible posts (Ex 4.2 Q1, Q3, Q5; Example 7).",
+      "hints": [
+        "Write the determinant with the unknown k in it.",
+        "Set ½|…| equal to the deed’s area, then remove the absolute value with ±.",
+        "Two values of k solve it; the deed says which side of the gate is allowed."
+      ]
+    },
+    {
+      "title": "A straight rope",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: three points are collinear when the determinant (so the area) is zero (Ex 4.2 Q2).",
+      "hints": [
+        "The area of three collinear points is zero.",
+        "Put the unknown coordinate into the determinant and set it equal to 0.",
+        "It gives a linear equation in the unknown."
+      ]
+    },
+    {
+      "title": "Line through two beacons",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the determinant of (x, y, 1) and the two beacons being zero is the equation of the line (Ex 4.2 Q4).",
+      "hints": [
+        "A point (x, y) is on the line when the determinant with the two beacons is 0.",
+        "Expand along the first row and collect x, y and the constant.",
+        "Rewrite as y = mx + c."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The area from a determinant can be negative",
+    "A given area fixes the third vertex uniquely",
+    "Collinear points make a triangle of small area"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

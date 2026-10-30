@@ -1,0 +1,78 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "max-out",
+  "title": "Max Out",
+  "summary": "Fly a cargo drone that cuts, folds and fits: write the load or cost as f(x), solve f′(x) = 0 and prove the extreme with f″.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 6,
+    "name": "Application of Derivatives"
+  },
+  "ncertRef": "Section 6.4, Maxima and Minima",
+  "concepts": [
+    "Optimisation word problems",
+    "Critical points f′(x) = 0",
+    "Second derivative test",
+    "Rejecting impossible roots",
+    "Using a constraint to remove a variable"
+  ],
+  "learningOutcome": "The student can turn a word problem into a function of one variable, find the critical point, reject roots that are impossible, and confirm a maximum or minimum with the second derivative.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Fold the box",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the volume of an open box is V(x) = x(a − 2x)(b − 2x); solve V′ = 0 and reject the cut that is too big (Ex 6.3 Q17, Q18; Example 36).",
+      "hints": [
+        "Cutting x from each corner leaves a base of (a − 2x) by (b − 2x) and a height of x.",
+        "Expand V, differentiate and solve V′ = 0. You get two roots; one cannot be a real cut.",
+        "A cut cannot be more than half the shorter side."
+      ]
+    },
+    {
+      "title": "Least metal and cost",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: minimise instead of maximise, using the fixed volume to remove one variable and f″ > 0 to confirm (Ex 6.3 Q20, Q21; Misc Q6).",
+      "hints": [
+        "The volume is fixed, so h (or the second side) can be written in terms of x.",
+        "Write the metal or the cost as a function of x alone, then differentiate.",
+        "At the answer, f″ is positive: that is a minimum."
+      ]
+    },
+    {
+      "title": "Fit one inside another",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: the constraint comes from a second shape, using Pythagoras or similar triangles (Ex 6.3 Q23; Misc Q12, Q15; Example 26).",
+      "hints": [
+        "Cone in a sphere: the base radius r satisfies r² = h(2R − h).",
+        "Cylinder in a cone: similar triangles give r in terms of h.",
+        "Read what is being maximised: volume and curved surface peak at different heights."
+      ]
+    },
+    {
+      "title": "The rescue line",
+      "tier": "challenge",
+      "kind": "complexity",
+      "adds": "Harder: minimise the distance from a point to a curve, working with D² to avoid the square root (Example 29; Ex 6.3 Q27).",
+      "hints": [
+        "Write D² = (x − p)² + y², with y given by the cable’s equation.",
+        "D² and D are smallest at the same x, so differentiate D².",
+        "The derivative of D² is a cubic in x; look for a whole-number root."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "f′(x) = 0 always gives the answer without checking it",
+    "Every root of f′ is a valid setting",
+    "Maximum volume and maximum surface are at the same setting"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

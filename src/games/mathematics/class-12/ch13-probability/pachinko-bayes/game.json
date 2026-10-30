@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "pachinko-bayes",
+  "title": "Pachinko Bayes",
+  "summary": "Drop sixty balls through gates and count: total probability of a red landing, then Bayes’ theorem for two and three gates.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 1,
+  "chapter": {
+    "number": 13,
+    "name": "Probability"
+  },
+  "ncertRef": "Section 13.5, Bayes’ theorem",
+  "concepts": [
+    "Theorem of total probability",
+    "Bayes’ theorem with two causes",
+    "Bayes’ theorem with three causes",
+    "Chances as counts (natural frequencies)",
+    "Conditional probability as a ratio of counts"
+  ],
+  "learningOutcome": "The student can find P(E) by total probability over two or three causes, and use Bayes’ theorem to find the chance a landing came from a given cause, as a ratio of counts.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 18,
+  "levels": [
+    {
+      "title": "How many red?",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: P(E) = ΣP(Aᵢ)P(E|Aᵢ), found by counting the red balls through each gate and adding (Section 13.5.2; Ex 13.3 Q1; Example 15).",
+      "hints": [
+        "Count how many balls go through each gate.",
+        "Take the red fraction of each gate’s balls.",
+        "Add the red counts over the gates."
+      ]
+    },
+    {
+      "title": "Which gate?",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: P(Aⱼ|E) = P(Aⱼ)P(E|Aⱼ) / ΣP(Aᵢ)P(E|Aᵢ): the red balls from one gate over all the red balls (Ex 13.3 Q2 to Q5; Examples 16, 18).",
+      "hints": [
+        "Count the red balls that came through the gate asked about.",
+        "Count all the red balls.",
+        "The chance is the first count out of the second."
+      ]
+    },
+    {
+      "title": "Three gates",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: Bayes’ theorem with three causes, where the total red count has three terms (Ex 13.3 Q6, Q7, Q11; Examples 17, 19, 20).",
+      "hints": [
+        "Count the red balls through all three gates.",
+        "Add them for the total red landings.",
+        "Put the asked gate’s red count over that total."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "P(gate | red) is the same as P(red | gate)",
+    "A fraction can be set only in lowest terms",
+    "Every gate is equally likely to be the source"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

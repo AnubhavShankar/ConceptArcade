@@ -1,0 +1,67 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "portal-line",
+  "title": "Portal Line",
+  "summary": "Lead travellers through a portal: fence the domain to make f one-one, fence the doors to make f onto, and count the one-one maps.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 1,
+    "name": "Relations and Functions"
+  },
+  "ncertRef": "Section 1.3, Types of Functions",
+  "concepts": [
+    "One-one functions",
+    "Onto functions",
+    "Domain and co-domain matter",
+    "Bijective functions",
+    "One-one and onto on a finite set"
+  ],
+  "learningOutcome": "The student can find where a function is one-one, find the co-domain that makes it onto, and count the one-one maps of a finite set onto itself.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "No shared doors",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: f is one-one on an interval only if no two inputs share an output, so the fences stop at the turning points (Ex 1.2 Q1 to Q6, Q11).",
+      "hints": [
+        "Two different travellers sharing a door means f is not one-one there.",
+        "Find where f turns: a parabola turns at its vertex, |x − c| at c.",
+        "Stop the fence at the turning point on Pip’s side, and go as far as you can the other way."
+      ]
+    },
+    {
+      "title": "Every door in use",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: onto means the co-domain equals the range; find the range of f on a stretch (Ex 1.2 Q5, Q7 to Q10; Examples 9 to 12).",
+      "hints": [
+        "The doors in use are the values f takes on the stretch.",
+        "The largest and smallest are at the ends of the stretch or at a turning point inside it.",
+        "Put the fences exactly at the smallest and largest value."
+      ]
+    },
+    {
+      "title": "Counting the ways",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: for n travellers and n doors a one-one map is also onto, and there are n! of them (Misc Q4; Examples 13, 14, 22).",
+      "hints": [
+        "The first traveller has n doors to choose from.",
+        "Each next traveller has one fewer door left.",
+        "Multiply: n × (n − 1) × … × 1."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "x² is one-one on every interval",
+    "A function is onto whatever its co-domain is",
+    "On a finite set a one-one map need not be onto"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

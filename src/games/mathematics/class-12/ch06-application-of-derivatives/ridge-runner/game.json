@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "ridge-runner",
+  "title": "Ridge Runner",
+  "summary": "Plant a flag at a hilltop, a valley floor or the highest point of a walk using f′, the sign change and the second derivative test.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 2,
+  "chapter": {
+    "number": 6,
+    "name": "Application of Derivatives"
+  },
+  "ncertRef": "Section 6.4, Maxima and Minima",
+  "concepts": [
+    "Critical points",
+    "First and second derivative tests",
+    "Points that are not extrema (flat spots)",
+    "Absolute maximum and minimum on a closed interval",
+    "End points as candidates"
+  ],
+  "learningOutcome": "The student can find the critical points of a function, say whether each is a maximum, a minimum or neither, and find the absolute extremes on a closed interval including its end points.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 18,
+  "levels": [
+    {
+      "title": "Hilltop or valley",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: find f′ = 0, then use f″ (negative for a hilltop, positive for a valley) or the sign change (Ex 6.3 Q3, Q4; Examples 17 to 21).",
+      "hints": [
+        "Differentiate and set f′(x) = 0; the roots are the candidates.",
+        "Check f″ at each root: negative means the ground bends down, a hilltop.",
+        "Or check the sign of f′ just before and just after."
+      ]
+    },
+    {
+      "title": "The flat spot trap",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: a squared factor in f′ gives a zero where the sign does not change, so it is neither a peak nor a valley (Examples 19, 21; Misc Q10).",
+      "hints": [
+        "Find every zero of f′, then look at the sign of f′ on both sides of each.",
+        "A factor like (x − a)² never changes sign, so a is a flat spot.",
+        "The turning point is where the sign really changes."
+      ]
+    },
+    {
+      "title": "Highest on the walk",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: absolute maximum or minimum on [a, b] compares the end points and the critical points inside (Ex 6.3 Q5, Q9 to Q12; Examples 27, 28).",
+      "hints": [
+        "List the critical points that lie inside the stretch.",
+        "Evaluate f at those points and at both end points.",
+        "The largest (or smallest) of those values is the answer."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Every point where f′ = 0 is a maximum or a minimum",
+    "The highest point on an interval is always a critical point",
+    "A local maximum is the highest value on the whole interval"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

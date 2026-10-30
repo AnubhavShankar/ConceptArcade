@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "catch-rate",
+  "title": "Catch Rate",
+  "summary": "Run a rescue winch at the exact speed that makes an area, a ladder end, a shadow or a water volume change at the target rate.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 1,
+  "chapter": {
+    "number": 6,
+    "name": "Application of Derivatives"
+  },
+  "ncertRef": "Section 6.2, Rate of Change of Quantities",
+  "concepts": [
+    "Rate of change with respect to time",
+    "Chain rule in related rates",
+    "Pythagoras in a related rate",
+    "Similar triangles in a related rate",
+    "Rates of area and volume"
+  ],
+  "learningOutcome": "The student can write the quantity as a function of the one that is being driven, differentiate with respect to time and find the missing rate at a given instant.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 18,
+  "levels": [
+    {
+      "title": "Growing sizes",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: dA/dt or dV/dt is the derivative of the formula times the rate of the size (Ex 6.1 Q2 to Q8, Q12; Examples 2, 3).",
+      "hints": [
+        "Write the area or volume as a formula in the size, then differentiate with respect to time.",
+        "Put in the size at that instant to get a number times w.",
+        "Divide the target by that number."
+      ]
+    },
+    {
+      "title": "The sliding ladder",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: two lengths tied by Pythagoras, x² + y² = L², so their rates are tied by x·x′ + y·y′ = 0 (Ex 6.1 Q10; Misc Q2).",
+      "hints": [
+        "Differentiate x² + y² = L² with respect to time.",
+        "The ladder’s length L is constant, so its rate is zero.",
+        "The rate of the other end is the ratio of the sides times w, with a sign for falling."
+      ]
+    },
+    {
+      "title": "Similar triangles",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the relation comes from similar triangles, so first write the quantity in one variable (Ex 6.1 Q14; Examples 31, 32).",
+      "hints": [
+        "Use similar triangles to relate the radius to the depth, or the shadow to the distance.",
+        "Then write the volume (or the shadow) with one variable only.",
+        "Differentiate with respect to time and put in the instant’s values."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A rate of area is just the rate of the radius times π",
+    "Both ends of a ladder move at the same speed",
+    "A shadow grows as fast as the person walks"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

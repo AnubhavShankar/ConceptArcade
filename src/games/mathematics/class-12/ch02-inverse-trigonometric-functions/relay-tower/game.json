@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "relay-tower",
+  "title": "Relay Tower",
+  "summary": "Point a dish at the value of an inverse trigonometric expression: principal branches, sums of angles and substitution identities.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 2,
+  "chapter": {
+    "number": 2,
+    "name": "Inverse Trigonometric Functions"
+  },
+  "ncertRef": "Section 2.3, Properties of inverse trigonometric functions",
+  "concepts": [
+    "Principal value branches",
+    "sin⁻¹(sin x) and cos⁻¹(cos x) outside the branch",
+    "Sum of inverse tangents",
+    "sin⁻¹x + cos⁻¹x = π/2",
+    "Simplifying by a trigonometric substitution"
+  ],
+  "learningOutcome": "The student can bring an angle into the principal branch, add inverse trigonometric angles with a tangent formula, and simplify an expression by a trigonometric substitution.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 18,
+  "levels": [
+    {
+      "title": "Back into the branch",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: sin⁻¹(sin x) = x only when x is in [−π/2, π/2]; otherwise find the angle in the branch with the same sine (Ex 2.2 Q10, Q11; Misc Q1, Q2; Example 6).",
+      "hints": [
+        "Check whether x is in the principal branch of the outer function.",
+        "If not, use an identity such as sin(π − x) = sin x to find an angle in the branch.",
+        "The value is that angle, not x."
+      ]
+    },
+    {
+      "title": "Adding angles",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: the sum of two inverse functions, using tan(A + B), sin⁻¹x + cos⁻¹x = π/2, and the branch of the result (Ex 2.2 Q12; Misc Q3 to Q7).",
+      "hints": [
+        "Take the tangent of the whole sum with tan(A + B).",
+        "A tangent of 1 means π/4 and −1 means 3π/4 or −π/4: which fits the size of the angles?",
+        "sin⁻¹x + cos⁻¹x is π/2 for any x."
+      ]
+    },
+    {
+      "title": "Substitution",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: simplify by putting x = tan θ, sin θ or cos θ, then use double and triple angle identities (Ex 2.2 Q1 to Q7; Examples 3 to 5).",
+      "hints": [
+        "Choose the substitution that matches the shape under the root or the fraction.",
+        "Simplify with a double or triple angle formula to get a multiple of θ.",
+        "Put θ back as an inverse function of x and evaluate at the given x."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "sin⁻¹(sin x) = x for every x",
+    "cos⁻¹ has the same range as sin⁻¹",
+    "sin⁻¹ x means 1/sin x"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "laser-grid",
+  "title": "Laser Grid",
+  "summary": "Aim laser beams in 3D: set direction cosines, make beams perpendicular or at a given angle, and set the clearance between skew beams.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 1,
+  "chapter": {
+    "number": 11,
+    "name": "Three Dimensional Geometry"
+  },
+  "ncertRef": "Section 11.2, Direction cosines and direction ratios of a line",
+  "concepts": [
+    "Direction cosines from direction ratios",
+    "Perpendicular lines: a₁b₁ + a₂b₂ + a₃b₃ = 0",
+    "Angle between two lines",
+    "Shortest distance between skew lines",
+    "Unknown ratio from a condition"
+  ],
+  "learningOutcome": "The student can turn direction ratios into direction cosines, find an unknown ratio for perpendicular lines or a given angle, and find the shortest distance between two skew lines.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Aim the beam",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: direction cosines are the direction ratios divided by √(a² + b² + c²), and l² + m² + n² = 1 (Ex 11.1 Q3, Q5; Examples 2, 3).",
+      "hints": [
+        "Find the length of the target’s position: √(x² + y² + z²).",
+        "Divide each coordinate by that length to get a cosine.",
+        "Multiply each cosine by the denominator shown to get the numerators."
+      ]
+    },
+    {
+      "title": "Right angle",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: two lines are perpendicular when a₁b₁ + a₂b₂ + a₃b₃ = 0, which gives the unknown ratio (Ex 11.2 Q10, Q11; Misc Q3; Example 8).",
+      "hints": [
+        "Write the dot product of the two sets of ratios with p in it.",
+        "Set the dot product equal to 0.",
+        "Solve the one equation for p."
+      ]
+    },
+    {
+      "title": "A set angle",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: cos θ = (a·b)/(|a||b|); an unknown ratio changes |b| as well, so test whole-number values (Ex 11.2 Q8, Q9; Examples 7, 8).",
+      "hints": [
+        "Write a·b and |b| with the unknown c in them.",
+        "Try whole values of c that make |b| a whole number.",
+        "Compare the cosine with the fraction wanted."
+      ]
+    },
+    {
+      "title": "Skew clearance",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the distance between skew lines is |(a₂ − a₁)·(b₁ × b₂)|/|b₁ × b₂| (Ex 11.2 Q12 to Q15; Example 9).",
+      "hints": [
+        "Find b₁ × b₂ and its length first.",
+        "Dot the offset (with h in it) with b₁ × b₂.",
+        "Divide by |b₁ × b₂| and match the distance wanted."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Direction ratios are the same as direction cosines",
+    "Lines that never meet are always parallel",
+    "The angle between two lines depends on where they pass"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

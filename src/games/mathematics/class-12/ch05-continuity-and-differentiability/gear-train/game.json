@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "gear-train",
+  "title": "Gear Train",
+  "summary": "Crank a clockwork machine at the right speed so its last gear hits a target rate: chain rule, exponentials, implicit and second derivatives.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 1,
+  "chapter": {
+    "number": 5,
+    "name": "Continuity and Differentiability"
+  },
+  "ncertRef": "Section 5.3, Differentiability (chain rule, implicit, parametric, second order)",
+  "concepts": [
+    "Chain rule",
+    "Derivatives of e^x, a^x and ln x",
+    "Implicit differentiation",
+    "Parametric derivatives",
+    "Second order derivative"
+  ],
+  "learningOutcome": "The student can find the derivative of a composite, exponential, implicit or parametric function at a point and the second derivative, and use it as a rate: output rate = derivative × input rate.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Layers of gears",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the chain rule on powers of linear and quadratic expressions at a point; output rate = derivative × crank rate (Ex 5.2 Q1 to Q8).",
+      "hints": [
+        "Peel the layers from the outside in and multiply the derivatives.",
+        "First find the derivative at the given x, then divide the target rate by it.",
+        "d/dx of (ax + b)ⁿ is n·a·(ax + b)ⁿ⁻¹."
+      ]
+    },
+    {
+      "title": "Exponent and log gears",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: derivatives of e^g, ln g and a^g, with the output counted in units of e to a power or of ln a (Ex 5.4 Q2 to Q8; Ex 5.5).",
+      "hints": [
+        "d/dx e^g = g′·e^g: the target is a multiple of e^g(x₀).",
+        "d/dx ln g = g′/g, which is a fraction at a point.",
+        "d/dx a^g = a^g·(ln a)·g′, so the target is a multiple of ln a."
+      ]
+    },
+    {
+      "title": "Beads and drones",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: implicit curves and parametric curves, where the slope comes from differentiating both sides or from (dy/dt)/(dx/dt) (Ex 5.3 Q1 to Q8; Ex 5.6).",
+      "hints": [
+        "On x² + y² = r², differentiate both sides: 2x + 2y·y′ = 0.",
+        "For parametric curves divide dy/dt by dx/dt, then evaluate at the given t.",
+        "The y rate is the slope times the x rate w."
+      ]
+    },
+    {
+      "title": "Acceleration",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the second derivative as an acceleration, which depends on w² (Ex 5.7 Q1 to Q8).",
+      "hints": [
+        "x moves steadily, so x″ = 0 and y″ = f″(x)·w².",
+        "Differentiate twice, then put in x.",
+        "Divide the target by f″ and take the square root."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The derivative of a composite is the product of the outer and inner functions",
+    "The derivative of e^(x²) is e^(x²)",
+    "Doubling the speed doubles the acceleration"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

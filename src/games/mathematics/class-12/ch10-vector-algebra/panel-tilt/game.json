@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "panel-tilt",
+  "title": "Panel Tilt",
+  "summary": "Bolt a solar panel in along a × b, then find the unknown support that gives the panel a set area, or makes the supports parallel.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 3,
+  "chapter": {
+    "number": 10,
+    "name": "Vector Algebra"
+  },
+  "ncertRef": "Section 10.6.3, Vector or cross product of two vectors",
+  "concepts": [
+    "Cross product from components",
+    "Right-hand rule and a × b = −b × a",
+    "Area of a parallelogram as |a × b|",
+    "Parallel vectors: a × b = 0",
+    "A vector square to two given vectors"
+  ],
+  "learningOutcome": "The student can compute a cross product from components, use its direction and length, find an unknown component from a given area, and use a × b = 0 for parallel vectors.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 18,
+  "levels": [
+    {
+      "title": "The mount bolt",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: a × b is square to both a and b, points by the right-hand rule and has length |a||b| sin θ (Ex 10.4 Q1, Q2, Q6; Examples 22, 23).",
+      "hints": [
+        "Use the determinant pattern with i, j and k on the top row.",
+        "Check that the bolt dotted with a and with b gives 0.",
+        "Swapping a and b flips every sign."
+      ]
+    },
+    {
+      "title": "The roof allows an area",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: the area of the parallelogram on a and b is |a × b|, so an unknown component gives an equation (Ex 10.4 Q9, Q10, Q12; Examples 24, 25).",
+      "hints": [
+        "Put c into b and find a × b in terms of c.",
+        "Take the length: √(sum of the squares of the three parts).",
+        "Set it equal to the area wanted and solve for c."
+      ]
+    },
+    {
+      "title": "Folded flat",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: two vectors are parallel exactly when a × b = 0, so b is a multiple of a (Ex 10.4 Q5; Example 21; Misc Q12).",
+      "hints": [
+        "If b is a multiple of a, the cross product is the zero vector.",
+        "Compare the known components of b with those of a to find the multiple.",
+        "Use that multiple on the first component to get c."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "a × b is the same as b × a",
+    "The cross product of two vectors is a number",
+    "Parallel vectors have a cross product of 1"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
