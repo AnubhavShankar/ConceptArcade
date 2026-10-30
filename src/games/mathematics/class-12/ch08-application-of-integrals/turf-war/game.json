@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "turf-war",
+  "title": "Turf War",
+  "summary": "Lay exactly the paint a turf needs: the area of an ellipse, of a region that crosses the axis, under sine arches, and under a cubic.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 1,
+  "chapter": {
+    "number": 8,
+    "name": "Application of Integrals"
+  },
+  "ncertRef": "Section 8.2, Area under simple curves",
+  "concepts": [
+    "Area of an ellipse",
+    "Area is positive: the part below the axis adds",
+    "Splitting an area at a crossing point",
+    "Area under sine arches",
+    "Area under a cubic over symmetric-looking limits"
+  ],
+  "learningOutcome": "The student can find the area under a curve as a definite integral, split it where the curve crosses the axis and add the absolute parts, and use the area of an ellipse, πab.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 18,
+  "levels": [
+    {
+      "title": "The ellipse turf",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the area of x²/a² + y²/b² = 1 is πab, four times the first quadrant ∫ b√(1 − x²/a²) dx (Ex 8.1 Q1, Q2; Example 2).",
+      "hints": [
+        "The ellipse is symmetric, so find the area of the first quadrant and multiply by 4.",
+        "The whole area is πab.",
+        "The turf needs a multiple of π: divide it by a to get b."
+      ]
+    },
+    {
+      "title": "Across the axis",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: when the curve crosses the x-axis, split the area at the crossing and add the two absolute values (Section 8.2 Remark; Example 3; Misc Q4, Q5).",
+      "hints": [
+        "Find where the line meets the x-axis.",
+        "Area below the axis is the integral with the sign taken off.",
+        "Add the two areas; do not subtract them."
+      ]
+    },
+    {
+      "title": "Sine arches",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: every quarter wave of a·sin x has area a, above or below the axis, so n quarter waves give a·n (Example 4; Misc Q3).",
+      "hints": [
+        "One half wave of sin x between 0 and π has area 2.",
+        "A quarter wave has area 1 times the height a.",
+        "Divide the paint needed by a to count the quarter waves."
+      ]
+    },
+    {
+      "title": "The cubic lobes",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: for k·x³ from −p to q the lobe below the axis adds to the lobe above it: k(p⁴ + q⁴)/4 (Misc Q4, Q5).",
+      "hints": [
+        "The cubic is negative for x < 0 and positive for x > 0.",
+        "Take the absolute value of the integral from −p to 0.",
+        "Add k p⁴/4 and k q⁴/4 and match the paint needed."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A definite integral is always the area",
+    "The area below the axis is negative",
+    "Symmetric limits make the area zero"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

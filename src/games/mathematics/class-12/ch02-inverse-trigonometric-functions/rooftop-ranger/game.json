@@ -1,0 +1,78 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "rooftop-ranger",
+  "title": "Rooftop Ranger",
+  "summary": "Stun runaway robots from a rooftop at night by tilting a scope that only swings through the principal branch of tan⁻¹, sin⁻¹ or cos⁻¹.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 2,
+    "name": "Inverse Trigonometric Functions"
+  },
+  "ncertRef": "Section 2.2, Basic Concepts (principal value branches)",
+  "concepts": [
+    "Principal value branches",
+    "tan⁻¹ of a height-to-distance ratio",
+    "Pythagoras for the line of sight",
+    "Signed principal values of sin⁻¹",
+    "The [0, π] branch of cos⁻¹"
+  ],
+  "learningOutcome": "The student can turn a height, distance or offset into an exact angle with tan⁻¹, sin⁻¹ or cos⁻¹, keep it inside the principal branch with the right sign, and find a line of sight by Pythagoras.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Down the street",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the tilt is tan⁻¹(−height/distance) in (−π/2, π/2), with the special ratios 1/√3, 1 and √3 (Ex 2.1 Q4, Q6, Q8).",
+      "hints": [
+        "Looking down is a negative tilt.",
+        "tan of the tilt = −(roof height)/(street distance). Cancel the common factor first.",
+        "tan(π/6) = 1/√3, tan(π/4) = 1, tan(π/3) = √3."
+      ]
+    },
+    {
+      "title": "Range turret",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: the range turret needs the straight-line distance, found by Pythagoras from the height and the street distance, as well as the tilt.",
+      "hints": [
+        "The line of sight is the hypotenuse of the triangle formed by the building and the street.",
+        "r² = h² + d², and (a√3)² = 3a².",
+        "Set the tilt first, then the range: a miss tells you which of the two drifted."
+      ]
+    },
+    {
+      "title": "Drones and ledges",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: targets above and below, so the tilt is sin⁻¹(height/range) with its sign, inside [−π/2, π/2] (Ex 2.1 Q1, Q13).",
+      "hints": [
+        "Above the scope is positive, below is negative.",
+        "sin of the tilt = (signed height)/(laser range).",
+        "sin⁻¹(−x) = −sin⁻¹(x), and sin⁻¹(1) = π/2 points straight up."
+      ]
+    },
+    {
+      "title": "The wall turret",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: a turret on a wall swings through [0, π], the branch of cos⁻¹, so a robot to the west needs an obtuse bearing (Ex 2.1 Q2, Q5, Q9).",
+      "hints": [
+        "cos of the bearing = (east offset)/(range); a west offset is negative.",
+        "The turret cannot point behind the wall, so the answer is never negative.",
+        "cos⁻¹(−x) = π − cos⁻¹(x)."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "cos⁻¹(−1/2) = −π/3",
+    "An angle of depression is a positive tilt",
+    "sin⁻¹ x means 1/sin x"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

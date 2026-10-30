@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "break-shot",
+  "title": "Break Shot",
+  "summary": "Play pool with the dot product: send the cue ball off at a right angle, with a set energy, and with a set shadow on the rail.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 2,
+  "chapter": {
+    "number": 10,
+    "name": "Vector Algebra"
+  },
+  "ncertRef": "Section 10.6.1, Scalar or dot product",
+  "concepts": [
+    "The dot product of two vectors",
+    "Perpendicular vectors and the zero dot product",
+    "Finding an unknown component from a dot product",
+    "Projection of a vector on another",
+    "Angle between two vectors"
+  ],
+  "learningOutcome": "The student can compute a dot product from components, use a zero dot product to find a perpendicular vector, and find the projection of a vector on a direction.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Right angle",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: two vectors are perpendicular exactly when a·b = a₁b₁ + a₂b₂ = 0 (Ex 10.3 Q5, Q10 to Q12, Q17; Example 12).",
+      "hints": [
+        "Write the dot product with the unknown λ in it.",
+        "Set it equal to 0.",
+        "Solve the one equation for λ."
+      ]
+    },
+    {
+      "title": "A set energy",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: the dot product is a number, and a given value gives a linear equation in the unknown component (Ex 10.3 Q1 to Q4; Examples 13, 14).",
+      "hints": [
+        "Multiply matching components and add.",
+        "Set the sum equal to the number wanted.",
+        "Solve for λ: it is a straight equation."
+      ]
+    },
+    {
+      "title": "The shadow",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the projection of r on u is (r·u)/|u|, and it is negative when r points back (Ex 10.3 Q3, Q4; Example 16).",
+      "hints": [
+        "Find |u| = √(u₁² + u₂²) first.",
+        "Compute the dot product r·u with λ in it.",
+        "Divide by |u| and set it equal to the length wanted."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A dot product is a vector",
+    "Perpendicular vectors have a dot product of 1",
+    "A projection is always positive"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

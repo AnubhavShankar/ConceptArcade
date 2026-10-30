@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "card-sharp",
+  "title": "Card Sharp",
+  "summary": "Tap cards to count a reduced sample space for P(A | B), then set chances for independent events and for draws without replacement.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 2,
+  "chapter": {
+    "number": 13,
+    "name": "Probability"
+  },
+  "ncertRef": "Section 13.2, Conditional probability",
+  "concepts": [
+    "Conditional probability in a reduced sample space",
+    "P(A | B) = P(A ∩ B)/P(B)",
+    "Independent events: P(A ∩ B) = P(A)P(B)",
+    "Drawing without replacement",
+    "At least one, by the complement"
+  ],
+  "learningOutcome": "The student can find P(A | B) by counting in the reduced sample space, use P(A ∩ B) = P(A)P(B) for independent events, and find chances for draws without replacement.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 18,
+  "levels": [
+    {
+      "title": "The reduced deck",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: given B, the sample space is the outcomes of B, and P(A | B) = n(A ∩ B)/n(B) (Ex 13.1 Q6 to Q15; Examples 2 to 5).",
+      "hints": [
+        "First mark only the cards that fit B: the sample space shrinks to them.",
+        "Then mark again the cards that also fit A.",
+        "The chance is the green cards out of all the marked cards."
+      ]
+    },
+    {
+      "title": "Independent events",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: A and B are independent when P(A ∩ B) = P(A)·P(B), which gives the unknown chance by division (Ex 13.2 Q1, Q4 to Q8; Examples 10 to 13).",
+      "hints": [
+        "Write P(A ∩ B) = P(A)·P(B) with the known values.",
+        "Divide P(A ∩ B) by P(A) to find P(B).",
+        "Write P(B) in twelfths to read k."
+      ]
+    },
+    {
+      "title": "Without replacement",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: P(both red) = (r/N)((r − 1)/(N − 1)), and P(at least one) = 1 − P(none) (Ex 13.2 Q2, Q3, Q12 to Q14; Examples 8, 9).",
+      "hints": [
+        "After the first card is drawn, the deck has one card fewer.",
+        "Multiply the two chances.",
+        "For at least one, take 1 minus the chance that both are black."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "P(A | B) is the same as P(B | A)",
+    "Count all the cards, not just those in B",
+    "Draws without replacement keep the same chance each time"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

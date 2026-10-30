@@ -1,0 +1,79 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "slope-surfer",
+  "title": "Slope Surfer",
+  "summary": "Ride the one solution curve through a beacon by finding the constant C: direct integration, separable, homogeneous and linear equations.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 1,
+  "chapter": {
+    "number": 9,
+    "name": "Differential Equations"
+  },
+  "ncertRef": "Section 9.4, Methods of solving first order, first degree differential equations",
+  "concepts": [
+    "General and particular solutions",
+    "Variables separable",
+    "Homogeneous equations",
+    "Linear equations and the integrating factor",
+    "Finding the constant from a point"
+  ],
+  "learningOutcome": "The student can solve a first order equation by direct integration, separation of variables, the substitution y = vx or an integrating factor, and find the constant from a point on the curve.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Wind from x",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: dy/dx = g(x) integrates to y = G(x) + C, and a point of the curve fixes C (Ex 9.4 Q11 to Q15; Examples 6, 7).",
+      "hints": [
+        "Integrate the wind g(x) with respect to x.",
+        "Do not forget the constant C.",
+        "Put the beacon into y = G(x) + C and solve for C."
+      ]
+    },
+    {
+      "title": "Wind from x and y",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: separate the variables, integrate both sides, and fix C from the point (Ex 9.3 Q1 to Q18; Examples 4, 5).",
+      "hints": [
+        "Move all the y terms to one side and all the x terms to the other.",
+        "Integrate each side and keep one constant.",
+        "Put the beacon into the general solution to get C."
+      ]
+    },
+    {
+      "title": "Same degree",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: a homogeneous equation dy/dx = F(y/x) is solved by y = vx, then the point fixes C (Ex 9.4 Q1 to Q17; Examples 10 to 13).",
+      "hints": [
+        "Check that every term has the same total degree in x and y.",
+        "Put y = vx and dy/dx = v + x dv/dx, then separate v and x.",
+        "Put back v = y/x and use the beacon for C."
+      ]
+    },
+    {
+      "title": "Integrating factor",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: dy/dx + P y = Q is solved by multiplying by the integrating factor e^(∫P dx), here a power of x (Ex 9.5 Q1 to Q15; Examples 14, 15).",
+      "hints": [
+        "Read P: here it is m/x, so the integrating factor is x to the power m.",
+        "The left side becomes the derivative of (factor × y).",
+        "Integrate once, then use the beacon to find C."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The constant of integration can be left out",
+    "Only one curve solves a differential equation",
+    "The integrating factor is always e^x"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

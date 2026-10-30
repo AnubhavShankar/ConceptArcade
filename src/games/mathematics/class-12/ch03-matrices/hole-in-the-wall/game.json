@@ -1,0 +1,78 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "hole-in-the-wall",
+  "title": "Hole in the Wall",
+  "summary": "Fit a robot whose corners are matrix columns through a hole: equal entries, row-by-column products, rotations and the order of two machines.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 3,
+    "name": "Matrices"
+  },
+  "ncertRef": "Section 3.4.5, Multiplication of matrices",
+  "concepts": [
+    "Equality of matrices",
+    "Multiplication of matrices",
+    "Rotation matrices",
+    "Matrix products depend on the order",
+    "Order of a product"
+  ],
+  "learningOutcome": "The student can match entries of equal matrices to find unknowns, compute a row-by-column product, read a rotation matrix, and see that AB and BA differ.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Match the entries",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: two matrices are equal when every matching entry is equal, so each letter comes from one entry (Ex 3.1 Q6, Q7, Q9).",
+      "hints": [
+        "Compare the two matrices entry by entry, top left first.",
+        "An entry with only x in it tells you x. An entry with only y tells you y.",
+        "Check the last entries: they must agree with your x and y."
+      ]
+    },
+    {
+      "title": "The machine A",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: the entry in row i, column j of A·P is row i of A times column j of P, with unknowns inside A (Ex 3.2 Q1, Q3, Q9 to Q12).",
+      "hints": [
+        "Row 1 of A times column 1 of P gives the top left entry of the result.",
+        "Write that entry as an equation with a, then solve it.",
+        "Do the same for the second row with b."
+      ]
+    },
+    {
+      "title": "The turntable",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: the rotation matrix with cos α and sin α; read cos α and sin α from where a corner lands (Ex 3.2 Q2, Q6, Q13; Ex 3.3 Q12).",
+      "hints": [
+        "A corner at (2, 0) lands at (2 cos α, 2 sin α).",
+        "Halve the landing coordinates to get cos α and sin α.",
+        "Use the special angles π/6, π/4 and π/3, and watch the signs."
+      ]
+    },
+    {
+      "title": "Two machines, two orders",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: matrix products depend on the order, so AB ≠ BA; choose the order as well as the shear (Ex 3.2 Q14; Examples 13 to 15).",
+      "hints": [
+        "Work out BAP and ABP for a small k and compare them with the hole.",
+        "Look at one entry that changes with k in only one of the two orders.",
+        "Then check the whole matrix."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "AB = BA for any two matrices",
+    "A matrix product multiplies entry by matching entry",
+    "A rotation matrix has the same entry everywhere"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

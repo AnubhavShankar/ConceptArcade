@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "room-keeper",
+  "title": "Room Keeper",
+  "summary": "Seat mansion guests by who belongs with whom: repair a chart to be reflexive, symmetric and transitive, find the modulus, count the plans.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 2,
+  "chapter": {
+    "number": 1,
+    "name": "Relations and Functions"
+  },
+  "ncertRef": "Section 1.2, Types of Relations",
+  "concepts": [
+    "Reflexive, symmetric and transitive relations",
+    "Equivalence relations",
+    "Equivalence classes",
+    "Congruence modulo m",
+    "Counting equivalence relations"
+  ],
+  "learningOutcome": "The student can test the three properties, repair a relation to make it an equivalence, find the classes of congruence mod m, and count the equivalence relations on a small set.",
+  "mechanic": "deduce-the-hidden",
+  "estimatedMinutes": 18,
+  "levels": [
+    {
+      "title": "Repair the chart",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: an equivalence relation is reflexive, symmetric and transitive; find the one pair that restores all three (Ex 1.1 Q1 to Q6, Q10).",
+      "hints": [
+        "Look for a pair (a, b) in the chart whose partner (b, a) is not there.",
+        "If a and b share a room with someone else, check that chain too.",
+        "The missing entry must make all three lamps green."
+      ]
+    },
+    {
+      "title": "Find the modulus",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: congruence modulo m is an equivalence relation, and its classes are the rooms (Ex 1.1 Q8, Q11 to Q14; Example 6).",
+      "hints": [
+        "Two guests share a room when their numbers differ by a multiple of m.",
+        "Look at two guests in one room: how far apart are they?",
+        "Check that the number of rooms equals m."
+      ]
+    },
+    {
+      "title": "Count the plans",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: count the equivalence relations (set partitions) with guests forced together or apart (Misc Q6, Q7; Examples 23, 24).",
+      "hints": [
+        "Guests who must share a room can be glued into one super-guest.",
+        "For three guests there are 5 plans in all; for four guests 15.",
+        "Guests who must be apart rule out the plans where they share a room."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A symmetric relation is always transitive",
+    "Reflexive and symmetric together make an equivalence relation",
+    "Two equivalence classes can overlap"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "mirror-crystal",
+  "title": "Mirror Crystal",
+  "summary": "Balance a crystal of gems across a diagonal mirror: make a matrix symmetric or skew symmetric, then split it into P + Q.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 2,
+  "chapter": {
+    "number": 3,
+    "name": "Matrices"
+  },
+  "ncertRef": "Section 3.6, Symmetric and skew symmetric matrices",
+  "concepts": [
+    "Transpose of a matrix",
+    "Symmetric matrix A′ = A",
+    "Skew symmetric matrix A′ = −A",
+    "Zero diagonal of a skew matrix",
+    "Symmetric plus skew decomposition"
+  ],
+  "learningOutcome": "The student can use A′ = A and A′ = −A to find unknown entries, and write any square matrix as the sum of a symmetric and a skew symmetric matrix.",
+  "mechanic": "deduce-the-hidden",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Make it symmetric",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: a symmetric matrix has a_ij = a_ji, so each loose gem equals its reflection across the diagonal (Ex 3.3 Q7, Q8; Misc Q10).",
+      "hints": [
+        "Find the reflection of each loose gem across the main diagonal.",
+        "In a symmetric matrix the gem and its reflection are equal.",
+        "Read the reflection’s value."
+      ]
+    },
+    {
+      "title": "Make it skew",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: a skew symmetric matrix has a_ji = −a_ij, so the diagonal entries are all zero (Ex 3.3 Q7, Q11; Misc Q10).",
+      "hints": [
+        "Each off-diagonal gem is the opposite of its reflection.",
+        "A diagonal gem is its own reflection, so a_ii = −a_ii.",
+        "The only number equal to its own opposite is 0."
+      ]
+    },
+    {
+      "title": "Split the crystal",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: A = P + Q with P = ½(A + A′) symmetric and Q = ½(A − A′) skew symmetric (Ex 3.3 Q9, Q10; Example 22).",
+      "hints": [
+        "P’s diagonal gems are the same as A’s.",
+        "P is symmetric: its two off-diagonal gems are equal, each the average of A’s two off-diagonal gems.",
+        "Q is skew symmetric: its diagonal gems are 0 and its two off-diagonal gems are opposites.",
+        "Q’s top right gem is half the difference of A’s off-diagonal gems."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A skew symmetric matrix can have a non-zero diagonal",
+    "Every square matrix is either symmetric or skew symmetric",
+    "The symmetric part of A is A + A′"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

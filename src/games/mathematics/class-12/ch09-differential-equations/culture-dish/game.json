@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "culture-dish",
+  "title": "Culture Dish",
+  "summary": "Scan falling specimens for order and degree, then set a growth lamp and a spring from dy/dt = ky and y″ + m²y = 0.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 2,
+  "chapter": {
+    "number": 9,
+    "name": "Differential Equations"
+  },
+  "ncertRef": "Section 9.2, Order and degree of a differential equation",
+  "concepts": [
+    "Order of a differential equation",
+    "Degree and when it is not defined",
+    "Growth and decay: dy/dt = ky",
+    "The solution y = c·e^(kt)",
+    "A solution of y″ + m²y = 0"
+  ],
+  "learningOutcome": "The student can read the order and degree of a differential equation, know when the degree is not defined, and use the solutions of dy/dt = ky and y″ + m²y = 0 to set a constant.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Order and degree",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: order is the highest derivative; degree is its power when the equation is polynomial in its derivatives, else not defined (Ex 9.1 Q1 to Q12).",
+      "hints": [
+        "Find the highest derivative: its order is the order of the equation.",
+        "Look at the power of that highest derivative only.",
+        "A derivative inside sin, cos or e means the degree is not defined."
+      ]
+    },
+    {
+      "title": "Growth and decay",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: dy/dt = k·y separates to y = c·e^(kt); the reading after a time fixes k (Ex 9.3 Q19 to Q22; Example 9).",
+      "hints": [
+        "Separate: dy/y = k dt, then integrate both sides.",
+        "Use y = c at t = 0 to get y = c·e^(kt).",
+        "Put t = T and match the exponent to get k."
+      ]
+    },
+    {
+      "title": "The spring",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: y″ + m²y = 0 has the solution y = A cos(mt) + B sin(mt), with period 2π/m (Section 9.3; Ex 9.2 Q1 to Q10).",
+      "hints": [
+        "Check that y = cos(mt) satisfies y″ = −m²y.",
+        "Its period is 2π/m.",
+        "In a turn of 2π the dish makes m full swings."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The degree is the highest power anywhere in the equation",
+    "Every differential equation has a degree",
+    "A bigger k always means a bigger colony"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

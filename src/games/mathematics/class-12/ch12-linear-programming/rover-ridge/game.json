@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "rover-ridge",
+  "title": "Rover Ridge",
+  "summary": "Slide an ore ruler across a fenced plateau and park it where it just touches: the corner-point method for linear programming.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 1,
+  "chapter": {
+    "number": 12,
+    "name": "Linear Programming"
+  },
+  "ncertRef": "Section 12.2, Linear programming problem and its mathematical formulation",
+  "concepts": [
+    "Feasible region and its corner points",
+    "Objective function Z = ax + by",
+    "Corner point method: the best Z is at a corner",
+    "Maximum and minimum with mixed signs",
+    "Finding corners from the inequalities"
+  ],
+  "learningOutcome": "The student can find the corner points of a bounded feasible region, evaluate the objective function at each, and pick the largest or smallest value as the optimum.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "The richest corner",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: for a bounded region the maximum of Z = ax + by is at a corner point; evaluate Z at each and take the largest (Ex 12.1 Q1, Q2, Q5; Example 1).",
+      "hints": [
+        "List the corner points of the plateau.",
+        "Work out Z = ax + by at each corner.",
+        "The largest value is the best Z."
+      ]
+    },
+    {
+      "title": "Mixed signs",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: a minus sign in Z, and a minimum is asked for; the optimum is still at a corner (Ex 12.1 Q2, Q9; Example 4).",
+      "hints": [
+        "Evaluate Z at every corner, carefully with the signs.",
+        "The question tells you whether to take the largest or the smallest.",
+        "The extreme may not be at the corner that looks best."
+      ]
+    },
+    {
+      "title": "A bigger plateau",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: five or six corners found by solving pairs of boundary lines from the inequalities alone (Ex 12.1 Q3, Q5, Q8; Examples 2, 3).",
+      "hints": [
+        "Each corner is where two neighbouring boundary lines meet.",
+        "Solve each pair of equations to get the corner.",
+        "Compare Z at all the corners, not only the first few."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The best Z is where the biggest x and y are",
+    "The best Z can be in the middle of the region",
+    "A minimum is always at the origin"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

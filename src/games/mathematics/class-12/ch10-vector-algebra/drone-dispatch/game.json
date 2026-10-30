@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "drone-dispatch",
+  "title": "Drone Dispatch",
+  "summary": "Send a courier drone the right vector: the vector joining two points, a thrust of a given size, and a relay that divides a leg in a ratio.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "order": 1,
+  "chapter": {
+    "number": 10,
+    "name": "Vector Algebra"
+  },
+  "ncertRef": "Section 10.5, Algebra of vectors",
+  "concepts": [
+    "The vector joining two points",
+    "Magnitude and unit vector",
+    "A vector of given magnitude in a given direction",
+    "Section formula, internal division",
+    "Section formula, external division"
+  ],
+  "learningOutcome": "The student can write the vector joining two points, scale a unit vector to a given size, and use the section formula for internal and external division.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Point to point",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the vector from D to E is E − D, the end coordinates minus the start coordinates (Ex 10.2 Q1 to Q5; Example 4).",
+      "hints": [
+        "Subtract the start from the end, x with x and y with y.",
+        "The order matters: end minus start.",
+        "Check by adding the vector to D: you should land on E."
+      ]
+    },
+    {
+      "title": "A thrust of the right size",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: the unit vector d/|d| times a size M gives a vector of size M along d (Ex 10.2 Q7 to Q10; Examples 6 to 8).",
+      "hints": [
+        "Find |d| = √(x² + y²) first.",
+        "Divide d by |d| to get the unit vector.",
+        "Multiply the unit vector by the size wanted."
+      ]
+    },
+    {
+      "title": "The relay",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: R divides PQ in the ratio m : n internally by R = (nP + mQ)/(m + n), and externally by R = (mQ − nP)/(m − n) (Ex 10.2 Q15, Q16; Misc Q8, Q9; Example 11).",
+      "hints": [
+        "Internal division puts R between P and Q; external puts it outside.",
+        "Plug the coordinates into the formula one at a time.",
+        "For external division the denominator is m − n."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The vector from D to E is D − E",
+    "A vector of size M along d is M times d",
+    "External division uses m + n in the denominator"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}
