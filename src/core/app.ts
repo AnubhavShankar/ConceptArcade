@@ -1,5 +1,5 @@
 import { h } from './dom';
-import { numberGames } from './browse';
+import { neighbours, numberGames } from './browse';
 import { wrapInShell } from './drawer';
 import { renderHome } from './home';
 import { DIFFICULTIES, type LevelDef } from './manifest';
@@ -52,6 +52,8 @@ function renderGame(app: HTMLElement, entry: GameEntry, wantedLevel: number, see
   const levelInfo = manifest.levels[level - 1];
   saveLast(manifest.id, level);
   const position = numberGames(catalog).get(manifest.id); // this game's place in its chapter
+  const around = neighbours(catalog, manifest.id);
+  const gameLink = (e: GameEntry | null, kind: 'prev' | 'next') => (e ? h('a', { class: `game-nav-${kind}`, href: `#/game/${e.manifest.id}` }, kind === 'prev' ? `‹ ${e.manifest.title}` : `${e.manifest.title} ›`) : h('span', null));
 
   let seed = seedParam ?? newSeed();
   let hintsUsed = 0;
@@ -109,6 +111,7 @@ function renderGame(app: HTMLElement, entry: GameEntry, wantedLevel: number, see
         { class: 'row' },
         next ? h('a', { class: 'btn', href: nextLink }, `Level ${level + 1} →`) : null,
         h('button', { class: next ? 'btn secondary' : 'btn', onclick: () => ctx_restart() }, 'Replay level'),
+        around.next ? h('a', { class: 'btn secondary', href: `#/game/${around.next.manifest.id}` }, `Next game: ${around.next.manifest.title} →`) : null,
         h('a', { class: 'btn secondary', href: '#/' }, 'All games'),
       ),
     );
@@ -180,6 +183,7 @@ function renderGame(app: HTMLElement, entry: GameEntry, wantedLevel: number, see
       h('a', { class: 'back', href: '#/' }, h('span', { 'aria-hidden': 'true' }, '←'), ' All games'),
       h('h1', null, manifest.title),
       h('p', { class: 'muted game-meta' }, `${manifest.ncertRef} · ${position ? `Game ${position.n} of ${position.of} in Chapter ${manifest.chapter.number} · ` : ''}by ${manifest.author.name}`),
+      h('nav', { class: 'game-nav', 'aria-label': 'Games in this course' }, gameLink(around.prev, 'prev'), gameLink(around.next, 'next')),
       ...(levelCount > 1 ? [levelBar] : []),
       ...(levelCount > 1 ? [h(
         'p',
@@ -195,7 +199,7 @@ function renderGame(app: HTMLElement, entry: GameEntry, wantedLevel: number, see
       hintList,
       result,
   );
-  app.replaceChildren(wrapInShell(page, { entries: catalog, curricula, store: loadStore(), last: loadLast(), active: { subject: manifest.subject, classLevel: manifest.classLevel, chapter: manifest.chapter.number } }));
+  app.replaceChildren(wrapInShell(page, { entries: catalog, curricula, store: loadStore(), last: loadLast(), active: { subject: manifest.subject, classLevel: manifest.classLevel, chapter: manifest.chapter.number, game: manifest.id } }));
   teardown = () => {
     alive = false;
     cleanup?.();

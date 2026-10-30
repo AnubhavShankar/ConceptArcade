@@ -45,9 +45,15 @@ describe('the game page header shows the game number', () => {
     const numbers = numberGames(catalog);
     // Only the header is checked, so skip loading every game module (slow, and it grows with every game added).
     for (const g of catalog) vi.spyOn(g, 'load').mockReturnValue(new Promise(() => undefined));
+    // One app, many pages: starting an app per game would stack a hashchange listener each time and re-render every earlier page on every change.
+    const app = document.createElement('div');
+    document.body.append(app);
+    history.replaceState(null, '', `#/game/${catalog[0].manifest.id}`);
+    startApp(app);
     for (const g of catalog) {
       const n = numbers.get(g.manifest.id)!;
-      const app = open(g.manifest.id);
+      history.replaceState(null, '', `#/game/${g.manifest.id}`);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
       expect(app.querySelector('.game-meta')?.textContent).toContain(`Game ${n.n} of ${n.of}`);
     }
   });
@@ -55,5 +61,18 @@ describe('the game page header shows the game number', () => {
   it('the first game of the textbook is Game 1', () => {
     const app = open('attract-or-repel');
     expect(app.querySelector('.game-meta')?.textContent).toMatch(/Game 1 of \d+ in Chapter 1/);
+  });
+});
+
+describe('moving between games without going home', () => {
+  it('a game page links to the previous and next game of the course, and the menu marks the game you are in', () => {
+    const app = open('attract-or-repel');
+    const nav = app.querySelector('.game-nav')!;
+    expect(nav.querySelector('.game-nav-prev')).toBeNull(); // the first game of the textbook has no previous
+    const next = nav.querySelector('.game-nav-next') as HTMLAnchorElement;
+    expect(next.getAttribute('href')).toMatch(/^#\/game\/[a-z0-9-]+$/);
+    expect(app.querySelector('.drawer-game.current')?.textContent).toContain(catalog.find((g) => g.manifest.id === 'attract-or-repel')!.manifest.title);
+    // the chapter of the game opens by itself, so the way to the neighbouring games is one click away
+    expect(app.querySelector('.drawer-games:not([hidden]) a.drawer-game')).not.toBeNull();
   });
 });

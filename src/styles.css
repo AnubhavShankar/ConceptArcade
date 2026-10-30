@@ -398,7 +398,12 @@ h2 { font-size: 1.15rem; }
 .drawer-link:hover { background: var(--panel-2); }
 .drawer-link.resume { background: var(--accent-soft); border: 1px solid var(--accent); margin: 4px 0 8px; }
 .drawer-link small { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
-.drawer-course h2 { margin: 18px 12px 6px; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.drawer-course h2 { margin: 14px 0 4px; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.drawer-course-toggle { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 12px; font: inherit; font-weight: 700; text-transform: inherit; letter-spacing: inherit; color: inherit; background: transparent; border: 0; border-radius: 12px; cursor: pointer; text-align: left; }
+.drawer-course-toggle:hover { background: var(--panel-2); color: var(--text); }
+.drawer-caret { display: inline-block; width: 1em; }
+.drawer-course-name { flex: 1; }
+.drawer-course-count { font-weight: 600; opacity: .8; }
 .drawer-chapters { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .drawer-chapter, .drawer-chapters li.soon { display: grid; grid-template-columns: 28px 1fr; column-gap: 10px; row-gap: 2px; align-items: center; width: 100%; padding: 8px 12px; text-align: left; font: inherit; color: var(--text); background: transparent; border: 0; border-radius: 12px; }
 .drawer-chapter { cursor: pointer; min-height: 52px; }
@@ -409,6 +414,27 @@ h2 { font-size: 1.15rem; }
 .drawer-ch-meta { font-size: .75rem; color: var(--muted); }
 .drawer-chapter .bar { height: 6px; }
 .drawer-chapters li.soon { opacity: .6; min-height: 44px; }
+/* Quick find, game lists under each chapter, previous/next on a game page */
+.drawer-findrow { padding: 8px 12px 4px; }
+.drawer-find { width: 100%; min-height: 44px; padding: 8px 12px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; }
+.drawer-find:focus-visible { border-color: var(--accent); outline: none; }
+.drawer-results, .drawer-games { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.drawer-result { display: flex; flex-direction: column; gap: 1px; min-height: 44px; padding: 8px 12px; color: var(--text); text-decoration: none; border-radius: 12px; }
+.drawer-result:hover, .drawer-result:focus-visible { background: var(--panel-2); }
+.drawer-result small { font-size: .72rem; color: var(--muted); }
+.drawer-none { padding: 10px 12px; color: var(--muted); font-size: .9rem; }
+.drawer-games { margin: 2px 0 6px 38px; }
+.drawer-game { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 10px; font-size: .88rem; color: var(--text); text-decoration: none; border-radius: 10px; }
+.drawer-game:hover, .drawer-game:focus-visible { background: var(--panel-2); }
+.drawer-game.current { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); font-weight: 700; }
+.drawer-game-mark { width: 1.1em; text-align: center; color: var(--muted); }
+.drawer-game-mark.done { color: var(--accent); }
+.drawer-see { min-height: 36px; padding: 4px 10px; font: inherit; font-size: .8rem; color: var(--accent); background: transparent; border: 0; border-radius: 10px; cursor: pointer; text-align: left; }
+.drawer-see:hover { background: var(--panel-2); }
+.drawer-ch-caret { margin-left: 6px; }
+.game-nav { display: flex; justify-content: space-between; gap: 12px; margin: 4px 0 10px; font-size: .9rem; }
+.game-nav a { color: var(--accent); text-decoration: none; font-weight: 600; max-width: 48%; }
+.game-nav a:hover { text-decoration: underline; }
 .drawer-foot { padding: 12px 14px 16px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
 .drawer-progress { margin: 0; font-size: .85rem; color: var(--muted); }
 .drawer-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; }

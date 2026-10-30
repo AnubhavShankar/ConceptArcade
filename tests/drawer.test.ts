@@ -158,6 +158,8 @@ describe('the drawer on a phone', () => {
     mount();
     menu().click();
     ($$('.drawer-chapter')[0] as HTMLButtonElement).click();
+    expect(shell().dataset.drawer).toBe('open');
+    ($$('.drawer-game')[0] as HTMLAnchorElement).click();
     expect(shell().dataset.drawer).toBe('closed');
     menu().click();
     $('.drawer-link')!.click();
@@ -211,7 +213,8 @@ describe('going to a chapter', () => {
     expect(head().getAttribute('aria-expanded')).toBe('false');
     const repaint = vi.fn(() => renderHome(app, { entries, curricula: [physics12], store: {}, last: null }));
     window.addEventListener('hashchange', repaint);
-    const button = $$('.drawer-chapter').find((b) => b.textContent!.includes('Electrostatic'))!;
+    ($$('.drawer-chapter')[1] as HTMLButtonElement).click();
+    const button = $$('.drawer-see')[0];
     button.click();
     window.removeEventListener('hashchange', repaint);
     expect(repaint).toHaveBeenCalledTimes(1);
@@ -222,6 +225,7 @@ describe('going to a chapter', () => {
     location.hash = '#/game/a?level=1';
     mount({ active: { subject: 'physics', classLevel: 12, chapter: 1 } });
     ($$('.drawer-chapter')[1] as HTMLButtonElement).click();
+    ($$('.drawer-see')[0] as HTMLButtonElement).click();
     expect(location.hash).toBe('#/');
   });
 });
@@ -233,5 +237,52 @@ describe('the pages use it', () => {
     expect($('.shell .drawer')).not.toBeNull();
     expect($('.shell-main .home-hero')).not.toBeNull();
     expect($('.shell-main .game-card')).not.toBeNull();
+  });
+});
+
+describe('collapsible subject sections', () => {
+  beforeEach(() => screen(true));
+  const maths12: Curriculum = { subject: 'mathematics', classLevel: 12, chapters: [{ number: 1, name: 'Relations and Functions' }], source: 'test' } as Curriculum;
+  const mathsEntry = entry('m', { subject: 'mathematics', chapter: { number: 1, name: 'Relations and Functions' } });
+  const toggles = () => $$('.drawer-course-toggle') as HTMLButtonElement[];
+
+  it('every subject has a toggle that is open at first and controls its chapter list', () => {
+    mount({ entries: [...entries, mathsEntry], curricula: [physics12, maths12] });
+    expect(toggles().map((t) => t.textContent)).toEqual([expect.stringContaining('Physics · Class 12'), expect.stringContaining('Mathematics · Class 12')]);
+    for (const t of toggles()) {
+      expect(t.getAttribute('aria-expanded')).toBe('true');
+      expect(document.getElementById(t.getAttribute('aria-controls')!)?.hidden).toBe(false);
+    }
+  });
+  it('folding one subject hides only its chapters and a second click opens it again', () => {
+    mount({ entries: [...entries, mathsEntry], curricula: [physics12, maths12] });
+    toggles()[0].click();
+    expect(toggles()[0].getAttribute('aria-expanded')).toBe('false');
+    expect(document.getElementById(toggles()[0].getAttribute('aria-controls')!)?.hidden).toBe(true);
+    expect(document.getElementById(toggles()[1].getAttribute('aria-controls')!)?.hidden).toBe(false);
+    toggles()[0].click();
+    expect(toggles()[0].getAttribute('aria-expanded')).toBe('true');
+    expect(document.getElementById(toggles()[0].getAttribute('aria-controls')!)?.hidden).toBe(false);
+  });
+  it('remembers which subjects are folded for the next page', () => {
+    mount({ entries: [...entries, mathsEntry], curricula: [physics12, maths12] });
+    toggles()[1].click();
+    expect(JSON.parse(localStorage.getItem('concept-arcade:drawer-courses')!)).toEqual(['mathematics-12']);
+    mount({ entries: [...entries, mathsEntry], curricula: [physics12, maths12] });
+    expect(toggles()[0].getAttribute('aria-expanded')).toBe('true');
+    expect(toggles()[1].getAttribute('aria-expanded')).toBe('false');
+  });
+  it('survives unreadable saved state', () => {
+    localStorage.setItem('concept-arcade:drawer-courses', '{not json');
+    mount({ entries: [...entries, mathsEntry], curricula: [physics12, maths12] });
+    expect(toggles().every((t) => t.getAttribute('aria-expanded') === 'true')).toBe(true);
+  });
+  it('a folded subject’s chapter buttons do not count for keyboard focus on a phone', () => {
+    screen(false);
+    mount({ entries: [...entries, mathsEntry], curricula: [physics12, maths12] });
+    toggles()[0].click();
+    menu().click();
+    const f = $$('.drawer a[href], .drawer button:not([disabled])').filter((el) => !el.closest('[hidden]'));
+    expect(f.some((el) => el.classList.contains('drawer-chapter') && el.textContent!.includes('Electric'))).toBe(false);
   });
 });
