@@ -1,0 +1,81 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "phasor-bench",
+  "title": "Chai Before the Whistle",
+  "summary": "Run a railway chai stall on AC: size the kettle coil, read a scope’s peak, time the brew and sync a camera to the phasor.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 7,
+    "name": "Alternating Current"
+  },
+  "ncertRef": "Section 7.2, AC voltage applied to a resistor",
+  "order": 1,
+  "concepts": [
+    "Ratings are rms values",
+    "Resistance of a rated element, R = V²/P",
+    "Peak and rms, v_m = √2 V",
+    "Average power V_rms I_rms, never negative",
+    "Phasors, v = v_m sin ωt",
+    "Current in phase with voltage in a resistor"
+  ],
+  "learningOutcome": "The student can size a rated AC element with R = V²/P, convert between peak and rms values, find the energy from the average power, and read v and i in phase from a phasor.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Wind the coil",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: a rating is an rms value, so the coil needs R = V²/P; less resistance draws more than the rated current (Example 7.1).",
+      "hints": [
+        "P = V²/R, so R = V²/P with V the rated rms voltage.",
+        "Less resistance means more current: the fuse allows only I = P/V.",
+        "More resistance means less power, and the train will not wait."
+      ]
+    },
+    {
+      "title": "Read the scope",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: a scope shows the peak value, and ratings use the rms value V = v_m/√2 (Ex 7.2).",
+      "hints": [
+        "The scope shows the top of the wave, the peak v_m.",
+        "V_rms = v_m/√2, about 0.707 v_m.",
+        "A selector set too low over-powers the coil; too high under-powers it."
+      ]
+    },
+    {
+      "title": "Brew on time",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: power in a resistor never goes negative and averages V²/R, half its peak, so the heat is (V²/R)·t (Ex 7.1).",
+      "hints": [
+        "The average power is V_rms I_rms = V²/R.",
+        "Heat = average power × time, so t = E/P.",
+        "Using the peak power, twice the average, gives half the time and cold chai."
+      ]
+    },
+    {
+      "title": "Sync to the phasor",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: v = v_m sin ωt and, in a resistor, i = i_m sin ωt in phase, with v_m = √2 V and i_m = √2 I (Section 7.3).",
+      "hints": [
+        "Find the peak first: √2 times the rms value.",
+        "sin ωt = value ÷ peak, on the rising part of the wave.",
+        "In a resistor the current rises with the voltage, at the same angle."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The stated 220 V of the mains is the peak voltage",
+    "The average power in a resistor is zero over a cycle",
+    "The average power equals the peak power",
+    "The current in a resistor lags the voltage"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

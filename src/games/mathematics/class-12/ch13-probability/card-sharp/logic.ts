@@ -25,6 +25,8 @@ export interface Round {
   /** draw: how the chance is described. */
   mode: 'both' | 'atleast';
   assist: 0 | 1 | 2;
+  /** Level 4 board only: the compound event (not A, A or C, neither) and its counts on the reduced deck: n = cards of B, a = of A and B, c = of C and B, ac = of A, C and B. */
+  ev?: { kind: 'not' | 'or' | 'neither'; n: number; a: number; c: number; ac: number };
 }
 
 const pick = <T>(xs: readonly T[], random: () => number): T => shuffle(xs, random)[0];
@@ -67,6 +69,30 @@ function board(random: () => number): Round {
     return { ...blank, kind: 'board', textB: pb.text, textA: pa.text, target: B.map((x, i) => (!x ? 0 : A[i] ? 2 : 1)) };
   }
 }
+/** Level 4: the same tap board, with a compound event on the reduced deck: not A, A or C, neither A nor C. */
+function compound(kind: 'not' | 'or' | 'neither', random: () => number): Round {
+  for (;;) {
+    const pb = pick(PREDS, random);
+    const pa = pick(PREDS, random);
+    const pc = kind === 'not' ? pa : pick(PREDS, random);
+    const fam = new Set([pb.family, pa.family, pc.family]);
+    if (fam.size < (kind === 'not' ? 2 : 3)) continue;
+    const B = members(pb);
+    const A = members(pa);
+    const C = members(pc);
+    const n = B.filter(Boolean).length;
+    const a = B.filter((x, i) => x && A[i]).length;
+    const c = kind === 'not' ? 0 : B.filter((x, i) => x && C[i]).length;
+    const ac = kind === 'not' ? 0 : B.filter((x, i) => x && A[i] && C[i]).length;
+    const holds = (i: number) => (kind === 'not' ? !A[i] : kind === 'or' ? A[i] || C[i] : !(A[i] || C[i]));
+    const k = B.filter((x, i) => x && holds(i)).length;
+    // 6 to 16 cards in B; the event holds for some card of B and fails for another; for a union, an overlap to take off once, and each of A and C
+    // reaching cards the other does not (so the union is neither A alone nor C alone)
+    if (n < 6 || n > 16 || k < 1 || k >= n || (kind !== 'not' && (ac < 1 || a <= ac || c <= ac))) continue;
+    const textA = kind === 'not' ? `not ${pa.text}` : kind === 'or' ? `${pa.text} or ${pc.text}` : `neither ${pa.text} nor ${pc.text}`;
+    return { ...blank, kind: 'board', textB: pb.text, textA, target: B.map((x, i) => (!x ? 0 : holds(i) ? 2 : 1)), ev: { kind, n, a, c, ac } };
+  }
+}
 function indep(random: () => number): Round {
   const a = pick([2, 3, 4, 6, 8, 9], random);
   const k = ri(2, 10, random);
@@ -93,7 +119,7 @@ export function drawChance(r: Round, red: number): [number, number] {
 export function buildRounds(level: number, random: () => number): Round[] {
   const out: Round[] = [];
   for (let i = 0; i < 3; i++) {
-    const mk = () => (level === 1 ? board(random) : level === 2 ? indep(random) : draw(i === 2 ? 'atleast' : 'both', random));
+    const mk = () => (level === 4 ? compound((['not', 'or', 'neither'] as const)[i], random) : level === 1 ? board(random) : level === 2 ? indep(random) : draw(i === 2 ? 'atleast' : 'both', random));
     let r = mk();
     for (let t = 0; t < 60 && out.some((o) => o.textB + o.textA + o.a + o.N === r.textB + r.textA + r.a + r.N && o.ans === r.ans); t++) r = mk();
     out.push({ ...r, start: r.ans === 0 ? 1 : 0, assist: aid(i) });
@@ -113,6 +139,7 @@ const wantChance = (r: Round) => {
 };
 
 export function intel(r: Round): string {
+  if (r.kind === 'board' && r.ev) return `A card is drawn and it is ${r.textB}. What is the chance it is also in the event “${r.textA}”? Tap each card that fits B once (yellow), and tap again the cards that also fit the event (green). The chance is then green cards out of marked cards.`;
   if (r.kind === 'board') return `A card is drawn and it is ${r.textB}. What is the chance it is also ${r.textA}? Tap each card that fits B once (yellow), and tap again the cards that also fit A (green). The chance is then green cards out of marked cards.`;
   if (r.kind === 'indep') return `P(A) = ${frac(r.a, 12)} and P(A ∩ B) = ${frac(r.a * r.ans, 144)}, and A and B are independent. P(B) is k/12. Set k.`;
   return `A deck of ${r.N} cards has some red cards. Two cards are drawn without replacement. The chance that ${r.mode === 'both' ? 'both are red' : 'at least one is red'} is ${wantChance(r)}. Set the number of red cards.`;
@@ -128,8 +155,12 @@ export function spotText(r: Round, v: number, state: number[] = []): string {
   const [n, d] = drawChance(r, v);
   return `Check: with ${v} red cards the chance is ${frac(n, d)}.`;
 }
-/** After a miss. */
+/** After a miss. Level 1 (the plain board) says only that a mark is wrong: counts of missing, extra or wrongly coloured cards would let a board of all-yellow
+ * cards print |B| and |A ∩ B|. Level 4 keeps its reviewed text. Levels 2 and 3 give the direction only: the product or the chance at the player's own value is the paid check. */
 export function missText(r: Round, v: number, state: number[] = []): string {
+  if (r.kind === 'board' && !r.ev) return 'The dealer checked the table and at least one card is marked wrong. Re-read B, mark every card that fits it once, then mark again only the cards that also fit A.';
+  // Level 4: round 1 (live count) may describe the fault; rounds 2 and 3 get one generic text, so an all-yellow board cannot read |B| off it.
+  if (r.kind === 'board' && r.assist > 0) return 'The dealer checked the table and at least one card is marked wrong. Re-read B, mark every card that fits it once, then mark again only the cards that also fit the event.';
   if (r.kind === 'board') {
     const missing = r.target.filter((x, i) => x > 0 && state[i] === 0).length;
     const extra = state.filter((x, i) => x > 0 && r.target[i] === 0).length;
@@ -137,15 +168,21 @@ export function missText(r: Round, v: number, state: number[] = []): string {
     const bits: string[] = [];
     if (missing) bits.push(`${missing} card${missing === 1 ? '' : 's'} that fit B ${missing === 1 ? 'was' : 'were'} left out`);
     if (extra) bits.push(`${extra} marked card${extra === 1 ? '' : 's'} do${extra === 1 ? 'es' : ''} not fit B at all`);
-    if (wrongLevel) bits.push(`${wrongLevel} card${wrongLevel === 1 ? ' is' : 's are'} in B but marked the wrong colour for A`);
+    if (wrongLevel) bits.push(`${wrongLevel} card${wrongLevel === 1 ? ' is' : 's are'} in B but marked the wrong colour for ${r.ev ? 'the event' : 'A'}`);
     return `The dealer checked the table: ${bits.join('; ') || 'the marks do not match'}.`;
   }
-  if (r.kind === 'indep') return `With that P(B) the product P(A)·P(B) comes to ${frac(r.a * v, 144)}, ${r.a * v > r.a * r.ans ? 'more' : 'less'} than P(A ∩ B), so A and B are not independent.`;
-  const [n, d] = drawChance(r, v);
-  return `With ${v} red cards the chance is ${frac(n, d)}, ${n / d > drawChance(r, r.ans)[0] / drawChance(r, r.ans)[1] ? 'more' : 'less'} than the chance stated.`;
+  if (r.kind === 'indep') return `With that P(B) the product P(A)·P(B) comes out ${v > r.ans ? 'more' : 'less'} than P(A ∩ B), so A and B are not independent. Set ${v > r.ans ? 'a smaller' : 'a larger'} k.`;
+  return `With that many red cards the chance of the draw comes out ${v > r.ans ? 'more' : 'less'} than the chance stated. Set ${v > r.ans ? 'fewer' : 'more'} red cards.`;
 }
 /** After a hit. */
 export function explain(r: Round): string {
+  if (r.kind === 'board' && r.ev) {
+    const { kind, n, a, c, ac } = r.ev;
+    const u = a + c - ac;
+    if (kind === 'not') return `P(not A | B) = 1 − P(A | B) = 1 − ${frac(a, n)} = ${frac(n - a, n)}.`;
+    if (kind === 'or') return `P(A ∪ C | B) = P(A | B) + P(C | B) − P(A ∩ C | B) = (${a} + ${c} − ${ac})/${n} = ${frac(u, n)}.`;
+    return `P(neither | B) = 1 − P(A ∪ C | B) = 1 − ${frac(u, n)} = ${frac(n - u, n)}.`;
+  }
   if (r.kind === 'board') {
     const [p, f] = counts(r.target);
     return `Given B, the sample space shrinks to the ${p} cards that fit it, and ${f} of them also fit A: P(A | B) = ${f}/${p} = ${frac(f, p)}.`;

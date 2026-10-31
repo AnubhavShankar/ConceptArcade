@@ -15,11 +15,12 @@
     "Multiplication of matrices",
     "Rotation matrices",
     "Matrix products depend on the order",
-    "Order of a product"
+    "Order of a product",
+    "Matrix identities such as A² − 5A + 7I = O"
   ],
-  "learningOutcome": "The student can match entries of equal matrices to find unknowns, compute a row-by-column product, read a rotation matrix, and see that AB and BA differ.",
+  "learningOutcome": "The student can match entries of equal matrices, compute a row-by-column product, read a rotation matrix, see that AB and BA differ, and find k and m in A² = kA − mI.",
   "mechanic": "tune-to-target",
-  "estimatedMinutes": 20,
+  "estimatedMinutes": 25,
   "levels": [
     {
       "title": "Match the entries",
@@ -63,6 +64,17 @@
         "Work out BAP and ABP for a small k and compare them with the hole.",
         "Look at one entry that changes with k in only one of the two orders.",
         "Then check the whole matrix."
+      ]
+    },
+    {
+      "title": "Twice through the machine",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: matrix identities. Find k and m with A² = kA − mI by matching entries, as in A² − 5A + 7I = O (Ex 3.2 Q15 to Q18; Misc Q5).",
+      "hints": [
+        "Work out A² = A·A first, row by column.",
+        "Write kA − mI entry by entry: the off-diagonal entries contain only k.",
+        "Then a diagonal entry gives m."
       ]
     }
   ],

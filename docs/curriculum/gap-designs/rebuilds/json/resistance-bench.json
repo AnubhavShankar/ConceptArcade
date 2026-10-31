@@ -1,0 +1,93 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "resistance-bench",
+  "title": "Line Down",
+  "summary": "Bring a valley’s power back in a monsoon storm: find shorts by Ohm’s law, swap a corroded joint and colour-code a pump resistor.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 3,
+    "name": "Current Electricity"
+  },
+  "ncertRef": "Section 3.4, Ohm's law",
+  "order": 1,
+  "concepts": [
+    "Ohm's law, V = IR",
+    "Resistance grows with length",
+    "Ohmic and non-ohmic components",
+    "Resistivity, R = ρl/A",
+    "Stretching a wire",
+    "Colour code of resistors"
+  ],
+  "learningOutcome": "The student can find R from V and I, locate a short from ohms per km, tell ohmic from non-ohmic traces, use R = ρl/A and the k² rule for a stretched wire, and read the colour code.",
+  "mechanic": "deduce-the-hidden",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Find the short",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: R = V/I from the tester, and resistance grows in step with length, so the short is R ÷ (ohms per km) away (Section 3.4).",
+      "hints": [
+        "Resistance is the tester’s voltage divided by its current. Turn milliamps into amperes first.",
+        "Every kilometre of line adds the same resistance: distance = R ÷ (ohms per km).",
+        "The test current goes out on one wire and back on the other, so a line’s ohms per km count both wires."
+      ]
+    },
+    {
+      "title": "The corroded joint",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: only a part whose V–I graph is a straight line through the origin, the same either way round, obeys Ohm’s law (Section 3.6).",
+      "hints": [
+        "Look at each card: a sound joint gives a straight line through the middle of its axes.",
+        "A curve, a line that goes flat on one side, or a straight line that misses the origin all mean V/I changes.",
+        "Ohm’s law needs V/I to stay the same at every voltage and in both directions."
+      ]
+    },
+    {
+      "title": "A different wire",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: R = ρl/A, so the ohms per km come from the metal and the cross-section, and half the radius gives four times the resistance (Ex 3.4).",
+      "hints": [
+        "One wire 1 km long has R = ρ × 1000 ÷ A, with A in m² (1 mm² = 10⁻⁶ m²).",
+        "Double it for the loop: the test current goes out and back.",
+        "Half the radius is a quarter of the area, so four times the ohms per km."
+      ]
+    },
+    {
+      "title": "The landslide span",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: a span stretched k times at constant volume has k² times its resistance, while the resistivity of the metal stays the same.",
+      "hints": [
+        "k times longer and 1/k of the area: R = ρl/A grows by k × k.",
+        "Take the stretched span’s extra resistance off the reading before you divide.",
+        "If the reading is less than the line up to the landslide, the short is before it."
+      ]
+    },
+    {
+      "title": "The burnt resistor",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: Ohm’s law gives the burnt resistor’s value from its volts and milliamps, then set its three colour bands.",
+      "hints": [
+        "R = V/I. Turn the milliamps into amperes first.",
+        "The first two bands are digits and the third is the power of ten: how many zeros follow.",
+        "Black 0, brown 1, red 2, orange 3, yellow 4, green 5, blue 6, violet 7, grey 8, white 9."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Resistance depends only on the material",
+    "A thinner wire has a lower resistance",
+    "Every conductor obeys Ohm's law",
+    "Stretching a wire changes the resistivity of the metal",
+    "A straight V–I graph always means Ohm’s law holds"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

@@ -5,15 +5,17 @@ import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
 import { backdrop, face, num, track, trackHandle, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
-import { buildRounds, explain, frac, intel, judge, missText, spotText, type Round } from './logic';
+import { buildRounds, dropCounts, explain, frac, intel, judge, missText, spotText, type Round } from './logic';
 
 type G = CanvasRenderingContext2D;
 type Mood = 'happy' | 'worried' | 'cheer';
 const RUN = 2.2;
+/** How long a paid check keeps the per-gate counts on screen in round 2 (seconds). */
+const PULSE = 1.5;
 const Y = { spawn: 66, gate: 128, tray: 276 };
 
 const HEROES = [
-  { story: 'Sixty balls drop through two gates. Each gate takes a share of the balls and sends a fraction of its own balls to the red tray. Turn the fractions into counts of balls: the red balls from each gate add up, and the total divided by 60 is P(red) by the theorem of total probability.', objective: 'Set the number of balls that land red in all, in three rounds. The counts per gate show in round 1, dim in round 2 and are gone in the boss round.' },
+  { story: 'Sixty balls drop through two gates. Each gate takes a share of the balls and sends a fraction of its own balls to the red tray. Turn the fractions into counts of balls: the red balls from each gate add up, and the total divided by 60 is P(red) by the theorem of total probability.', objective: 'Set the number of balls that land red in all, in three rounds. The counts per gate show in round 1, for a moment after a check in round 2, and are gone in the boss round.' },
   { story: 'Now a ball has landed red, and the question is which gate it came through. Count the red balls from the gate asked about and the red balls in all: the chance is the first count out of the second. This is Bayes’ theorem, done by counting. Do not reduce the fraction: the counts themselves are the answer.', objective: 'Set the count from the gate and the total count of red landings, in three rounds. The counts per gate show in round 1; a check costs a charge later.' },
   { story: 'Three gates, one red landing: which gate did it come through? The method is the same: count the red balls per gate, add them for the total, and put the asked gate’s count over it.', objective: 'Set the count from the gate and the total red landings, in three rounds. The boss round has no counts shown.' },
 ];
@@ -44,24 +46,37 @@ function level(n: number, random: () => number): DialLevel<Round> {
   const rounds = buildRounds(n, random);
   const keys = n === 1 ? ['t'] : ['a', 't'];
   const gx = (r: Round, i: number) => (r.gates.length === 2 ? [230, 410][i] : [150, 320, 490][i]);
+  /** The last paid check: its round and the clock time it first showed (set by the first frame that draws it). */
+  let pulse: { r: Round; t0: number | null } | null = null;
   return {
     hero: { name: 'Bounce', role: 'a pachinko ball who drops sixty balls through gates and counts where they land', story: hero.story, objective: hero.objective },
     rounds,
     charges: [1, 1, 0],
     dials: keys.map((k) => ({ key: k, aria: n === 1 ? 'Number of red landings' : k === 'a' ? 'Red landings from the asked gate' : 'Total red landings', label: n === 1 ? 'Red in all' : k === 'a' ? 'From the gate' : 'Red in all', unit: '', step: 1, min: 0, max: (r: Round) => r.max, start: 0, text: (v: number) => `${v} balls` })),
     handles: [trackHandle<Round>(keys[0], () => 0, (r) => r.max)],
-    test: { button: '🎯 Check', aria: 'Check: see what these counts mean as a chance', read: (r, v) => spotText(r, keys.map((k) => v[k])) },
+    test: {
+      button: '🎯 Check',
+      aria: 'Check: see what these counts mean as a chance',
+      read: (r, v) => {
+        pulse = { r, t0: null };
+        return spotText(r, keys.map((k) => v[k]));
+      },
+    },
     fire: { button: '⚪ Drop the balls', aria: 'Drop the balls' },
     judge: (r, v) => judge(r, keys.map((k) => v[k])),
     miss: (r, v) => missText(r, keys.map((k) => v[k])),
     win: (r) => `Counted right! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The counts per gate are shown.' : r.assist === 1 ? 'The counts are dim: a check costs a charge.' : 'Boss round: no counts, no check.'}`,
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The counts per gate are shown.' : r.assist === 1 ? 'No counts shown: a check shows them for a moment and costs a charge.' : 'Boss round: no counts, no check.'}`,
     hit: () => [320, 220],
     delay: RUN,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, v, t, rt, shot, A }) => {
       backdrop(g);
-      const show = r.assist <= 1;
-      const dim = r.assist === 1;
+      if (pulse && pulse.r === r && pulse.t0 === null) pulse.t0 = t;
+      // The per-gate counts show live in round 1 and for a moment after a paid check in round 2; never in the boss round and never during a drop.
+      const frozen = !shot && r.assist === 1 && pulse !== null && pulse.r === r && pulse.t0 !== null && t - pulse.t0 < PULSE;
+      const show = r.assist === 0 || frozen;
+      A.canvas.dataset.counts = show ? '1' : '0';
+      A.canvas.dataset.drop = shot ? (shot.ok ? 'true' : 'generic') : '';
       // The pegs
       for (let row = 0; row < 5; row++) for (let c = 0; c < 11 + (row % 2); c++) {
         g.fillStyle = PAL.dim;
@@ -78,9 +93,7 @@ function level(n: number, random: () => number): DialLevel<Round> {
         text(g, `gate ${gt.name}`, x, Y.gate + 4, PAL.pink, 13);
         text(g, `takes ${frac(gt.n, r.N)} · red ${frac(gt.red, gt.n)}`, x, Y.gate - 24, PAL.white, 10);
         if (show) {
-          g.globalAlpha = dim ? 0.3 : 1;
           text(g, `${gt.n} balls, ${gt.red} red`, x, Y.gate + 30, PAL.yellow, 11);
-          g.globalAlpha = 1;
         }
         g.strokeStyle = PAL.red;
         g.lineWidth = 2;
@@ -93,9 +106,12 @@ function level(n: number, random: () => number): DialLevel<Round> {
       if (shot) {
         let index = 0;
         const jobs: { gate: number; red: boolean }[] = [];
-        r.gates.forEach((gt, i) => {
+        // A win drops the real counts; a miss drops a fixed generic mix, the same whatever the player set, with no tallies.
+        dropCounts(r, shot.ok).forEach((gt, i) => {
           for (let k = 0; k < gt.n; k++) jobs.push({ gate: i, red: k < gt.red });
         });
+        A.canvas.dataset.dropBalls = String(jobs.length);
+        A.canvas.dataset.dropRed = String(jobs.filter((j) => j.red).length);
         // spread the gates and colours so the stream looks mixed
         jobs.sort((p, q) => ((p.gate * 7 + (p.red ? 3 : 0)) % 11) - ((q.gate * 7 + (q.red ? 3 : 0)) % 11));
         for (const j of jobs) {
@@ -128,12 +144,17 @@ function level(n: number, random: () => number): DialLevel<Round> {
           g.arc(bx, by, 3, 0, Math.PI * 2);
           g.fill();
         }
-        r.gates.forEach((_gt, i) => {
-          text(g, String(tally[i][0]), gx(r, i) - 18, Y.tray + 54, PAL.red, 12);
-          text(g, String(tally[i][1]), gx(r, i) + 18, Y.tray + 54, PAL.cyan, 12);
-        });
-        const redNow = tally.reduce((s, tt) => s + tt[0], 0);
-        text(g, `red so far: ${redNow}`, 560, 40, PAL.red, 12);
+        if (shot.ok) {
+          r.gates.forEach((_gt, i) => {
+            text(g, String(tally[i][0]), gx(r, i) - 18, Y.tray + 54, PAL.red, 12);
+            text(g, String(tally[i][1]), gx(r, i) + 18, Y.tray + 54, PAL.cyan, 12);
+          });
+          const redNow = tally.reduce((s, tt) => s + tt[0], 0);
+          text(g, `red so far: ${redNow}`, 560, 40, PAL.red, 12);
+        }
+      } else {
+        A.canvas.dataset.dropBalls = '';
+        A.canvas.dataset.dropRed = '';
       }
       // The player's counts
       const mine = keys.map((k) => v[k]);

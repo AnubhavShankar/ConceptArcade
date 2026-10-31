@@ -42,11 +42,14 @@ describe('every level has three solvable rounds', () => {
       }
     }
   });
-  it('level 2: an n-type, a p-type and a heavier doping, each count on the dial and judged by a short run of winners', () => {
+  it('level 2: the order is shuffled, so no round position fixes the type; each count is on the dial and judged by a short run of winners', () => {
+    const typeAt = [new Set<string>(), new Set<string>(), new Set<string>()];
     for (const s of seeds) {
       const rounds = dopeRounds(lcg(s));
-      expect(rounds.map((r) => r.type).slice(0, 2)).toEqual(['n', 'p']);
-      expect(rounds[2].ppm).toBeGreaterThanOrEqual(10);
+      expect(rounds.map((r) => r.type)).toContain('n');
+      expect(rounds.map((r) => r.type)).toContain('p');
+      expect(rounds.filter((r) => r.ppm >= 10)).toHaveLength(1);
+      rounds.forEach((r, k) => typeAt[k].add(r.type));
       for (const r of rounds) {
         for (const x of [r.logE, r.logH]) {
           expect(x).toBeGreaterThan(SLIDERS.c.min);
@@ -56,6 +59,13 @@ describe('every level has three solvable rounds', () => {
         const winners = grid(SLIDERS.c.min, SLIDERS.c.max, SLIDERS.c.step).filter((x) => Math.abs(x - r.logE) <= DOPE_TOL);
         expect(winners.length).toBeGreaterThanOrEqual(9);
       }
+    }
+    for (const t of typeAt) expect(t.size).toBe(2);
+  });
+  it('the dials start where no round of either level is won', () => {
+    for (const s of seeds) {
+      for (const r of gapRounds(lcg(s))) expect(judgeGap(r, 600)).toBe(false);
+      for (const r of dopeRounds(lcg(s))) expect(judgeDope(r, 15, 15).ok).toBe(false);
     }
   });
 });
@@ -89,19 +99,29 @@ describe('words: the working and the misses', () => {
     expect(gapMiss(r, r.sol * 2)).not.toContain(String(Math.round(r.sol)));
   });
   it('a doping miss names the effect: too many dopants, too few, the wrong majority, too many or too few thermal pairs', () => {
-    const r = dopeRounds(lcg(3))[0];
+    const r = dopeRounds(lcg(3)).find((x) => x.type === 'n')!;
     expect(r.type).toBe('n');
     expect(dopeMiss(r, r.logE + 1, r.logH)).toMatch(/more free carriers than dopant atoms/);
     expect(dopeMiss(r, r.logE - 1, r.logH)).toMatch(/fewer free carriers than dopant atoms/);
     expect(dopeMiss(r, 10, 15)).toMatch(/holes outnumber the electrons/);
     expect(dopeMiss(r, r.logE, r.logH + 1)).toMatch(/recombine/);
     expect(dopeMiss(r, r.logE, r.logH - 1)).toMatch(/thermal generation/);
-    const p = dopeRounds(lcg(3))[1];
+    const p = dopeRounds(lcg(3)).find((x) => x.type === 'p')!;
     expect(dopeMiss(p, 15, 10)).toMatch(/electrons outnumber the holes/);
+  });
+  it('no miss text holds a number, the valence of the dopant or the name of the carrier it adds', () => {
+    for (const s of seeds.slice(0, 20)) {
+      for (const r of dopeRounds(lcg(s))) {
+        const texts = new Set<string>();
+        for (let e = SLIDERS.c.min; e <= SLIDERS.c.max; e += 0.5) for (let h = SLIDERS.c.min; h <= SLIDERS.c.max; h += 0.5) if (!judgeDope(r, e, h).ok) texts.add(dopeMiss(r, e, h));
+        for (const t of texts) expect(t).not.toMatch(/\d|spare electron|a hole|missing electron|valence/);
+      }
+      for (const r of gapRounds(lcg(s))) for (const l of [150, 400, 900, 1500, 1990]) if (!judgeGap(r, l)) expect(gapMiss(r, l)).not.toMatch(/\d/);
+    }
   });
   it('test shots read out the helpful numbers', () => {
     expect(gapReading(gapRounds(lcg(3))[1], 1000)).toMatch(/1\.24 eV.*silicon is 1\.1 eV/);
-    expect(dopeReading(dopeRounds(lcg(3))[0])).toMatch(/5 valence electrons, silicon has 4/);
-    expect(dopeReading(dopeRounds(lcg(3))[1])).toMatch(/3 valence electrons/);
+    expect(dopeReading(dopeRounds(lcg(3)).find((x) => x.type === 'n')!)).toMatch(/5 valence electrons, silicon has 4/);
+    expect(dopeReading(dopeRounds(lcg(3)).find((x) => x.type === 'p')!)).toMatch(/3 valence electrons/);
   });
 });

@@ -1,0 +1,56 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "quantum-of-charge",
+  "title": "The Quark Hunt",
+  "summary": "Zap electrons onto an oil drop one at a time until it hovers, calibrate a charge detector, and reject readings that are not whole electrons.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": { "number": 1, "name": "Electric Charges and Fields" },
+  "ncertRef": "Section 1.4.3, Quantisation of charge",
+  "concepts": ["Quantisation of charge", "q = n e", "Electron count and charge", "Millikan's measurement", "Finding the unit from data"],
+  "learningOutcome": "After winning, the student can count the electrons on a balanced drop from n e V/d = m g, find the unit of charge from a set of readings, and reject a charge that is not a whole number of e.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Hold the drop",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: add electrons one at a time until n e V/d equals the drop's weight, so it hovers between the plates (q = n e, Ex 1.11a).",
+      "hints": [
+        "The drop hovers when the upward push equals its weight: n e V / d = m g.",
+        "Solve for the number of electrons: n = m g d / (e V), with d = 0.005 m and e = 1.6 × 10⁻¹⁹ C.",
+        "n must come out a whole number. If the drop sinks it needs more electrons; if it rises, fewer."
+      ]
+    },
+    {
+      "title": "Calibrate the detector",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the unit is not given. Find the largest step that every reading is a whole number of; the smallest reading need not be one unit.",
+      "hints": [
+        "Every drop carries a whole number of electrons, so every reading is a whole number of the same step.",
+        "Look for the biggest step that goes into all three readings a whole number of times.",
+        "The smallest reading may be 2 or 3 electrons. Try dividing each reading by your step and look for whole numbers."
+      ]
+    },
+    {
+      "title": "Quark or dust?",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: with e known, reject every reading that is not a whole number of e, because free charge only comes as q = n e (Ex 1.4a).",
+      "hints": [
+        "Divide each reading by 1.6: a real drop gives a whole number.",
+        "A result like 2.33 or 4.67 is a third of an electron off. No free charge like that has ever been found.",
+        "Flag every reading that is not whole, and only those, before you publish."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Charge can take any value at the atomic scale",
+    "The smallest measured charge must be the unit of charge",
+    "A reading a third of e away from a whole number is just noise",
+    "Adding one electron changes the force a little, so many counts could hover the drop"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

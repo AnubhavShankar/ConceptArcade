@@ -2,7 +2,8 @@ import { createArcade, PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { fmt } from '@core/judge';
 import { along, glow, line, orb, text, trace } from '@core/neon';
-import { CONE_MIN, PROBE_DEG, SLIDER, buildGame, coneMax, criticalDeg, explainRound, judgeCone, judgeDepth, judgePipe, judgeSlab, judgeSnell, missText, pipeGuided, probeText, resultLine, sinD, type PipeRound } from './logic';
+import { helperOn } from '@core/aidflash';
+import { CONE_MIN, GEOM, PROBE_DEG, SLIDER, buildGame, coneMax, coneStart, criticalDeg, explainRound, hitPoint, judgeCone, judgeDepth, judgePipe, judgeSlab, judgeSnell, missText, pipeGuided, probeText, resultLine, sinD, snellLegDeg, type PipeRound } from './logic';
 import { pinCharacter, target } from './art';
 
 const W = 640;
@@ -45,11 +46,10 @@ export default defineGame({
     // ================= level 1: Ray and the detector ====================================================
     if (game.kind === 'snell') {
       const rounds = game.rounds;
-      const CX = 320;
-      const BY = 175;
-      const R = 140;
+      const { CX, BY, R } = GEOM.snell;
       const S = SLIDER.snell;
       let inc: number = S.start;
+      /** r is the angle at which the outgoing leg is drawn: the detector on a hit, a fixed offset beside it on a miss. */
       let shot: { ok: boolean; r: number } | null = null;
       let notes: string[] = [];
       let inset: { which: 'A' | 'B'; born: number } | null = null;
@@ -71,8 +71,9 @@ export default defineGame({
         A.button('🔥 Fire', 'Fire Ray at this angle', () => {
           const r = rounds[ri()];
           const j = judgeSnell(r, inc);
-          shot = { ok: j.ok, r: j.r };
-          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), inc), { x: CX + R * sinD(r.r), y: BY + R * Math.cos(r.r * RAD) }, 1.3);
+          shot = { ok: j.ok, r: snellLegDeg(r, inc, j.ok) };
+          const [hx, hy] = hitPoint(game, ri(), inc, j.ok)!;
+          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), inc), { x: hx, y: hy }, 1.3);
         }),
       );
       onRound = (i) => {
@@ -150,7 +151,8 @@ export default defineGame({
           const r = rounds[ri()];
           const j = judgeDepth(r, s);
           attempt = { ok: j.ok };
-          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), s), { x: 550, y: 120 }, 0.8);
+          const [hx, hy] = hitPoint(game, ri(), s, j.ok)!;
+          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), s), { x: hx, y: hy }, 0.8);
         }),
       );
       onRound = (i) => {
@@ -188,10 +190,11 @@ export default defineGame({
         line(g, 292, fy, 348, fy, PAL.green, 2);
         text(g, 'focus', 372, fy + 4, PAL.green, 11, 'left');
         // the eyepiece
-        const ex = 550;
-        const ey = 120;
+        const { ex, ey } = GEOM.depth;
         const resolving = A.phase === 'resolve' && attempt !== null;
-        const live = r.assist === 0 || resolving;
+        const won = resolving && attempt!.ok;
+        // the eyepiece view is the helper: live in round 1 and on a win; after a miss in rounds 2 and 3 only a fixed blur
+        const live = helperOn(r.assist, won, Infinity);
         g.fillStyle = 'rgba(0,0,0,0.55)';
         g.beginPath();
         g.arc(ex, ey, 52, 0, Math.PI * 2);
@@ -200,8 +203,8 @@ export default defineGame({
         g.lineWidth = 3;
         g.stroke();
         text(g, 'eyepiece', ex, ey + 70, PAL.dim, 11);
-        if (live) {
-          const blur = Math.min(24, Math.abs(fy - (surface + a2)) * 0.6);
+        if (live || resolving) {
+          const blur = live ? Math.min(24, Math.abs(fy - (surface + a2)) * 0.6) : 14;
           g.save();
           g.shadowColor = PAL.red;
           g.shadowBlur = blur;
@@ -209,7 +212,8 @@ export default defineGame({
           line(g, ex, ey - 22, ex, ey + 22, PAL.red, blur < 1.5 ? 4 : 7);
           g.restore();
         } else text(g, '?', ex, ey + 12, PAL.dim, 38);
-        if (resolving && A.rt > 0.3) {
+        // where Needle seems to be: shown only when the player has it right
+        if (won && A.rt > 0.3) {
           line(g, 312, surface + a2, 328, surface + a2, PAL.red, 3);
           text(g, 'Needle seems to be here', 400, surface + a2 + 4, PAL.red, 11, 'left');
         }
@@ -220,7 +224,7 @@ export default defineGame({
     if (game.kind === 'slab') {
       const rounds = game.rounds;
       const S = SLIDER.slab;
-      const table = 290;
+      const { table } = GEOM.slab;
       let raise: number = S.start;
       let frac = rounds[0].slabAt;
       let attempt: { ok: boolean } | null = null;
@@ -234,7 +238,8 @@ export default defineGame({
         A.button('📷 Refocus', 'Refocus the camera here', () => {
           const j = judgeSlab(rounds[ri()], raise);
           attempt = { ok: j.ok };
-          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), raise), { x: 320, y: table - rounds[ri()].shift * pxCm() }, 0.7);
+          const [hx, hy] = hitPoint(game, ri(), raise, j.ok)!;
+          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), raise), { x: hx, y: hy }, 0.7);
         }),
       );
       onRound = (i) => {
@@ -270,7 +275,8 @@ export default defineGame({
         g.strokeRect(210, sb - 120, 220, 120);
         text(g, `glass n = ${r.n}`, 322, sb - 50, PAL.cyan, 11);
         pinCharacter(g, 320, table, 30, t, resolving ? (attempt!.ok ? 'cheer' : 'dizzy') : 'happy');
-        if (r.assist === 0 || (resolving && A.rt > 0.2)) {
+        // the ghost of Pin is the helper: live in round 1, and on a win; never after a miss
+        if (helperOn(r.assist, resolving && attempt!.ok && A.rt > 0.2, Infinity)) {
           g.globalAlpha = 0.6;
           pinCharacter(g, 320, table - r.shift * px, 30, t, 'happy');
           g.globalAlpha = 1;
@@ -287,7 +293,7 @@ export default defineGame({
     // ================= level 4: the disc over Glow =======================================================
     if (game.kind === 'cone') {
       const rounds = game.rounds;
-      const surface = 110;
+      const surface = GEOM.cone.surface;
       let rad = 20;
       let attempt: { ok: boolean } | null = null;
       const scOf = () => 150 / rounds[ri()].d;
@@ -298,12 +304,13 @@ export default defineGame({
         A.button('🥏 Float the disc', 'Float the disc on the surface', () => {
           const j = judgeCone(rounds[ri()], rad);
           attempt = { ok: j.ok };
-          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), rad), { x: 320 + rad * scOf(), y: surface - 10 }, 1.0);
+          const [hx, hy] = hitPoint(game, ri(), rad, j.ok)!;
+          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), rad), { x: hx, y: hy }, 1.0);
         }),
       );
       onRound = (i) => {
         slider.range(CONE_MIN, coneMax(rounds[i].d));
-        rad = Math.round(0.4 * rounds[i].d);
+        rad = coneStart(rounds[i].d);
         slider.set(rad);
         attempt = null;
         clearSay();
@@ -319,7 +326,8 @@ export default defineGame({
         g.fillRect(0, surface, W, H - surface);
         line(g, 0, surface, W, surface, PAL.white, 2);
         const theta = criticalDeg(r.n);
-        const show = r.assist === 0 || resolving;
+        // the live rays, with the two edge rays at ±θc, are the helper: live in round 1 and on a win; never after a miss
+        const show = helperOn(r.assist, resolving && attempt!.ok, Infinity);
         if (show) {
           const f = resolving ? Math.min(1, A.rt / 0.8) : 1;
           const angles = [-75, -62, -50, -38, -26, -14, 0, 14, 26, 38, 50, 62, 75, -theta, theta];
@@ -335,6 +343,22 @@ export default defineGame({
               else line(g, hitX, surface, 320 + (hitX - 320) * 2, lampY, PAL.dim, 1.2, [4, 4]);
             }
           }
+        }
+        if (!show && resolving) {
+          // after a miss in rounds 2 and 3: fixed-size, direction-only marks beside the disc edge; no rays, no θc
+          const small = rad < r.radius;
+          g.globalAlpha = Math.min(1, A.rt / 0.8);
+          for (const s of [-1, 1]) {
+            if (small) {
+              const x = 320 + s * (rad * sc + 28);
+              glow(g, PAL.green, 6, () => line(g, x, surface, x + s * 8, surface - 60, PAL.green, 2));
+              text(g, 'light escapes', x + s * 8, surface - 70, PAL.green, 10);
+            } else {
+              line(g, 320 + s * (rad * sc - 30), surface - 6, 320 + s * rad * sc, surface - 6, PAL.orange, 7);
+              text(g, 'no light here', 320 + s * (rad * sc - 15), surface - 34, PAL.orange, 10);
+            }
+          }
+          g.globalAlpha = 1;
         }
         orb(g, 320, lampY, 14, PAL.yellow, t, resolving ? (attempt!.ok ? 'cheer' : 'worried') : 'happy');
         const col = resolving && A.rt > 0.8 ? (attempt!.ok ? PAL.green : PAL.red) : PAL.white;

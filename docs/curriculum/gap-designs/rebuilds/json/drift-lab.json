@@ -1,0 +1,81 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "drift-lab",
+  "title": "The Slowest Race",
+  "summary": "Pace a champion racing snail with a free electron in a copper wire: set the current, the wire and the voltage for a dead heat.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 3,
+    "name": "Current Electricity"
+  },
+  "ncertRef": "Section 3.5, Drift of electrons and the origin of resistivity",
+  "order": 1,
+  "concepts": [
+    "Current as charge per second, I = Q/t",
+    "Direction of conventional current",
+    "Drift speed, I = nAev_d",
+    "The drift is slow, the signal is fast",
+    "A thinner wire drifts faster",
+    "Mobility, v_d = μE"
+  ],
+  "learningOutcome": "The student can find a current from a count of electrons and give its direction, use I = nAev_d and v_d = μE, and explain why a lamp lights at once while electrons crawl.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "Start gate",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: current is charge per second, I = Ne/t, and the conventional current points the opposite way to the electrons’ drift (Section 3.2).",
+      "hints": [
+        "The charge through the gate is the number of electrons times 1.6 × 10⁻¹⁹ C.",
+        "Current is that charge divided by the time in seconds.",
+        "Electrons are negative, so the current arrow points the other way to their drift."
+      ]
+    },
+    {
+      "title": "A slow crawl",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: I = nAev_d, so to keep pace with a snail the current must be n e A times its speed (Ex 3.9, Example 3.1).",
+      "hints": [
+        "First find Shelly’s pace: the track length divided by her record time, in mm per second.",
+        "I = n e A v_d. With A in mm² and v_d in mm/s, n e A v_d comes to 13.6 × A × v_d amperes.",
+        "Check the units: 1 mm² = 10⁻⁶ m² and 1 mm/s = 10⁻³ m/s."
+      ]
+    },
+    {
+      "title": "Thick and thin",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: at a fixed current v_d ∝ 1/A, so a thinner wire drifts faster, and the field that starts the drift moves at 3 × 10⁸ m/s (Example 3.2).",
+      "hints": [
+        "The finish lamp lit when the field reached it at 3 × 10⁸ m/s: each nanosecond is 30 cm of wire.",
+        "Shelly’s pace is that length divided by her record time.",
+        "A = I ÷ (n e v_d): the same current drifts faster in a thinner wire."
+      ]
+    },
+    {
+      "title": "Mobility",
+      "tier": "challenge",
+      "kind": "complexity",
+      "adds": "More steps: v_d = μE with E = V/L sets the pace, then I = nAev_d sets the lamp’s current through the wire’s area (Section 3.5.1).",
+      "hints": [
+        "The field in the wire is the voltage across it divided by its length.",
+        "v_d = μE, so V = v_d × L ÷ μ. Mind the 10⁻³ in μ and the millivolts on the dial.",
+        "Then pick the area that makes n e A v_d equal the lamp’s current."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Electrons race along a wire at nearly the speed of light",
+    "A lamp lights at once because electrons travel instantly from the switch",
+    "Conventional current flows the same way as the electrons",
+    "A thinner wire has a slower drift speed"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

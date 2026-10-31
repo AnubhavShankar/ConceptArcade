@@ -76,8 +76,9 @@ describe('words', () => {
     for (const level of [1, 2, 3]) {
       for (const r of all(level).slice(0, 40)) {
         const off = r.ans.map((a, i) => (i === 0 ? (a === DIAL.max ? a - 1 : a + 1) : a));
-        expect(missText(r, off)).toMatch(/checkpoints/);
-        expect(missText(r, off)).not.toMatch(/A = /);
+        expect(missText(r, off)).toMatch(/beams apart/);
+        expect(missText(r, off)).not.toMatch(/A = |\d/);
+        expect(missText(r, off)).toBe(missText(r, r.ans.map((a, i) => (i === 0 ? (a === DIAL.min ? a + 2 : a - 1) : a))));
         expect(probeText(r, off)).toMatch(/Test beam at x = /);
         expect(explain(r).length).toBeGreaterThan(40);
       }

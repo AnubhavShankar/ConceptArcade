@@ -61,12 +61,71 @@ describe('every round has exactly one winning setting', () => {
   });
 });
 
+describe('a miss never prints a count, a product or a chance of the player’s own setting', () => {
+  it('level 1: one generic text for every wrong board, so an all-yellow board cannot read |B| or |A ∩ B| off it', () => {
+    for (const r of all(1).slice(0, 60)) {
+      const boards: number[][] = [
+        Array(CARDS).fill(1),
+        Array(CARDS).fill(2),
+        Array(CARDS).fill(0),
+        r.target.map((x) => (x > 0 ? 1 : 0)),
+        r.target.map((x) => (x > 0 ? 2 : 0)),
+        r.target.map((x) => (x === 0 ? 1 : x)),
+      ].filter((b) => !judgeBoard(r, b));
+      expect(boards.length).toBeGreaterThanOrEqual(4);
+      const texts = new Set(boards.map((b) => missText(r, 0, b)));
+      expect(texts.size).toBe(1);
+      const msg = [...texts][0];
+      expect(msg).toMatch(/at least one card is marked wrong/);
+      expect(msg).not.toMatch(/\d|\//);
+    }
+  });
+  it('levels 2 and 3: a miss says only more or less and what to change, the same for every wrong setting on a side, and the direction is true', () => {
+    for (const level of [2, 3]) {
+      for (const r of all(level).slice(0, 60)) {
+        const wrongs = span(r.min, r.max).filter((x) => x !== r.ans);
+        for (const x of wrongs) {
+          const msg = missText(r, x);
+          expect(msg).not.toMatch(/\d/);
+          expect(msg).toMatch(x > r.ans ? /comes out more than/ : /comes out less than/);
+          expect(msg).toMatch(level === 2 ? (x > r.ans ? /smaller k/ : /larger k/) : x > r.ans ? /fewer red cards/ : /more red cards/);
+          // the direction matches the real quantity
+          const q = level === 2 ? pOf(r, x) - pOf(r, r.ans) : (() => { const [n, d] = drawChance(r, x); const [n2, d2] = drawChance(r, r.ans); return n * d2 - n2 * d; })();
+          expect(q > 0).toBe(x > r.ans);
+        }
+        expect(new Set(wrongs.filter((x) => x < r.ans).map((x) => missText(r, x))).size).toBeLessThanOrEqual(1);
+        expect(new Set(wrongs.filter((x) => x > r.ans).map((x) => missText(r, x))).size).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+  it('level 4: round 1 may say what was left out; rounds 2 and 3 give one generic text with no digits for every wrong board (all-yellow cannot read |B|)', () => {
+    for (const r of all(4).slice(0, 90)) {
+      const boards: number[][] = [
+        Array(CARDS).fill(1),
+        Array(CARDS).fill(2),
+        Array(CARDS).fill(0),
+        r.target.map((x) => (x > 0 ? 1 : 0)),
+        r.target.map((x) => (x === 0 ? 1 : x)),
+      ].filter((b) => !judgeBoard(r, b));
+      const msgs = new Set(boards.map((b) => missText(r, 0, b)));
+      if (r.assist === 0) {
+        const state = [...r.target];
+        state[state.findIndex((x) => x > 0)] = 0;
+        expect(missText(r, 0, state)).toMatch(/left out/);
+      } else {
+        expect(msgs.size).toBe(1);
+        expect([...msgs][0]).not.toMatch(/\d|\//);
+      }
+    }
+  });
+});
+
 describe('words', () => {
-  it('misses say what was left out or extra without the cards; probes read the chance; the working has the fraction', () => {
+  it('probes read the chance; the working has the fraction', () => {
     for (const r of all(1).slice(0, 30)) {
       const state = [...r.target];
       state[state.findIndex((x) => x === 1)] = 0;
-      expect(missText(r, 0, state)).toMatch(/left out/);
+      expect(missText(r, 0, state).length).toBeGreaterThan(30);
       expect(spotText(r, 0, state)).toMatch(/green out of/);
       expect(explain(r)).toMatch(/P\(A \| B\)/);
     }
@@ -84,6 +143,136 @@ describe('words', () => {
     for (const s of seeds) for (const level of [1, 2, 3]) {
       const rs = buildRounds(level, createRng(s));
       expect(new Set(rs.map((r) => r.textB + r.textA + r.a + r.N + r.ans)).size).toBe(3);
+    }
+  });
+});
+
+describe('level 4, Not and or: compound events on the reduced deck', () => {
+  const seeds80 = Array.from({ length: 80 }, (_, i) => i * 7919 + 13);
+  const rounds4 = seeds80.flatMap((s) => buildRounds(4, createRng(s)));
+  // An independent copy of the card tests, keyed by the words on screen. Suits 0 spade, 1 heart, 2 diamond, 3 club; ranks 1 (A) to 6.
+  const T: Record<string, (s: number, r: number) => boolean> = {
+    'a red card': (s) => s === 1 || s === 2,
+    'a black card': (s) => s === 0 || s === 3,
+    'a spade': (s) => s === 0,
+    'a heart': (s) => s === 1,
+    'an even rank (2, 4 or 6)': (_s, r) => r % 2 === 0,
+    'an odd rank (A, 3 or 5)': (_s, r) => r % 2 === 1,
+    'a rank of 4 or more': (_s, r) => r >= 4,
+    'a rank of 3 or less': (_s, r) => r <= 3,
+    'a prime rank (2, 3 or 5)': (_s, r) => r === 2 || r === 3 || r === 5,
+  };
+  const phrases = Object.keys(T);
+  const has = (test: (s: number, r: number) => boolean, i: number) => test(Math.floor(i / 6), (i % 6) + 1);
+  /** Parse the event text back into a test on card i, or fail. */
+  function event(text: string): { kind: 'not' | 'or' | 'neither'; A: string; C: string | null } {
+    for (const a of phrases) {
+      if (text === `not ${a}`) return { kind: 'not', A: a, C: null };
+      for (const c of phrases) {
+        if (text === `${a} or ${c}`) return { kind: 'or', A: a, C: c };
+        if (text === `neither ${a} nor ${c}`) return { kind: 'neither', A: a, C: c };
+      }
+    }
+    throw new Error(`cannot read the event "${text}"`);
+  }
+  const board = (r: Round) => {
+    const ev = event(r.textA);
+    const inB = (i: number) => has(T[r.textB], i);
+    const a = (i: number) => has(T[ev.A], i);
+    const c = (i: number) => (ev.C ? has(T[ev.C], i) : false);
+    const holds = (i: number) => (ev.kind === 'not' ? !a(i) : ev.kind === 'or' ? a(i) || c(i) : !(a(i) || c(i)));
+    const idx = Array.from({ length: CARDS }, (_, i) => i);
+    const B = idx.filter(inB);
+    return { ev, B, a, c, holds, n: B.length, nA: B.filter(a).length, nC: B.filter(c).length, nAC: B.filter((i) => a(i) && c(i)).length, k: B.filter(holds).length };
+  };
+
+  it('the rounds run not, or, neither, with the helpers fading', () => {
+    for (const s of seeds80) {
+      const rs = buildRounds(4, createRng(s));
+      expect(rs.map((r) => event(r.textA).kind)).toEqual(['not', 'or', 'neither']);
+      expect(rs.map((r) => r.assist)).toEqual([0, 1, 2]);
+      expect(new Set(rs.map((r) => r.textB + r.textA)).size).toBe(3);
+      expect(rs.every((r) => r.kind === 'board')).toBe(true);
+    }
+  });
+  it('every board is checked against an independent count: the marked cards are exactly B, the green ones exactly the event', () => {
+    for (const r of rounds4) {
+      const b = board(r);
+      expect(r.target).toHaveLength(CARDS);
+      r.target.forEach((x, i) => expect(x).toBe(!has(T[r.textB], i) ? 0 : b.holds(i) ? 2 : 1));
+      const [p, f] = counts(r.target);
+      expect(p).toBe(b.n);
+      expect(f).toBe(b.k);
+      expect(p).toBeGreaterThanOrEqual(6);
+      expect(p).toBeLessThanOrEqual(16);
+      // the reduced fraction is neither 0 nor 1
+      expect(f).toBeGreaterThanOrEqual(1);
+      expect(f).toBeLessThan(p);
+      // B, A and C come from different families, so none of them is nested in another
+      const fam = (t: string) => (/red|black/.test(t) ? 'colour' : /spade|heart/.test(t) ? 'suit' : /even|odd/.test(t) ? 'parity' : /prime/.test(t) ? 'prime' : 'size');
+      const fams = new Set([r.textB, b.ev.A, b.ev.C ?? ''].filter(Boolean).map(fam));
+      expect(fams.size).toBe(b.ev.C ? 3 : 2);
+      if (b.ev.C) {
+        expect(b.nA).toBeGreaterThan(b.nAC);
+        expect(b.nC).toBeGreaterThan(b.nAC);
+      }
+    }
+  });
+  it('the rules hold: P(not A | B) = 1 − P(A | B); P(A ∪ C | B) = P(A | B) + P(C | B) − P(A ∩ C | B); P(neither | B) = 1 − P(A ∪ C | B)', () => {
+    for (const r of rounds4) {
+      const b = board(r);
+      if (b.ev.kind === 'not') expect(b.k).toBe(b.n - b.nA);
+      else {
+        expect(b.nAC).toBeGreaterThanOrEqual(1);
+        const union = b.nA + b.nC - b.nAC;
+        expect(union).toBe(b.B.filter((i) => b.a(i) || b.c(i)).length);
+        expect(b.k).toBe(b.ev.kind === 'or' ? union : b.n - union);
+      }
+    }
+  });
+  it('only the exact board wins: every board one card away, the blank board, and the board of the plain A (or C) all lose', () => {
+    for (const r of rounds4) {
+      expect(judgeBoard(r, r.target)).toBe(true);
+      expect(judgeBoard(r, Array(CARDS).fill(0))).toBe(false);
+      const b = board(r);
+      // the "forgot the not" board: B marked, green where A holds
+      const plain = r.target.map((x, i) => (x === 0 ? 0 : b.a(i) ? 2 : 1));
+      expect(judgeBoard(r, plain)).toBe(false);
+      // the "all of B is the event" board
+      expect(judgeBoard(r, r.target.map((x) => (x > 0 ? 2 : 0)))).toBe(false);
+    }
+    for (const r of rounds4.slice(0, 60)) {
+      for (let i = 0; i < CARDS; i++) {
+        for (const x of [0, 1, 2]) {
+          if (x === r.target[i]) continue;
+          const state = [...r.target];
+          state[i] = x;
+          expect(judgeBoard(r, state)).toBe(false);
+        }
+      }
+    }
+  });
+  it('the words: the event is named in the note, the working shows the rule, and a miss never states a fraction or the answer', () => {
+    for (const r of rounds4) {
+      const b = board(r);
+      expect(intel(r)).toContain(r.textA);
+      expect(intel(r)).toContain(r.textB);
+      const ex = explain(r);
+      if (b.ev.kind === 'not') expect(ex).toBe(`P(not A | B) = 1 − P(A | B) = 1 − ${frac(b.nA, b.n)} = ${frac(b.n - b.nA, b.n)}.`);
+      if (b.ev.kind === 'or') expect(ex).toBe(`P(A ∪ C | B) = P(A | B) + P(C | B) − P(A ∩ C | B) = (${b.nA} + ${b.nC} − ${b.nAC})/${b.n} = ${frac(b.k, b.n)}.`);
+      if (b.ev.kind === 'neither') expect(ex).toBe(`P(neither | B) = 1 − P(A ∪ C | B) = 1 − ${frac(b.nA + b.nC - b.nAC, b.n)} = ${frac(b.k, b.n)}.`);
+      const answer = frac(b.k, b.n);
+      for (const mutate of [(s: number[], i: number) => (s[i] = 0), (s: number[], i: number) => (s[i] = s[i] === 2 ? 1 : 2)]) {
+        const state = [...r.target];
+        const i = state.findIndex((x) => x > 0);
+        mutate(state, i);
+        const msg = missText(r, 0, state);
+        expect(msg).toMatch(r.assist === 0 ? /left out|wrong colour for the event/ : /at least one card is marked wrong/);
+        expect(msg).not.toContain('/');
+        expect(msg).not.toContain(answer);
+        expect(msg).not.toMatch(/P\(/);
+      }
+      expect(spotText(r, 0, r.target)).toContain(`${b.k} green out of ${b.n} marked`);
     }
   });
 });

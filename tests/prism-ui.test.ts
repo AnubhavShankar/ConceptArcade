@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import game from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/prism-lab/index';
-import { buildGame, path, type Game } from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/prism-lab/logic';
+import { buildGame, path, sideOf, startAngle, type Game } from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/prism-lab/logic';
+import { canvasRecorder, texts, type CanvasRec } from './helpers/canvas-rec';
 import { trace3 } from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/prism-lab/geometry';
 import { createRng } from '../src/core/random';
 import type { GameContext } from '../src/core/types';
@@ -180,18 +181,19 @@ describe('level 1: the sweet spot', () => {
     expect($('.note')?.textContent).toMatch(/live readout is on/);
     solveRound(g, 0);
     advance(1);
-    expect($('.note')?.textContent).toMatch(/readout is off/);
+    expect($('.note')?.textContent).toMatch(/for a moment after a test beam/);
   });
 });
 
 describe('level 2: the gel chamber', () => {
-  it('the angle that is right in air is wrong in the gel, and the miss reports the bend it made', () => {
+  it('the angle that is right in air is wrong in the gel, and the miss gives the direction only', () => {
     const g = start(2, 5) as Extract<Game, { kind: 'gel' }>;
     const r = g.rounds[0];
     setSlider(Math.round(r.iSol) + 8);
     click(FIRE);
     advance(2.8);
-    expect(feedback()).toMatch(/bent by [\d.]+°|totally reflected/);
+    expect(feedback()).toMatch(/too steep/);
+    expect(feedback()).not.toMatch(/\d/);
     expect(hearts()).toBe(2);
   });
 });
@@ -209,6 +211,119 @@ describe('level 3: Photon Pong', () => {
     advance(2.8);
     expect(feedback()).toMatch(/bounces back inside/);
     expect(hearts()).toBe(1);
+  });
+});
+
+const YELLOW = '#ffd23f';
+const RED = '#ff5a5a';
+const CRYSTAL = '#2b3a7a';
+const GREEN = '#5dff9a';
+/** One drawn frame after the clock has run `dt` seconds. */
+const frameAfter = (rc: CanvasRec, dt: number) => {
+  if (dt > 0.05) advance(dt - 0.05);
+  rc.clear();
+  advance(0.05);
+  return rc.rec;
+};
+/** The beam inside and out of the prism: a glowing yellow (leaves) or red (stays in) line with two segments. */
+const beamDrawn = (rec: CanvasRec['rec']) => rec.strokes.some((s) => (s.style === YELLOW || s.style === RED) && s.n >= 2);
+/** The crystal: its dark body, or its green body once lit. */
+const crystalDrawn = (rec: CanvasRec['rec']) => rec.fills.includes(CRYSTAL) || rec.fills.includes(GREEN);
+const hiddenMark = (rec: CanvasRec['rec']) => texts(rec).includes('?');
+
+describe('no leaks: the helper fades and a miss draws no true spot', () => {
+  it('the start never wins: firing at once is a miss in every round of every level, and Pong starts wide', () => {
+    expect(startAngle('pong')).toBeGreaterThan(startAngle('sweet'));
+    for (const level of [1, 2, 3]) {
+      const g = start(level, 5);
+      for (let k = 0; k < 3; k++) {
+        const before = hearts();
+        click(FIRE);
+        advance(2.8);
+        expect(hearts()).toBe(before - 1);
+        if (hearts() === 0) break;
+        solveRound(g, k);
+        advance(1);
+      }
+    }
+  });
+  it('round 1 shows the beam (and the crystal); round 2 only for about 1.5 s after a test beam; round 3 never', () => {
+    for (const level of [1, 2, 3]) {
+      const rc = canvasRecorder();
+      const g = start(level, 5);
+      const crystal = level !== 3;
+      let rec = frameAfter(rc, 0.1);
+      expect(beamDrawn(rec)).toBe(true);
+      expect(crystalDrawn(rec)).toBe(crystal);
+      solveRound(g, 0);
+      advance(1);
+      expect(hud()).toMatch(/Round 2 of 3/);
+      rec = frameAfter(rc, 0.1);
+      expect(beamDrawn(rec)).toBe(false);
+      expect(crystalDrawn(rec)).toBe(false);
+      if (crystal) expect(hiddenMark(rec)).toBe(true);
+      click(TEST);
+      rec = frameAfter(rc, 0.3);
+      expect(beamDrawn(rec)).toBe(true);
+      expect(crystalDrawn(rec)).toBe(crystal);
+      rec = frameAfter(rc, 1.6);
+      expect(beamDrawn(rec)).toBe(false);
+      expect(crystalDrawn(rec)).toBe(false);
+      solveRound(g, 1);
+      advance(1);
+      expect(hud()).toMatch(/Round 3 of 3/);
+      click(TEST);
+      rec = frameAfter(rc, 0.3);
+      expect(beamDrawn(rec)).toBe(false);
+      expect(crystalDrawn(rec)).toBe(false);
+    }
+  });
+  it('a miss in round 2 or 3 draws no crystal, not even where the beam left; a win draws it lit', () => {
+    for (const level of [1, 2]) {
+      for (const round of [1, 2]) {
+        const rc = canvasRecorder();
+        const g = start(level, 5);
+        for (let k = 0; k < round; k++) {
+          solveRound(g, k);
+          advance(1);
+        }
+        setWrong(g, round);
+        click(FIRE);
+        advance(2.0);
+        const miss = frameAfter(rc, 0.05);
+        expect(crystalDrawn(miss)).toBe(false);
+        expect(hiddenMark(miss)).toBe(true);
+        advance(1);
+        setRight(g, round);
+        click(FIRE);
+        advance(2.0);
+        expect(frameAfter(rc, 0.05).fills.includes(GREEN)).toBe(true);
+        advance(1);
+      }
+    }
+  });
+  it('two wrong settings on the same side end on the same words and the same marks', () => {
+    for (const level of [1, 2, 3]) {
+      const rc = canvasRecorder();
+      const g = start(level, 5);
+      solveRound(g, 0);
+      advance(1);
+      const r = g.rounds[1];
+      const ends: string[][] = [];
+      const says: string[] = [];
+      for (const off of [6, 9]) {
+        setSlider(Math.round(r.iSol) + off, 0);
+        if (g.kind === 'sweet') setSlider(Math.round((r as { nSol: number }).nSol * 100) / 100, 1);
+        click(FIRE);
+        advance(2.0);
+        ends.push(texts(frameAfter(rc, 0.05)));
+        says.push(feedback());
+        advance(1);
+      }
+      expect(says[0]).toBe(says[1]);
+      expect(ends[0]).toEqual(ends[1]);
+      if (g.kind !== 'pong') expect(sideOf((r as { iSol: number }).iSol, Math.round(r.iSol) + 6)).toBe('steep');
+    }
   });
 });
 

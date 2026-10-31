@@ -1,0 +1,73 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "air-time",
+  "title": "Air Time",
+  "summary": "Place the landing ramp and cut the nitro for a stunt rider, using the standard integrals for tan⁻¹, sin⁻¹ and log forms.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": { "number": 7, "name": "Integrals" },
+  "ncertRef": "Section 7.4, Integrals of Some Particular Functions",
+  "concepts": [
+    "∫ dx/(x² + a²) = (1/a) tan⁻¹(x/a)",
+    "∫ dx/√(a² − x²) = sin⁻¹(x/a)",
+    "∫ dx/√(x² ± a²) = log|x + √(x² ± a²)|",
+    "∫ dx/(x² − a²) = (1/2a) log|(x − a)/(x + a)|",
+    "Completing the square in the denominator",
+    "Definite integrals of the standard forms"
+  ],
+  "learningOutcome": "The student can integrate the standard forms in tan⁻¹, sin⁻¹ and log, complete the square to reach them, and evaluate the definite integrals exactly.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 20,
+  "levels": [
+    {
+      "title": "One backflip",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: ∫ dx/(x² + a²) = (1/a) tan⁻¹(x/a), so the spin from the kicker to the ramp is a difference of inverse tangents (Ex 7.4 Q1, Q5).",
+      "hints": [
+        "Take the constant out: ∫ k/(x² + a²) dx = (k/a) tan⁻¹(x/a).",
+        "The total spin is F(ramp) − F(kicker).",
+        "One backflip is 2π: solve (k/a)(tan⁻¹(q/a) − tan⁻¹(p/a)) = 2π for q."
+      ]
+    },
+    {
+      "title": "Tight spins",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: ∫ dx/√(a² − x²) = sin⁻¹(x/a); in the boss round take a factor out of the root first, as in √(9 − 25x²) (Ex 7.4 Q4).",
+      "hints": [
+        "∫ k/√(a² − x²) dx = k sin⁻¹(x/a).",
+        "sin⁻¹(1/2) = π/6, so the ramp often sits at half of a.",
+        "In √(256 − 4x²), take out the 4: it is 2√(64 − x²)."
+      ]
+    },
+    {
+      "title": "Nitro canyon",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: log forms. The nitro multiplies the speed by e^(∫k dx), so ∫ dx/√(x² ± a²) or ∫ dx/(x² − a²) must equal a log (Ex 7.4 Q2, Q6, Q8; Example 8).",
+      "hints": [
+        "∫ dx/√(x² + a²) = log|x + √(x² + a²)|, and the same with x² − a².",
+        "The speed is multiplied by e^(F(q) − F(p)), so F(q) − F(p) must be the log of the factor.",
+        "∫ dx/(x² − a²) = (1/2a) log|(x − a)/(x + a)|: do not forget the 1/2a."
+      ]
+    },
+    {
+      "title": "Complete the square",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: complete the square, x² − 6x + 13 = (x − 3)² + 4, to reach a standard form, then integrate (Ex 7.4 Q10 to Q12, Q14; Example 9).",
+      "hints": [
+        "x² + bx + c = (x + b/2)² + (c − b²/4).",
+        "With t = x − 3 the integral becomes a standard form in t.",
+        "Change the limits as well, or put x back before using them."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "∫ dx/(x² + a²) is tan⁻¹(x/a), without the 1/a",
+    "∫ dx/√(a² − x²) and ∫ dx/√(x² − a²) are the same kind of answer",
+    "Completing the square changes the value of the integral"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

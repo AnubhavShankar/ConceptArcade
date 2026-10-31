@@ -1,446 +1,331 @@
+// Inspirations (code comment only): creature-care games where you tune a habitat until the pet is happy, and "lead the critter home" puzzle games
+// (the hatchling swims for the right exit only when the world is set up right). The player winds and bends coils of wire round a turtle tank and
+// presses Switch on. The art is in art.ts.
+// Never leak the answer: Nui's paths go to three fixed gate points (or two fixed circles) and the level 1 needle takes four fixed angles; the field
+// meter is the only helper (live in round 1, for 1.5 s after a meter check in round 2, never in round 3); the field symbols over the tank show only
+// during a trial, and only the field the player made; `hit` is a fixed point; every animation ends by 2.3 s.
+import { PAL, type Arcade } from '@core/arcade';
 import { defineGame } from '@core/define';
-import { disc, label, themeColors } from '@core/draw';
-import { h } from '@core/dom';
-import { parseNumber } from '@core/quiz';
-import { fitCanvas, startLoop } from '@core/sim';
-import { buildLevel, explainSolution, fmt, judgeArc, judgeAxis, judgeConcentric, judgeElement, judgeLoop, axisUT, starsFor } from './logic';
+import { helperOn, paidFlash } from '@core/aidflash';
+import { mountDialLevel, type DialLevel, type DialSpec, type HandleSpec, type SceneInput } from '@core/dialgame';
+import { along, text } from '@core/neon';
+import {
+  BUCKET, COIL_R, GATES, GAUGE, HIT, INNER_R, KNOB, LCD, OUTER_R, TANK, TRK, arcWire, bucket, clamp01, coilRing, ease, fieldMeter, gatePt, gates, gauge, goalLine, handleGrip, lab,
+  labCard, leilani, nui, probe, sideInset, supply, supplyWire, tag, tank, trimWire, wireAt, type NuiMood,
+} from './art';
+import { DIAL, LCD_OFF, buildRounds, card, fault, goal, hintText, judge, lcdText, meterText, missText, netUT, verdictDelay, winText, type Round, type Values } from './logic';
 
-const W = 640;
-const H = 340;
-const POS = '#c0392b';
-const REVEAL = 0.9;
-const RUN = 3;
-const ease = (t: number) => 1 - Math.pow(1 - t, 3);
-const CX = 320;
-const CY = 175;
+const ARIA = 'A sea-turtle lab seen from above: a biologist beside a round tank wrapped in a coil of wire, where a hatchling swims for one of three gates.';
+const ROLE = 'a marine biologist who tests sea-turtle hatchlings in a coil-wrapped tank before their dawn release';
+const HEROES = [
+  {
+    story: 'A sea-turtle hatchling knows where it is from the Earth’s magnetic field: how strong it is, and whether it points down into the sea floor or up out of it. In Leilani’s shielded lab a coil around the tank makes the only field. First she calibrates the probe at the tank’s centre with a short trim wire. A current element makes dB = (μ₀/4π) I dl sin θ/r², pointing along dl × r.',
+    objective: 'Set the trim wire’s current and its direction so the probe reads the calibration field, in three tries.',
+  },
+  {
+    story: 'The first trial. Nui, a loggerhead hatchling, swims for the open sea only if the tank holds the field of home. Every turn of the coil adds μ₀I/2R at the centre, so B = μ₀NI/2R. Curl your right fingers along the current and the thumb points along the field: anticlockwise seen from above points up.',
+    objective: 'Wind the coil and set its current’s sense so Nui feels home and swims for the open sea, in three trials.',
+  },
+  {
+    story: 'The coil frame cracked, so Leilani bends a single thick wire into an arc instead. Each part of the arc adds to the field at the centre, so an arc of φ degrees gives φ/360 of the loop’s μ₀I/2R. The straight leads point at the centre: for them dl × r = 0, and they add nothing.',
+    objective: 'Drag the arc round the circle and set the current’s sense to make the field of home, in three trials.',
+  },
+  {
+    story: 'The new hatchlings are too lively for the shallow tank, so it sits on a stand above the coil, on its axis. There the field is weaker: B = μ₀NIR²/2(R² + x²)^(3/2), which at x = 0 is the centre value μ₀NI/2R.',
+    objective: 'Wind the coil so the raised tank holds the field of home, in three trials.',
+  },
+  {
+    story: 'Dawn is close, and the last hatchlings need fields from far across the ocean. A second coil around the first shares its centre and carries the same current. With the currents the same way their fields add; opposite ways, they subtract, and the bigger one wins.',
+    objective: 'Wind the outer coil and set its sense so the two fields together make the field of home, in three trials.',
+  },
+];
+
+type Out = 'win' | 'flip' | 'weak' | 'strong';
+const DEG = Math.PI / 180;
+const PEAK = { win: 60, weak: 27, strong: 81 }; // the level 1 needle: fixed angles from the top, towards the target side
+const NUI_IDLE = (tt: number): [number, number, number] => {
+  const a = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 1.2 : tt * 0.7;
+  return [TANK.x + 10 * Math.cos(a), TANK.y + 10 * Math.sin(a), a + Math.PI / 2];
+};
+const lerpAngle = (a: number, b: number, u: number) => {
+  let d = b - a;
+  while (d > Math.PI) d -= 2 * Math.PI;
+  while (d < -Math.PI) d += 2 * Math.PI;
+  return a + d * u;
+};
+
+/** A handle on the bottom track. The drag records the clock for the highlight and clears the first-touch cue. */
+const trk = (key: string, lo: number, hi: number, mark: () => void): HandleSpec<Round> => ({
+  dial: key,
+  at: (_r, v) => [TRK.x0 + ((v[key] - lo) / (hi - lo)) * (TRK.x1 - TRK.x0), TRK.y],
+  drag: (_r, px) => (mark(), lo + ((px - TRK.x0) / (TRK.x1 - TRK.x0)) * (hi - lo)),
+  radius: 20,
+});
+const knob = (key: string, mark: () => void): HandleSpec<Round> => ({
+  dial: key,
+  at: (_r, v) => [KNOB.x + (v[key] ? 14 : -14), KNOB.y],
+  drag: (_r, px) => (mark(), px > KNOB.x ? 1 : 0),
+  radius: 20,
+});
+const senseDial = (aria: string, label: string): DialSpec<Round> => ({
+  key: 'sense', aria, label, unit: '', step: 1, min: DIAL.sense.min, max: DIAL.sense.max, start: DIAL.sense.start, text: (x) => (x ? 'anticlockwise ↺' : 'clockwise ↻'),
+});
+const turnsDial = (aria: string, label: string): DialSpec<Round> => ({
+  key: 'n', aria, label, unit: '', step: DIAL.n.step, min: DIAL.n.min, max: DIAL.n.max, start: DIAL.n.start, text: (x) => `${x} turns`,
+});
+
+function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
+  const rounds = buildRounds(n, random);
+  const flash = paidFlash();
+  let arc: Arcade | null = null;
+  let touched = false;
+  let lastDrag = -10;
+  const mark = () => {
+    touched = true;
+    lastDrag = arc?.clock ?? 0;
+  };
+  const fx = { shot: null as unknown, done: new Set<string>() };
+
+  function draw(s: SceneInput<Round>) {
+    const { g, r, k, t, rt, shot, A } = s;
+    const v = s.v as Values;
+    arc = A;
+    if (fx.shot !== shot) {
+      fx.shot = shot;
+      fx.done.clear();
+    }
+    const once = (key: string, fn: () => void) => {
+      if (!fx.done.has(key)) {
+        fx.done.add(key);
+        fn();
+      }
+    };
+    const since = flash.since(t, k);
+    const live = !shot && helperOn(r.assist, false, since);
+    A.canvas.dataset.lcd = live ? '1' : '0';
+    const f = shot ? fault(r, shot.v) : null;
+    const out: Out | null = shot ? (f ?? 'win') : null;
+    if (out) A.canvas.dataset.take = out;
+    else delete A.canvas.dataset.take;
+    const tv = verdictDelay(r);
+    const after = shot ? rt - tv : -1; // seconds since the verdict
+    const hot = t - lastDrag < 0.15;
+
+    // ---- the room, the tank, the rim and gates
+    lab(g, t, k, n !== 4);
+    tank(g, t, k);
+    gates(g, t, out === 'weak' && rt >= 1.2 ? 'shallows' : out === 'strong' && rt >= 1.2 ? 'rocks' : null);
+
+    // ---- the trial
+    const on = !!shot && rt > 0;
+    let leiMood: 'happy' | 'worried' | 'cheer' = 'happy';
+    if (shot) {
+      once('click', () => A.float('CLICK', 92, 232, PAL.white));
+      if (after >= 0) {
+        leiMood = out === 'win' ? 'cheer' : 'worried';
+        if (out === 'win') once('sound', () => A.sound('win'));
+      }
+    }
+    const press = shot ? (rt < 0.1 ? ease(rt / 0.1) : Math.max(0, 1 - (rt - 0.1) / 0.2)) : 0;
+    const coilRt = shot && rt >= 0.1 && rt < 1.5 ? rt - 0.1 : -1;
+    let bucketOpts = { count: k + 1, nui: false, clap: 0, hide: 0, watch: !!shot };
+
+    if (n === 1) {
+      const r1 = r as Extract<Round, { kind: 'trim' }>;
+      coilRing(g, COIL_R, 0, { rt: -1, alpha: 0.3, arrows: false });
+      probe(g, t);
+      trimWire(g, r1, v.dir!, shot ? rt : -1);
+      const sg = r1.up ? 1 : -1;
+      let needle = 0;
+      if (shot) {
+        const target = out === 'win' ? sg * PEAK.win : out === 'weak' ? sg * PEAK.weak : out === 'strong' ? sg * PEAK.strong : -sg * PEAK.win;
+        needle = target * ease((rt - 0.5) / 0.4);
+      }
+      gauge(g, r1.up, needle, after >= 0 ? (out === 'win' ? 'ok' : 'off') : null);
+      supply(g, 1, on, v.dir!);
+      const clap = out === 'win' && after >= 0 ? 0.5 + 0.5 * Math.sin(after * 16) : 0;
+      const hide = out && out !== 'win' && after >= 0 ? ease(after / 0.1) * (1 - ease((after - 0.6) / 0.2)) : 0;
+      bucketOpts = { count: 1, nui: true, clap, hide, watch: false };
+    } else {
+      // coils
+      const r5 = r.kind === 'pair' ? r : null;
+      const sense = v.sense!;
+      if (n === 3) {
+        arcWire(g, v.deg!, sense, { rt: coilRt, leadTags: k === 0 });
+      } else if (r5) {
+        coilRing(g, INNER_R, r5.s1, { rt: coilRt, tag: 'inner' });
+        coilRing(g, OUTER_R, sense, { rt: coilRt, tag: 'outer' });
+        supplyWire(g, OUTER_R);
+      } else {
+        coilRing(g, COIL_R, sense, { rt: coilRt });
+        supplyWire(g, COIL_R);
+      }
+      supply(g, n, on, sense);
+      if (n === 4) sideInset(g);
+
+      // Nui: idle round the tank's centre; in a trial a straight line to one of three fixed gates, or two fixed circles
+      let [nx, ny, nh] = NUI_IDLE(t);
+      let mood: NuiMood = 'happy';
+      let alpha = 1;
+      let wobble = 0;
+      let spin: number | undefined;
+      if (shot && rt >= 0.5) {
+        const [px, py, ph] = NUI_IDLE(t - rt + 0.5);
+        const u1 = ease((rt - 0.5) / 0.2);
+        if (out === 'win') {
+          const G = gatePt(GATES.sea);
+          const pts: [number, number][] = [[px, py], G, [TANK.x, 30]];
+          [nx, ny] = along(pts, clamp01((rt - 0.7) / 0.9));
+          nh = lerpAngle(ph, -Math.PI / 2, u1);
+          alpha = 1 - ease((rt - 1.7) / 0.5);
+          if (after >= 0) once('heart', () => A.float('♥', G[0], G[1] - 14, PAL.pink));
+        } else if (out === 'flip') {
+          const u = rt - 0.5;
+          const th = 4 * Math.PI * clamp01(u / 0.8);
+          const cx = TANK.x + 16 * Math.cos(th);
+          const cy = TANK.y + 16 * Math.sin(th);
+          const c = ease(u / 0.15);
+          nx = px + (cx - px) * c;
+          ny = py + (cy - py) * c;
+          nh = th + Math.PI / 2;
+          mood = rt < 1.8 ? 'dizzy' : 'happy';
+          if (rt >= 1.3) {
+            const b = ease((rt - 1.3) / 0.3);
+            const [ix, iy, ih] = NUI_IDLE(t);
+            nx = cx + (ix - cx) * b;
+            ny = cy + (iy - cy) * b;
+            nh = lerpAngle(th + Math.PI / 2, ih, b);
+          }
+          if (rt >= 1.0) once('q', () => A.float('?', nx, ny - 20, PAL.yellow));
+        } else {
+          const G = gatePt(out === 'weak' ? GATES.shallows : GATES.rocks);
+          const head = Math.atan2(G[1] - py, G[0] - px);
+          const e = clamp01((rt - 0.7) / 0.5);
+          nx = px + (G[0] - px) * e;
+          ny = py + (G[1] - py) * e;
+          nh = lerpAngle(ph, head, u1);
+          if (rt >= 1.2) {
+            const w = rt - 1.2;
+            wobble = w < 0.3 ? Math.sin((w / 0.3) * Math.PI * 3) * 10 * DEG : 0;
+            nx -= Math.cos(head) * 4;
+            ny -= Math.sin(head) * 4;
+            mood = w < 0.5 ? 'dazed' : 'happy';
+            once('bonk', () => A.float('bonk', G[0] + (out === 'weak' ? 18 : -18), G[1] + 22, PAL.orange));
+          }
+        }
+        void spin;
+      }
+      // the field the player made, over the tank, only during a trial
+      if (shot) {
+        const up = r5 ? netUT(r5, shot.v.sense, shot.v.n) > 0 : shot.v.sense === 1;
+        const a = Math.min(ease((rt - 0.1) / 0.4), 1 - ease((rt - 1.2) / 0.4)) * 0.45;
+        if (a > 0) {
+          g.globalAlpha = a;
+          for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) text(g, up ? '⊙' : '⊗', TANK.x + (i - 1) * 40, TANK.y + (j - 1) * 40 + 4, PAL.white, 12);
+          g.globalAlpha = 1;
+        }
+      }
+      nui(g, nx, ny, nh, t, { mood, alpha, wobble, paddle: true, spin });
+    }
+
+    // ---- the card, the bucket, Leilani, the field meter
+    labCard(g, card(r));
+    bucket(g, t, bucketOpts);
+    leilani(g, t, { mood: leiMood, press, hop: leiMood === 'cheer' ? Math.min(1, after / 0.3) : 0 });
+    fieldMeter(g, live ? lcdText(r, v) : LCD_OFF, r.assist === 0 ? PAL.green : PAL.yellow);
+
+    // ---- the grips, each with the player's own setting beside it
+    if (!shot) {
+      const sx = KNOB.x + (v.sense ?? v.dir ? 14 : -14);
+      handleGrip(g, sx, KNOB.y, '⇔', hot);
+      const sw = n === 1 ? (v.dir ? '→' : '←') : v.sense ? '↺' : '↻';
+      tag(g, sw, KNOB.x + 14 + 26, KNOB.y + 4, 'left');
+      if (n === 3) {
+        const a = v.deg! * DEG;
+        const ex = TANK.x + COIL_R * Math.cos(a);
+        const ey = TANK.y - COIL_R * Math.sin(a);
+        handleGrip(g, ex, ey, '↻', hot);
+        tag(g, `${v.deg}°`, TANK.x + (COIL_R + 38) * Math.cos(a), TANK.y - (COIL_R + 38) * Math.sin(a) + 4, 'center');
+      } else {
+        const key = n === 1 ? 'i' : 'n';
+        const lo = n === 1 ? DIAL.i.min : DIAL.n.min;
+        const hi = n === 1 ? DIAL.i.max : DIAL.n.max;
+        const hx = TRK.x0 + ((v[key]! - lo) / (hi - lo)) * (TRK.x1 - TRK.x0);
+        handleGrip(g, hx, TRK.y, '⇔', hot);
+        const read = n === 1 ? `${v.i} A` : `${v.n} turns`;
+        if (hx > 360) tag(g, read, hx - 26, TRK.y + 4, 'right');
+        else tag(g, read, hx + 26, TRK.y + 4, 'left');
+        if (n === 1 && k === 0 && !touched) {
+          const bob = Math.sin(t * 4) * 3;
+          tag(g, 'drag ⇔', hx, TRK.y - 30 + bob, 'center');
+        }
+      }
+      goalLine(g, goal(r));
+    }
+    // keep the knob positions from sitting on the LCD
+    void LCD;
+    void GAUGE;
+    void BUCKET;
+    void wireAt;
+  }
+
+  const dials: DialSpec<Round>[] = [];
+  const handles: HandleSpec<Round>[] = [];
+  if (n === 1) {
+    dials.push(
+      { key: 'dir', aria: 'Trim wire current direction: 1 left to right, 0 right to left', label: 'Direction', unit: '', step: 1, min: 0, max: 1, start: 0, text: (x) => (x ? 'left to right →' : 'right to left ←') },
+      { key: 'i', aria: 'Trim wire current in amperes', label: 'Current', unit: 'A', step: 1, min: DIAL.i.min, max: DIAL.i.max, start: DIAL.i.start },
+    );
+    handles.push(knob('dir', mark), trk('i', DIAL.i.min, DIAL.i.max, mark));
+  } else if (n === 3) {
+    dials.push(senseDial('Coil current seen from above: 1 anticlockwise, 0 clockwise', 'Sense'), { key: 'deg', aria: 'Angle of the arc in degrees', label: 'Arc', unit: '°', step: DIAL.deg.step, min: DIAL.deg.min, max: DIAL.deg.max, start: DIAL.deg.start });
+    handles.push(knob('sense', mark), {
+      dial: 'deg',
+      at: (_r, v) => [TANK.x + COIL_R * Math.cos(v.deg * DEG), TANK.y - COIL_R * Math.sin(v.deg * DEG)],
+      drag: (_r, px, py) => {
+        mark();
+        const a = (Math.atan2(TANK.y - py, px - TANK.x) * 180) / Math.PI;
+        return a <= 0 ? a + 360 : a;
+      },
+      radius: 20,
+    });
+  } else {
+    const outer = n === 5;
+    dials.push(
+      senseDial(outer ? 'Outer coil current seen from above: 1 anticlockwise, 0 clockwise' : 'Coil current seen from above: 1 anticlockwise, 0 clockwise', outer ? 'Outer sense' : 'Sense'),
+      turnsDial(outer ? 'Number of turns on the outer coil' : 'Number of turns on the coil', outer ? 'Outer turns' : 'Turns'),
+    );
+    handles.push(knob('sense', mark), trk('n', DIAL.n.min, DIAL.n.max, mark));
+  }
+
+  return {
+    hero: { name: 'Leilani', role: ROLE, ...HEROES[n - 1] },
+    rounds,
+    charges: [1, 1, 0],
+    dials,
+    handles,
+    test: {
+      button: '🔎 Meter check',
+      aria: 'Meter check: read the field meter for this setting',
+      read: (r, v) => {
+        flash.paid();
+        return meterText(r, v as Values);
+      },
+    },
+    fire: { button: '🐢 Switch on', aria: 'Switch on the coil and start the trial' },
+    judge: (r, v) => judge(r, v as Values),
+    miss: (r, v) => missText(r, v as Values),
+    win: (r) => winText(r),
+    hint: (r) => hintText(r),
+    hit: () => HIT,
+    delay: (r) => verdictDelay(r),
+    draw,
+  };
+}
 
 export default defineGame({
   mount(ctx) {
-    const lvl = buildLevel(ctx.level, ctx.random);
-    const col = themeColors();
-
-    let misses = 0;
-    let finished = false;
-    let pendingWin: 1 | 2 | 3 | null = null;
-    let wonAt: number | null = null;
-    let clock = 0;
-    let verdictAt: number | null = null;
-    let verdictOk = false;
-    let runT: number | null = null;
-    let outPick: boolean | null = null;
-
-    // ---- DOM --------------------------------------------------------------------------------
-    const canvas = h('canvas', { role: 'img', 'aria-label': 'A current in a wire, loop or coil, with flowing charge and the magnetic field it makes shown as dots or crosses.' });
-    const g = fitCanvas(canvas, W, H);
-    const feedback = h('p', { class: 'feedback', hidden: true, 'aria-live': 'polite' });
-    const solution = h('section', { class: 'panel solution', hidden: true });
-    const hint = h('p', { class: 'muted note' });
-    const controls = h('div', { class: 'lab-controls' });
-    const free = lvl.freeTests;
-    const say = (text: string, good = false) => {
-      feedback.hidden = false;
-      feedback.className = `feedback ${good ? 'good' : 'bad'}`;
-      feedback.textContent = text;
-    };
-    const costNote = () => (misses > free ? ' That cost a star.' : free > 0 ? ` ${free - misses} free test${free - misses === 1 ? '' : 's'} left.` : '');
-    const freeNote = (m: string) => say(`${m} That does not cost you anything.`);
-    const miss = (text: string) => {
-      misses++;
-      say(text + costNote());
-    };
-    const succeed = (text: string) => {
-      finished = true;
-      say(text, true);
-      solution.replaceChildren(h('h3', null, 'Why that works'), ...explainSolution(lvl).map((t) => h('p', null, t)));
-      solution.hidden = false;
-      controls.querySelectorAll('button, input').forEach((b) => b.setAttribute('disabled', ''));
-      pendingWin = starsFor(misses, free);
-    };
-    const verdict = (ok: boolean) => {
-      verdictAt = clock;
-      verdictOk = ok;
-      runT = 0;
-    };
-    const busy = () => runT !== null && runT < RUN;
-    const field = (aria: string, placeholder: string) => h('input', { class: 'field', type: 'text', inputmode: 'decimal', autocomplete: 'off', 'aria-label': aria, placeholder }) as HTMLInputElement;
-    const num = (el: HTMLInputElement) => parseNumber(el.value);
-    const actionBtn = (text: string, aria: string, fn: () => void) => h('button', { class: 'btn', type: 'button', 'aria-label': aria, onclick: fn }, text);
-    const row = (name: string, input: HTMLElement, unit: string) => h('div', { class: 'control' }, h('span', { class: 'control-label' }, name), input, h('span', { class: 'unit' }, unit));
-    const dirChoice = () => {
-      const opts: [boolean, string][] = [[true, 'Field points out of the page'], [false, 'Field points into the page']];
-      const btns: HTMLElement[] = opts.map(([v, text]) => {
-        const b = h('button', { class: 'btn btn-ghost', type: 'button', 'aria-label': text, 'aria-pressed': 'false', onclick: () => {
-          outPick = v;
-          btns.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
-        } }, v ? 'Out of the page' : 'Into the page');
-        return b;
-      });
-      return h('div', { class: 'control' }, h('span', { class: 'control-label' }, 'Direction'), ...btns);
-    };
-    const needDir = () => {
-      if (outPick === null) {
-        freeNote('Choose whether the field points out of the page or into it.');
-        return false;
-      }
-      return true;
-    };
-
-    // ---- the levels -------------------------------------------------------------------------------------------
-    if (lvl.kind === 'element') {
-      const bIn = field('Field in nT', 'dB = ? nT');
-      const run = () => {
-        if (finished || busy()) return;
-        const b = num(bIn);
-        if (b === null || b <= 0) return freeNote('Enter the field as a positive number of nT.');
-        if (!needDir()) return;
-        const res = judgeElement(lvl, b, outPick as boolean);
-        verdict(res.ok);
-        if (res.ok) return succeed(`dB = ${fmt(lvl.nt)} nT, ${lvl.out ? 'out of' : 'into'} the page.`);
-        const parts: string[] = [];
-        if (!res.bOk) parts.push('The size is not right: dB = (μ₀/4π) I dl sin θ / r², with the lengths in metres. Give it in nT.');
-        if (!res.dirOk) parts.push('The direction is not right: it is the direction of dl × r, found with the right-hand rule.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Field', bIn, 'nT'), dirChoice(), actionBtn('Measure the field', 'Measure the field', run));
-      hint.textContent = `Current ${lvl.i} A, element length ${lvl.dlCm} cm pointing ${lvl.dlRight ? 'right' : 'left'}. The point is ${lvl.rM} m away, ${lvl.pointAbove ? 'above' : 'below'} the element, at ${lvl.theta}° to it. μ₀/4π = 10⁻⁷ T m/A.`;
-    }
-    if (lvl.kind === 'loop') {
-      const bIn = field('Field at the centre in µT', 'B = ? µT');
-      const run = () => {
-        if (finished || busy()) return;
-        const b = num(bIn);
-        if (b === null || b <= 0) return freeNote('Enter the field as a positive number of µT.');
-        if (!needDir()) return;
-        const res = judgeLoop(lvl, b, outPick as boolean);
-        verdict(res.ok);
-        if (res.ok) return succeed(`B = ${fmt(lvl.ut)} µT, ${lvl.out ? 'out of' : 'into'} the page.`);
-        const parts: string[] = [];
-        if (!res.bOk) parts.push('The field is not right: every turn adds its own field at the centre. Give it in µT.');
-        if (!res.dirOk) parts.push('The direction is not right: curl the fingers of the right hand along the current.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Field at centre', bIn, 'µT'), dirChoice(), actionBtn('Measure the field', 'Measure the field', run));
-      hint.textContent = `${lvl.n} turn${lvl.n > 1 ? 's' : ''} of radius ${lvl.rCm} cm carrying ${lvl.i} A, going ${lvl.clockwise ? 'clockwise' : 'anticlockwise'}. μ₀ = 4π × 10⁻⁷ T m/A.`;
-    }
-    if (lvl.kind === 'arc') {
-      const bIn = field('Field at the centre of the arc in µT', 'B = ? µT');
-      const run = () => {
-        if (finished || busy()) return;
-        const b = num(bIn);
-        if (b === null || b <= 0) return freeNote('Enter the field as a positive number of µT.');
-        if (!needDir()) return;
-        const res = judgeArc(lvl, b, outPick as boolean);
-        verdict(res.ok);
-        if (res.ok) return succeed(`B = ${fmt(lvl.ut)} µT, ${lvl.out ? 'out of' : 'into'} the page.`);
-        const parts: string[] = [];
-        if (!res.bOk) parts.push('The field is not right: only the curved part contributes, and only in proportion to how much of the circle it is. What do the straight leads add?');
-        if (!res.dirOk) parts.push('The direction is not right: curl the fingers of the right hand along the current in the arc.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Field at centre', bIn, 'µT'), dirChoice(), actionBtn('Measure the field', 'Measure the field', run));
-      hint.textContent = `The arc has radius ${lvl.rCm} cm and is ${lvl.frac === 0.5 ? 'a semicircle' : lvl.frac === 0.25 ? 'a quarter circle' : 'three quarters of a circle'}. Current ${lvl.i} A, ${lvl.clockwise ? 'clockwise' : 'anticlockwise'}.`;
-    }
-    if (lvl.kind === 'axis') {
-      const bIn = field('Field on the axis in µT', 'B = ? µT');
-      const rIn = field('Fraction of the centre field', 'B/B₀ = ?');
-      const run = () => {
-        if (finished || busy()) return;
-        const b = num(bIn);
-        const r = num(rIn);
-        if (b === null || r === null || b <= 0 || r <= 0) return freeNote('Enter both answers as positive numbers.');
-        const res = judgeAxis(lvl, b, r);
-        verdict(res.ok);
-        if (res.ok) return succeed(`B = ${fmt(lvl.ut)} µT, which is ${fmt(lvl.ratio)} of the centre field.`);
-        const parts: string[] = [];
-        if (!res.bOk) parts.push('The axis field is not right: at a distance x the field is reduced by the factor R³/(R² + x²)^(3/2).');
-        if (!res.rOk) parts.push('The fraction is not right: divide the axis field by the field at the centre of the same coil.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Axis field', bIn, 'µT'), row('Fraction of centre', rIn, ''), actionBtn('Measure the field', 'Measure the field', run));
-      hint.textContent = `${lvl.n} turns of radius ${lvl.rCm} cm carrying ${lvl.i} A. The point is ${lvl.xCm} cm from the centre, on the axis.`;
-    }
-    if (lvl.kind === 'concentric') {
-      const bIn = field('Net field in µT', 'B = ? µT');
-      const run = () => {
-        if (finished || busy()) return;
-        const b = num(bIn);
-        if (b === null || b <= 0) return freeNote('Enter the field as a positive number of µT.');
-        if (!needDir()) return;
-        const res = judgeConcentric(lvl, b, outPick as boolean);
-        verdict(res.ok);
-        if (res.ok) return succeed(`B = ${fmt(lvl.ut)} µT, ${lvl.out ? 'out of' : 'into'} the page.`);
-        const parts: string[] = [];
-        if (!res.bOk) parts.push(lvl.same ? 'The net field is not right: the two fields point the same way, so they add.' : 'The net field is not right: the two fields point opposite ways, so find the difference.');
-        if (!res.dirOk) parts.push('The direction is not right: the loop with the larger field decides it.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Net field', bIn, 'µT'), dirChoice(), actionBtn('Measure the field', 'Measure the field', run));
-      hint.textContent = `Inner loop ${lvl.r1Cm} cm with ${lvl.i1} A, outer loop ${lvl.r2Cm} cm with ${lvl.i2} A, ${lvl.same ? 'same sense' : 'opposite senses'}.`;
-    }
-
-    // ---- drawing helpers -------------------------------------------------------------------------------------------------
-    const symbol = (x: number, y: number, out: boolean, size: number, color: string) => {
-      g.strokeStyle = color;
-      g.fillStyle = color;
-      g.lineWidth = 3;
-      g.beginPath();
-      g.arc(x, y, size, 0, Math.PI * 2);
-      g.stroke();
-      if (out) disc(g, x, y, size * 0.28, color);
-      else {
-        g.beginPath();
-        g.moveTo(x - size * 0.6, y - size * 0.6);
-        g.lineTo(x + size * 0.6, y + size * 0.6);
-        g.moveTo(x + size * 0.6, y - size * 0.6);
-        g.lineTo(x - size * 0.6, y + size * 0.6);
-        g.stroke();
-      }
-    };
-    const arrowHead = (x: number, y: number, ux: number, uy: number, color: string) => {
-      g.fillStyle = color;
-      g.beginPath();
-      g.moveTo(x + ux * 8, y + uy * 8);
-      g.lineTo(x - uy * 6, y + ux * 6);
-      g.lineTo(x + uy * 6, y - ux * 6);
-      g.fill();
-    };
-    /** Specks circulating round a circle or an arc of it. dir = +1 clockwise on screen. */
-    const circulate = (cx: number, cy: number, r: number, a0: number, span: number, dir: number, n = 14, speed = 0.18) => {
-      g.fillStyle = POS;
-      g.globalAlpha = 0.9;
-      for (let k = 0; k < n; k++) {
-        const t = ((((clock * speed + k / n) % 1) + 1) % 1);
-        const a = a0 + (dir > 0 ? t : 1 - t) * span;
-        g.beginPath();
-        g.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 3, 0, Math.PI * 2);
-        g.fill();
-      }
-      g.globalAlpha = 1;
-    };
-    const verdictLabel = (text: string, x: number, y: number) => {
-      if (verdictAt !== null && verdictOk) label(g, text, x, y, { size: 14, color: col.good });
-    };
-    const runF = () => (runT === null ? 0 : ease(Math.min(1, runT / RUN)));
-    const showField = (x: number, y: number, out: boolean, size = 16) => {
-      const f = runF();
-      if (f <= 0) {
-        label(g, '?', x, y, { size: 22, color: col.accent });
-        return;
-      }
-      g.globalAlpha = Math.min(1, f * 1.5);
-      symbol(x, y, out, size * (0.4 + 0.6 * f), col.accent);
-      g.globalAlpha = 1;
-    };
-
-    function drawElement() {
-      if (lvl.kind !== 'element') return;
-      const sx = lvl.dlRight ? 1 : -1;
-      const ex = 200;
-      const ey = CY;
-      // the element, with the current flowing along it
-      g.strokeStyle = '#b87333';
-      g.lineWidth = 9;
-      g.beginPath();
-      g.moveTo(ex - 20, ey);
-      g.lineTo(ex + 20, ey);
-      g.stroke();
-      g.fillStyle = POS;
-      for (let k = 0; k < 4; k++) {
-        const t = (((clock * 0.6 + k / 4) % 1) + 1) % 1;
-        disc(g, ex - sx * 20 + sx * 40 * t, ey, 2.8, POS);
-      }
-      arrowHead(ex + sx * 28, ey, sx, 0, col.text);
-      label(g, 'I dl', ex, ey + 26, { size: 12, color: col.text });
-      const th = (lvl.theta * Math.PI) / 180;
-      const rpx = 230;
-      const px = ex + sx * Math.cos(th) * rpx;
-      const py = ey + (lvl.pointAbove ? -1 : 1) * Math.sin(th) * rpx;
-      g.strokeStyle = col.muted;
-      g.lineWidth = 1.5;
-      g.setLineDash([5, 5]);
-      g.beginPath();
-      g.moveTo(ex, ey);
-      g.lineTo(px, py);
-      g.stroke();
-      g.beginPath();
-      g.moveTo(ex, ey);
-      g.lineTo(ex + sx * 70, ey);
-      g.stroke();
-      g.setLineDash([]);
-      label(g, `r = ${lvl.rM} m`, (ex + px) / 2, (ey + py) / 2 + (lvl.pointAbove ? -14 : 16), { size: 12, color: col.muted });
-      label(g, `${lvl.theta}°`, ex + sx * 92, ey + (lvl.pointAbove ? -12 : 14), { size: 12, color: col.muted });
-      disc(g, px, py, 4, col.text);
-      showField(px + sx * 28, py, lvl.out);
-      verdictLabel(`dB = ${fmt(lvl.nt)} nT`, CX, 30);
-    }
-    function drawLoop() {
-      if (lvl.kind !== 'loop') return;
-      const r = Math.min(110, 55 + lvl.rCm * 3.2);
-      const turns = Math.min(5, 1 + Math.round(Math.log2(lvl.n + 1) * 0.7));
-      for (let t = 0; t < turns; t++) {
-        const rr = r + t * 3;
-        g.strokeStyle = '#b87333';
-        g.lineWidth = 3;
-        g.beginPath();
-        g.arc(CX, CY, rr, 0, Math.PI * 2);
-        g.stroke();
-      }
-      circulate(CX, CY, r, 0, Math.PI * 2, lvl.clockwise ? 1 : -1, 16);
-      // an arrowhead on the loop showing the sense
-      const a = lvl.clockwise ? 0.3 : -0.3;
-      arrowHead(CX + Math.cos(a - Math.PI / 2) * r, CY + Math.sin(a - Math.PI / 2) * r, lvl.clockwise ? 1 : -1, 0, col.text);
-      label(g, `${lvl.n} turn${lvl.n > 1 ? 's' : ''}, ${lvl.i} A`, CX, CY - r - 16, { size: 13, color: col.muted });
-      showField(CX, CY, lvl.out, 20);
-      verdictLabel(`B = ${fmt(lvl.ut)} µT`, CX, 30);
-    }
-    function drawArc() {
-      if (lvl.kind !== 'arc') return;
-      const r = Math.min(100, 45 + lvl.rCm * 8);
-      const span = lvl.frac * Math.PI * 2;
-      const a0 = -Math.PI / 2 - span / 2;
-      const a1 = a0 + span;
-      const dir = lvl.clockwise ? 1 : -1;
-      // the arc
-      g.strokeStyle = '#b87333';
-      g.lineWidth = 4;
-      g.beginPath();
-      g.arc(CX, CY, r, a0, a1);
-      g.stroke();
-      // the straight leads run radially outwards from each end, in line with the centre
-      const lead = (a: number) => {
-        const x0 = CX + Math.cos(a) * r;
-        const y0 = CY + Math.sin(a) * r;
-        const x1 = CX + Math.cos(a) * (r + 70);
-        const y1 = CY + Math.sin(a) * (r + 70);
-        g.beginPath();
-        g.moveTo(x0, y0);
-        g.lineTo(x1, y1);
-        g.stroke();
-        return [x0, y0, x1, y1];
-      };
-      lead(a0);
-      lead(a1);
-      circulate(CX, CY, r, a0, span, dir, 10, 0.22);
-      disc(g, CX, CY, 3, col.muted);
-      label(g, `R = ${lvl.rCm} cm`, CX, CY + 26, { size: 12, color: col.muted });
-      showField(CX + 44, CY, lvl.out, 14);
-      verdictLabel(`B = ${fmt(lvl.ut)} µT`, CX, 30);
-    }
-    function drawAxis() {
-      if (lvl.kind !== 'axis') return;
-      // the coil seen edge-on on the left, the axis, the point, and a graph of B along the axis
-      const R = lvl.rCm;
-      const x0 = 110;
-      const scale = 8;
-      g.strokeStyle = '#b87333';
-      g.lineWidth = 5;
-      g.beginPath();
-      g.ellipse(x0, 90, 10, 50, 0, 0, Math.PI * 2);
-      g.stroke();
-      g.strokeStyle = col.muted;
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.moveTo(x0, 90);
-      g.lineTo(580, 90);
-      g.stroke();
-      const px = x0 + lvl.xCm * scale * 0.8;
-      disc(g, px, 90, 5, col.accent);
-      label(g, `x = ${lvl.xCm} cm`, px, 70, { size: 12, color: col.accent });
-      // B(x) graph
-      const gx = x0;
-      const gy = 300;
-      g.strokeStyle = col.muted;
-      g.beginPath();
-      g.moveTo(gx, gy);
-      g.lineTo(580, gy);
-      g.moveTo(gx, gy);
-      g.lineTo(gx, 140);
-      g.stroke();
-      const f = runF();
-      g.strokeStyle = col.accent;
-      g.lineWidth = 2.5;
-      g.beginPath();
-      const nPts = 40;
-      for (let k = 0; k <= nPts * Math.max(0.05, f || 1); k++) {
-        const xc = (k / nPts) * 40;
-        const b = axisUT(lvl.n, lvl.i, R, xc) / lvl.centreUt;
-        const sx = gx + xc * scale * 0.8 * 1.45;
-        const sy = gy - b * 140;
-        if (k) g.lineTo(sx, sy);
-        else g.moveTo(sx, sy);
-      }
-      g.stroke();
-      const mx = gx + lvl.xCm * scale * 0.8 * 1.45;
-      const my = gy - lvl.ratio * 140;
-      disc(g, mx, my, 5, col.accent);
-      g.strokeStyle = col.muted;
-      g.setLineDash([4, 4]);
-      g.beginPath();
-      g.moveTo(mx, my);
-      g.lineTo(mx, gy);
-      g.moveTo(mx, my);
-      g.lineTo(gx, my);
-      g.stroke();
-      g.setLineDash([]);
-      label(g, 'B / B₀ along the axis', 360, 150, { size: 12, color: col.muted });
-      label(g, '1', gx - 10, gy - 140, { size: 11, color: col.muted });
-      // current flows round the coil: seen edge-on, it runs up one side and down the other
-      for (let k = 0; k < 5; k++) {
-        const t = (((clock * 0.5 + k / 5) % 1) + 1) % 1;
-        disc(g, x0 - 9, 140 - 100 * t, 2.8, POS);
-        disc(g, x0 + 9, 40 + 100 * t, 2.8, POS);
-      }
-      verdictLabel(`B = ${fmt(lvl.ut)} µT (${fmt(lvl.ratio)} of the centre)`, 420, 30);
-    }
-    function drawConcentric() {
-      if (lvl.kind !== 'concentric') return;
-      const r1 = 36 + lvl.r1Cm * 4;
-      const r2 = 36 + lvl.r2Cm * 4;
-      g.strokeStyle = '#b87333';
-      g.lineWidth = 4;
-      g.beginPath();
-      g.arc(CX, CY, r1, 0, Math.PI * 2);
-      g.stroke();
-      g.beginPath();
-      g.arc(CX, CY, r2, 0, Math.PI * 2);
-      g.stroke();
-      // the inner loop is anticlockwise (field out of the page); the outer one is the same or the opposite
-      circulate(CX, CY, r1, 0, Math.PI * 2, -1, 10, 0.2);
-      circulate(CX, CY, r2, 0, Math.PI * 2, lvl.same ? -1 : 1, 16, 0.14);
-      label(g, `${lvl.i1} A`, CX + r1 + 4, CY - 10, { size: 12, color: col.text });
-      label(g, `${lvl.i2} A`, CX + r2 + 4, CY - 10, { size: 12, color: col.text });
-      label(g, lvl.same ? 'same sense' : 'opposite senses', CX, 32, { size: 13, color: col.muted });
-      showField(CX, CY, lvl.out, 14);
-      verdictLabel(`B = ${fmt(lvl.ut)} µT`, CX, 318);
-    }
-
-    ctx.root.append(h('p', null, lvl.story), canvas, hint, controls, feedback, solution);
-    return startLoop((dt) => {
-      clock += dt;
-      if (runT !== null && runT < RUN + 0.2) runT += dt;
-      g.clearRect(0, 0, W, H);
-      drawElement();
-      drawLoop();
-      drawArc();
-      drawAxis();
-      drawConcentric();
-      if (verdictAt !== null && clock - verdictAt < REVEAL) {
-        g.strokeStyle = verdictOk ? col.good : col.bad;
-        g.lineWidth = 6;
-        g.globalAlpha = 1 - (clock - verdictAt) / REVEAL;
-        g.strokeRect(3, 3, W - 6, H - 6);
-        g.globalAlpha = 1;
-      }
-      const phase = verdictAt === null ? 'idle' : busy() || clock - verdictAt < REVEAL ? 'testing' : 'done';
-      canvas.dataset.phase = phase;
-      if (pendingWin !== null && phase !== 'testing') {
-        wonAt ??= clock;
-        if (clock - wonAt > 0.3) {
-          const s = pendingWin;
-          pendingWin = null;
-          ctx.win({ stars: s });
-        }
-      }
-    });
+    const n = Math.max(1, Math.min(5, ctx.level)) as 1 | 2 | 3 | 4 | 5;
+    return mountDialLevel(ctx as never, level(n, ctx.random) as never, ARIA);
   },
 });

@@ -3,8 +3,8 @@ import { createArcade, PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { fmt, sgn } from '@core/judge';
 import { glow, line, orb, text, trace } from '@core/neon';
-import { lens, parallelRays, sensor, slide } from './art';
-import { SLIDERS, buildGame, explainRound, fInLiquid, fromPower, grindF, judgeGrind, judgeLiquid, judgeProjector, judgeRelay, judgeStack, liquidText, missText, pairPower, powerText, projectorV, resultLine } from './logic';
+import { lantern, lens, glassRod, grinder, parallelRays, sensor, slide } from './art';
+import { LIQUID_MISS_FADE, PROJ_MISS, SLIDERS, buildGame, curvedDen, curvedMissDen, curvedReading, explainRound, fInLiquid, fromPower, grindF, grindMissFocus, indexText, judgeCurved, judgeGrind, judgeLiquid, judgeProjector, judgeRelay, judgeStack, liquidMissF, liquidMissLabel, liquidSide, liquidText, mediumName, missText, relayMissDraw, pairPower, powerText, projectorMiss, projectorStartX, projectorV, resultLine, stackMissF, stackMissLabel, stackSide, type StackSide } from './logic';
 
 const W = 640;
 const H = 340;
@@ -101,10 +101,12 @@ export default defineGame({
           if (x0 + test.f * sc < W) text(g, `test beam: ${fmt(test.f)} cm`, x0 + test.f * sc, AX - 60, PAL.dim, 11);
         }
         if (resolving) {
+          // a miss draws the focus a fixed 5 cm behind or in front of the sensor, never at the player's own focus
+          const fDraw = attempt!.ok ? attempt!.f : grindMissFocus(r, attempt!.x);
           g.globalAlpha = Math.min(1, A.rt / 0.8);
-          parallelRays(g, x0, AX, attempt!.f, sc, Math.min(W - 10, Math.max(fx + 20, x0 + attempt!.f * sc + 30)), PAL.yellow);
+          parallelRays(g, x0, AX, fDraw, sc, Math.min(W - 10, Math.max(fx + 20, x0 + fDraw * sc + 30)), PAL.yellow);
           g.globalAlpha = 1;
-          const px = x0 + attempt!.f * sc;
+          const px = x0 + fDraw * sc;
           if (A.rt > 0.8 && px < W - 6) {
             glow(g, attempt!.ok ? PAL.green : PAL.red, 14, () => {
               g.fillStyle = attempt!.ok ? PAL.green : PAL.red;
@@ -123,7 +125,7 @@ export default defineGame({
       const S = SLIDERS.stack;
       let P2: number = S.start;
       let measured: { p: number; at: number } | null = null;
-      let attempt: { ok: boolean; p: number } | null = null;
+      let attempt: { ok: boolean; p: number; side: StackSide } | null = null;
       const knobY = (p: number) => 290 - ((p - S.min) / (S.max - S.min)) * 220;
       const slider = A.slider({ aria: 'Power of the back lens in dioptres', label: 'Back lens power', min: S.min, max: S.max, step: S.step, value: P2, unit: 'D', text: (v) => `${v > 0 ? '+' : ''}${v}`, onInput: (v) => (P2 = v) });
       A.handle({ x: () => 604, y: () => knobY(P2), r: 22, drag: (_px, py) => slider.set(S.min + ((290 - py) / 220) * (S.max - S.min)) });
@@ -138,7 +140,7 @@ export default defineGame({
         A.button('🔥 Fire', 'Fire the beam through the pair', () => {
           const r = rounds[ri()];
           const j = judgeStack(r, P2);
-          attempt = { ok: j.ok, p: j.p };
+          attempt = { ok: j.ok, p: j.p, side: stackSide(r, P2) };
           A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), { x: P2 }), { x: 400, y: 175 }, 1.0);
         }),
       );
@@ -177,7 +179,8 @@ export default defineGame({
         }
         const live = r.assist === 0 || resolving;
         if (live) {
-          const f = Math.abs(p) < 1e-9 ? Infinity : fromPower(p);
+          // a miss draws a focus a fixed distance to one side of the flag, never the pair's own focus
+          const f = resolving && !attempt!.ok ? stackMissF(r, attempt!.side, sc) : Math.abs(p) < 1e-9 ? Infinity : fromPower(p);
           g.globalAlpha = resolving ? 1 : 0.8;
           parallelRays(g, mid, AX, f, sc, W - 70, resolving ? (attempt!.ok ? PAL.green : PAL.red) : PAL.yellow);
           g.globalAlpha = 1;
@@ -190,7 +193,7 @@ export default defineGame({
         text(g, '−10 D', 604, 308, PAL.dim, 10);
         orb(g, 90, AX, 14, PAL.pink, t, mood(attempt, 1.0));
         text(g, 'Dot', 90, AX + 30, PAL.white, 11);
-        if (resolving && A.rt > 0.5) glow(g, attempt!.ok ? PAL.green : PAL.red, 10, () => text(g, `pair: ${sgn(attempt!.p)} D`, 320, 292, attempt!.ok ? PAL.green : PAL.red, 15));
+        if (resolving && A.rt > 0.5) glow(g, attempt!.ok ? PAL.green : PAL.red, 10, () => text(g, attempt!.ok ? `pair: ${sgn(attempt!.p)} D` : `the pair is ${stackMissLabel(attempt!.side)}`, 320, 292, attempt!.ok ? PAL.green : PAL.red, 15));
       });
     }
 
@@ -199,9 +202,9 @@ export default defineGame({
       const rounds = game.rounds;
       const F = SLIDERS.focal;
       let f: number = F.start;
-      let x = 30;
+      let x = projectorStartX(rounds[0].D);
       let test: { f: number; x: number; v: number | null } | null = null;
-      let attempt: { ok: boolean; f: number; x: number } | null = null;
+      let attempt: { ok: boolean; f: number; x: number; miss: ReturnType<typeof projectorMiss> } | null = null;
       const scFor = () => 520 / rounds[ri()].D;
       const knobY = (v: number) => 290 - ((v - F.min) / (F.max - F.min)) * 210;
       const posSlider = A.slider({ aria: 'Lens position from the slide in centimetres', label: 'Lens stands', min: 5, max: rounds[0].D - 5, step: 1, value: x, unit: 'cm from the slide', onInput: (v) => (x = v) });
@@ -220,13 +223,13 @@ export default defineGame({
         A.button('📽️ Fire', 'Fire the projector', () => {
           const r = rounds[ri()];
           const j = judgeProjector(r, f, x);
-          attempt = { ok: j.ok, f, x };
+          attempt = { ok: j.ok, f, x, miss: projectorMiss(r, f, x) };
           A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), { x, f }), { x: 50 + r.D * scFor(), y: 200 }, 1.4);
         }),
       );
       onRound = (i) => {
         posSlider.range(5, rounds[i].D - 5);
-        x = Math.round(rounds[i].D / 2);
+        x = projectorStartX(rounds[i].D);
         posSlider.set(x);
         f = F.start;
         fSlider.set(f);
@@ -276,24 +279,28 @@ export default defineGame({
           diamond(g, ix, AX, PAL.cyan);
         } else if (test && A.phase === 'play' && test.v !== null) diamond(g, 50 + (test.x + test.v) * sc, AX, PAL.cyan);
         if (resolving) {
-          if (v === null) {
+          const miss = attempt!.miss;
+          if (v === null || miss.none) {
             text(g, 'no real image: the slide is inside the focus', 330, 310, PAL.red, 13);
           } else {
+            // a miss draws the picture a FIXED distance short of or beyond the screen, at a FIXED size against the frame, with a fixed
+            // blur and no marker: never at the player's own image distance or size
+            const frameH = Math.min(130, 40 * r.m);
             const m = v / xU;
-            const hi = Math.min(130, 40 * m);
-            const ix = lx + v * sc;
+            const hi = attempt!.ok ? Math.min(130, 40 * m) : Math.min(138, frameH * (miss.size === 'big' ? PROJ_MISS.big : miss.size === 'small' ? PROJ_MISS.small : 1));
+            const ix = attempt!.ok ? lx + v * sc : xs + (miss.where === 'short' ? -PROJ_MISS.offsetPx : miss.where === 'beyond' ? PROJ_MISS.offsetPx : 0);
             const prog = Math.min(1, A.rt / 1.0);
             trace(g, [[50, AX - 40], [lx, AX - 40], [ix, AX + hi]], prog, PAL.yellow);
             trace(g, [[50, AX - 40], [lx, AX], [ix, AX + hi]], prog, PAL.cyan);
             if (A.rt > 1.0) {
-              const blur = attempt!.ok ? 0 : Math.min(22, Math.abs(ix - xs) * 0.25);
+              const blur = attempt!.ok || miss.where === 'on' ? 0 : PROJ_MISS.blur;
               g.save();
               g.shadowColor = PAL.yellow;
               g.shadowBlur = blur;
               g.globalAlpha = Math.max(0.3, 1 - blur / 26);
               slide(g, attempt!.ok ? xs : ix, AX, hi, t, attempt!.ok ? 'cheer' : 'worried', true);
               g.restore();
-              if (!attempt!.ok) text(g, 'the picture forms here', ix, AX - 14, PAL.red, 11);
+              if (!attempt!.ok) text(g, miss.where === 'short' ? 'focus falls short of the screen' : miss.where === 'beyond' ? 'focus falls beyond the screen' : miss.size === 'big' ? 'sharp, but too big' : miss.size === 'small' ? 'sharp, but too small' : 'not quite', 330, 310, PAL.red, 12);
               else glow(g, PAL.green, 14, () => text(g, `SHARP, ${r.m}×`, xs - 50, AX - 114, PAL.green, 15));
             }
           }
@@ -327,7 +334,7 @@ export default defineGame({
           const r = rounds[ri()];
           const j = judgeRelay(r, screen);
           attempt = { ok: j.ok, at: screen };
-          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), {}), { x: x1Of() + r.screen * scFor(), y: 175 }, 1.4);
+          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), {}), { x: x1Of() + screen * scFor(), y: 175 }, 1.4);
         }),
       );
       onRound = (i) => {
@@ -379,17 +386,37 @@ export default defineGame({
           const i2x = x2 + r.v2 * sc;
           const yAt = (xa: number, ya: number, xb: number, yb: number, x: number) => ya + ((yb - ya) * (x - xa)) / (xb - xa);
           const prog = Math.min(1, A.rt / 1.2);
-          trace(g, [[30, tipY], [x1, tipY], [x2, yAt(x1, tipY, i1x, i1y, x2)], [i2x, i2y]], prog, PAL.yellow);
-          trace(g, [[30, tipY], [x1, AX], [x2, yAt(30, tipY, x1, AX, x2) + (yAt(x1, AX, i1x, i1y, x2) - AX)], [i2x, i2y]], prog, PAL.cyan, 1.6);
-          if (A.rt > 1.2) {
-            const blur = attempt!.ok ? 0 : Math.min(22, Math.abs(i2x - sx) * 0.25);
-            g.save();
-            g.shadowColor = PAL.yellow;
-            g.shadowBlur = blur;
-            g.globalAlpha = Math.max(0.3, 1 - blur / 26);
-            orb(g, attempt!.ok ? sx : i2x, Math.max(70, Math.min(AX + 100, i2y)), 10, PAL.yellow, t, attempt!.ok ? 'cheer' : 'worried');
-            g.restore();
-            if (!attempt!.ok) text(g, 'the image forms here', i2x, AX + 130, PAL.red, 11);
+          if (attempt!.ok) {
+            trace(g, [[30, tipY], [x1, tipY], [x2, yAt(x1, tipY, i1x, i1y, x2)], [i2x, i2y]], prog, PAL.yellow);
+            trace(g, [[30, tipY], [x1, AX], [x2, yAt(30, tipY, x1, AX, x2) + (yAt(x1, AX, i1x, i1y, x2) - AX)], [i2x, i2y]], prog, PAL.cyan, 1.6);
+            if (A.rt > 1.2) {
+              g.save();
+              g.shadowColor = PAL.yellow;
+              g.shadowBlur = 0;
+              orb(g, sx, Math.max(70, Math.min(AX + 100, i2y)), 10, PAL.yellow, t, 'cheer');
+              g.restore();
+            }
+          } else {
+            // a miss shows only the player's own screen: the light from Beacon to lens 1, then a fixed-width beam to the screen,
+            // a blurred spot of FIXED size, and which side of the screen the image formed on. Nothing marks the true image.
+            const md = relayMissDraw(r, attempt!.at);
+            trace(g, [[30, tipY], [x1, tipY]], prog, PAL.yellow);
+            trace(g, [[30, tipY], [x1, AX]], prog, PAL.cyan, 1.6);
+            if (A.rt > 0.6) {
+              g.globalAlpha = Math.min(1, (A.rt - 0.6) / 0.5);
+              line(g, x2, AX - 22, sx, AX - md.rayHalf, PAL.red, 1.5);
+              line(g, x2, AX + 22, sx, AX + md.rayHalf, PAL.red, 1.5);
+              g.globalAlpha = 1;
+            }
+            if (A.rt > 1.2) {
+              g.save();
+              g.shadowColor = PAL.yellow;
+              g.shadowBlur = md.spot;
+              g.globalAlpha = 0.6;
+              orb(g, sx, AX, 10, PAL.yellow, t, 'worried');
+              g.restore();
+              text(g, md.label, sx, AX + 130, PAL.red, 11);
+            }
           }
         }
       });
@@ -401,7 +428,7 @@ export default defineGame({
       const S = SLIDERS.liquid;
       let nL: number = S.start;
       let dip: { n: number; f: number } | null = null;
-      let attempt: { ok: boolean; n: number; f: number } | null = null;
+      let attempt: { ok: boolean; n: number; f: number; side: 'low' | 'high' } | null = null;
       const knobY = (n: number) => 285 - ((n - S.min) / (S.max - S.min)) * 190;
       const slider = A.slider({ aria: 'Refractive index of the liquid', label: 'Liquid index', min: S.min, max: S.max, step: S.step, value: nL, unit: '', text: (v) => `n = ${v.toFixed(2)}`, onInput: (v) => (nL = v) });
       A.handle({ x: () => 570, y: () => knobY(nL), r: 22, drag: (_px, py) => slider.set(S.min + ((285 - py) / 190) * (S.max - S.min)) });
@@ -417,7 +444,7 @@ export default defineGame({
         A.button('🎩 Do the trick', 'Pour this liquid and do the trick', () => {
           const r = rounds[ri()];
           const j = judgeLiquid(r, nL);
-          attempt = { ok: j.ok, n: nL, f: j.f };
+          attempt = { ok: j.ok, n: nL, f: j.f, side: liquidSide(r, nL) };
           A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[1]}` : missText(game, ri(), { x: nL }), { x: 320, y: 185 }, 1.2);
         }),
       );
@@ -447,9 +474,11 @@ export default defineGame({
         text(g, `liquid: n = ${n.toFixed(2)}`, 320, 318, PAL.cyan, 12);
         line(g, 570, 95, 570, 285, PAL.dim, 4);
         text(g, 'n', 570, 85, PAL.dim, 11);
-        const f = fInLiquid(r.nG, n, r.fAir);
+        const missed = resolving && !attempt!.ok;
+        // a miss draws the lens at a fixed fade and a fixed focal length for its side, never the player's own f′
+        const f = missed ? liquidMissF(r, attempt!.side) : fInLiquid(r.nG, n, r.fAir);
         if (live) {
-          const fade = Math.max(0.05, Math.min(1, Math.abs(r.nG - n) * 8 + 0.02));
+          const fade = missed ? LIQUID_MISS_FADE : Math.max(0.05, Math.min(1, Math.abs(r.nG - n) * 8 + 0.02));
           lens(g, 320, AX, Number.isFinite(f) ? f : 1e6, 70, fade);
           parallelRays(g, 320, AX, f, 3, 485, PAL.yellow);
         } else {
@@ -459,7 +488,121 @@ export default defineGame({
         orb(g, 90, AX, 14, PAL.yellow, t, mood(attempt, 1.2));
         text(g, 'Lumi’s light', 90, AX + 30, PAL.white, 11);
         if (dip && A.phase === 'play') text(g, `dip test, n = ${dip.n.toFixed(2)}: ${liquidText(dip.f)}`, 320, 290, PAL.cyan, 11);
-        if (resolving && A.rt > 0.4) glow(g, attempt!.ok ? PAL.green : PAL.red, 10, () => text(g, liquidText(attempt!.f), 320, 290, attempt!.ok ? PAL.green : PAL.red, 12));
+        if (resolving && A.rt > 0.4) glow(g, attempt!.ok ? PAL.green : PAL.red, 10, () => text(g, attempt!.ok ? liquidText(attempt!.f) : `the lens is ${liquidMissLabel(r, attempt!.side)}`, 320, 290, attempt!.ok ? PAL.green : PAL.red, 12));
+      });
+    }
+
+    // ================= level 6: one curved face (a lantern, a glass rod and a grinding wheel) ===============
+    if (game.kind === 'curved') {
+      const rounds = game.rounds;
+      const S = SLIDERS.curved;
+      const FX = 250; // the curved face
+      const EX = 600; // the flat end of the rod
+      const SX = 520; // the sensor, drawn at the same place whatever the depth (the picture is not to scale)
+      const AX = 190;
+      const HALF = 56;
+      let R: number = S.start;
+      let test: { x: number } | null = null;
+      let attempt: { x: number; ok: boolean; den: number } | null = null;
+      const trackX = (r: number) => 60 + ((r - S.min) * 540) / (S.max - S.min);
+      const radiusText = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)}`;
+      const slider = A.slider({ aria: 'Radius of the curved face in centimetres, negative for a concave face', label: 'Radius of the face', min: S.min, max: S.max, step: S.step, value: R, unit: 'cm', text: radiusText, onInput: (v) => (R = v) });
+      A.handle({ x: () => trackX(R), y: () => 44, r: 22, drag: (px) => slider.set(S.min + ((px - 60) * (S.max - S.min)) / 540) });
+      const zero = () => A.freeNote('A radius of 0 cm is not a curved face: dial a radius other than zero.');
+      A.controls.append(
+        slider.row,
+        A.button('🔬 Test beam', 'Test beam: where the light focuses with this radius', () => {
+          if (R === 0) return zero();
+          if (!A.spend()) return;
+          test = { x: R };
+          A.say(curvedReading(rounds[ri()], R), true);
+        }, 'secondary'),
+        A.button('🔥 Grind and fire', 'Grind the face to this radius and fire the light', () => {
+          if (R === 0) return zero();
+          const r = rounds[ri()];
+          const j = judgeCurved(r, R);
+          attempt = { x: R, ok: j.ok, den: j.ok ? r.n2 / r.v : curvedMissDen(r, R) };
+          A.resolve(j.ok, j.ok ? `${resultLine(game, ri())} ${explainRound(game, ri())[0]}` : missText(game, ri(), { x: R }), { x: r.virtual ? 250 + r.v * 5 : SX, y: AX }, 1.2);
+        }),
+      );
+      onRound = (i) => {
+        R = S.start;
+        slider.set(R);
+        test = null;
+        attempt = null;
+        clearSay();
+        const r = rounds[i];
+        const rod = `${mediumName(r.n2)} (n = ${indexText(r.n2)})`;
+        A.hint.textContent = `Light goes from air (n₁ = 1) into a ${rod} rod with one curved end. The lamp stands ${-r.u} cm in front of that end. ${r.virtual ? `The image must be virtual, ${-r.v} cm in front of the end, on the lamp’s side.` : `The sensor is ${r.v} cm deep inside the rod.`} ${r.assist === 0 ? 'The live preview shows where the light focuses.' : r.assist === 1 ? 'The live preview is off; use a test beam.' : 'No preview: work it out.'}`;
+      };
+      A.scene((g, t) => {
+        if (A.phase === 'between') return;
+        const r = rounds[ri()];
+        const resolving = A.phase === 'resolve' && attempt !== null;
+        const shown = resolving ? attempt!.x : R;
+        const sc = r.virtual ? 5 : (SX - FX) / r.v; // px per cm of depth
+        const lampX = r.virtual ? 150 : 70;
+        const sensX = r.virtual ? FX + r.v * 5 : SX;
+        const sag = shown === 0 ? 0 : Math.max(-34, Math.min(34, (Math.sign(shown) * 200) / (Math.abs(shown) + 3)));
+        // the radius track
+        line(g, 60, 44, 600, 44, PAL.dim, 3);
+        for (const k of [-50, -25, 25, 50]) {
+          line(g, trackX(k), 38, trackX(k), 50, PAL.dim, 1.5);
+          text(g, radiusText(k), trackX(k), 68, PAL.dim, 10);
+        }
+        line(g, trackX(0), 34, trackX(0), 54, PAL.red, 2);
+        text(g, '0: no face', trackX(0), 82, PAL.red, 9);
+        text(g, 'radius of the curved face R (cm): concave ← → convex', 330, 24, PAL.dim, 11);
+        line(g, 10, AX, W - 10, AX, PAL.dim, 1.2, [6, 6]);
+        // the rod, the sensor inside it and the grinding wheel
+        glassRod(g, FX, EX, AX, HALF, sag);
+        text(g, `${mediumName(r.n2)} rod, n = ${indexText(r.n2)}`, 425, AX - HALF - 10, PAL.cyan, 11);
+        grinder(g, FX - 24, AX - HALF - 14, t, resolving && A.rt < 0.9, A.rt);
+        if (r.virtual) {
+          g.globalAlpha = 0.55;
+          g.setLineDash([4, 4]);
+          g.strokeStyle = PAL.green;
+          g.lineWidth = 2;
+          g.strokeRect(sensX - 11, AX - 46, 22, 92);
+          g.setLineDash([]);
+          g.globalAlpha = 1;
+          text(g, `image target: ${-r.v} cm in front`, sensX - 6, AX + 66, PAL.green, 10);
+        } else {
+          sensor(g, sensX, AX, t, mood(attempt, 1.1));
+          text(g, `sensor, ${r.v} cm deep`, sensX, AX + 62, PAL.green, 11);
+        }
+        lantern(g, lampX, AX - 10, t, mood(attempt, 1.1), resolving && A.rt < 1.2);
+        text(g, `lamp: |u| = ${-r.u} cm`, lampX + 4, AX + 82, PAL.yellow, 11);
+        // light from the lamp, bent at the face (rays are the lamp's, the bend is `den` = n₂/v′)
+        const rays = (den: number, color: string, alpha: number, upTo = EX - 4) => {
+          g.globalAlpha = alpha;
+          for (const k of [-44, -26, 26, 44]) {
+            line(g, lampX + 14, AX, FX, AX + k, color, 1.5);
+            const slope = (-k * den) / (r.n2 * sc);
+            line(g, FX, AX + k, upTo, AX + k + slope * (upTo - FX), color, 1.5);
+            if (den < 0) {
+              const vx = FX + (r.n2 / den) * sc;
+              if (vx > 10) line(g, FX, AX + k, vx, AX, color, 1, [3, 4]);
+            }
+          }
+          g.globalAlpha = 1;
+        };
+        if (!resolving && r.assist === 0 && A.phase === 'play' && R !== 0) {
+          rays(curvedDen(r, R), PAL.yellow, 0.7);
+          const fx = FX + (r.n2 / curvedDen(r, R)) * sc;
+          if (Number.isFinite(fx) && fx > FX && fx < EX) diamond(g, fx, AX, PAL.yellow);
+        } else if (test && A.phase === 'play' && test.x === R && R !== 0) {
+          rays(curvedDen(r, test.x), PAL.dim, 0.8);
+          text(g, 'test beam', 425, AX + 100, PAL.dim, 11);
+        }
+        if (resolving) {
+          const prog = Math.min(1, Math.max(0, (A.rt - 0.3) / 0.8));
+          rays(attempt!.den, attempt!.ok ? PAL.green : PAL.red, prog);
+          if (A.rt > 1.1) {
+            if (attempt!.ok) glow(g, PAL.green, 16, () => text(g, 'SHARP!', 425, AX + 100, PAL.green, 16));
+            else text(g, 'blurred', 425, AX + 100, PAL.red, 14);
+          }
+        }
       });
     }
 

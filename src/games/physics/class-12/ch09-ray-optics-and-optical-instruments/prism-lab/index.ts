@@ -4,8 +4,9 @@ import { createArcade, PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { fmt } from '@core/judge';
 import { along, glow, line, orb, text, trace } from '@core/neon';
-import { APEX, BASE_Y, HEIGHT, add, trace3, type V } from './geometry';
-import { SLIDERS, buildGame, explainRound, indexFromMinDev, judgeGel, judgePong, judgeSweet, missText, resultLine, testText, trapped, type GelRound, type PongRound, type SweetRound } from './logic';
+import { APEX, BASE_Y, HEIGHT, add, hitPoint, trace3, type V } from './geometry';
+import { SLIDERS, buildGame, explainRound, indexFromMinDev, judgeGel, judgePong, judgeSweet, missText, resultLine, startAngle, testText, trapped, type GelRound, type PongRound, type SweetRound } from './logic';
+import { helperOn, paidFlash } from '@core/aidflash';
 
 const W = 640;
 const H = 340;
@@ -37,7 +38,8 @@ export default defineGame({
     };
     const ri = () => Math.min(A.round, 2);
     const S = SLIDERS;
-    let inc: number = S.i.start;
+    const flash = paidFlash();
+    let inc: number = startAngle(game.kind);
     let nEst: number = S.n.start;
     let attempt: { ok: boolean; i: number } | null = null;
     const incSlider = A.slider({ aria: 'Angle of incidence in degrees', label: 'Beam arrives at', min: S.i.min, max: S.i.max, step: S.i.step, value: inc, unit: '°', onInput: (v) => (inc = v) });
@@ -72,6 +74,7 @@ export default defineGame({
     A.controls.append(
       A.button('🔦 Test beam', 'Test beam: measure the bend at this angle', () => {
         if (!A.spend()) return;
+        flash.paid();
         A.say(testText(roundA(), nRelOf(), inc), true);
       }, 'secondary'),
       A.button('🔥 Fire', 'Fire the beam at this angle', () => {
@@ -91,20 +94,19 @@ export default defineGame({
           if (!ok) miss = missText(game, k, { i: inc });
         }
         attempt = { ok, i: inc };
-        const tr = trace3(R.A, nRelOf(), inc);
-        const hit: V = tr.out ? add(tr.P2, tr.out, 150) : tr.tirEnd ?? tr.P2;
-        A.resolve(ok, ok ? `${resultLine(game, k)} ${explainRound(game, k)[0]}` : miss, { x: Math.max(20, Math.min(W - 20, hit[0])), y: Math.max(30, Math.min(H - 30, hit[1])) }, 1.4);
+        const hit = hitPoint(R.A, nRelOf(), inc);
+        A.resolve(ok, ok ? `${resultLine(game, k)} ${explainRound(game, k)[0]}` : miss, { x: hit[0], y: hit[1] }, 1.4);
       }),
     );
     onRound = (k) => {
-      inc = S.i.start;
+      inc = startAngle(game.kind);
       incSlider.set(inc);
       nEst = S.n.start;
       nSlider?.set(nEst);
       attempt = null;
       clearSay();
       const R = game.rounds[k];
-      const live = R.assist === 0 ? 'The live readout is on.' : R.assist === 1 ? 'The live readout is off: use test beams.' : 'No readout: work it out.';
+      const live = R.assist === 0 ? 'The live readout is on.' : R.assist === 1 ? 'The beam path and the crystal show for a moment after a test beam.' : 'No readout: work it out.';
       if (game.kind === 'sweet') A.hint.textContent = `Prism apex angle ${R.A}°. Sweep the angle and watch the bend, or use test beams: two angles with the same bend lie either side of the sweet spot, and it is near the middle of them. ${live}`;
       else if (game.kind === 'gel') A.hint.textContent = `Prism apex ${R.A}°, glass n = ${(R as GelRound).n}, gel n = ${(R as GelRound).nL}. Find the angle of least bend in the gel. ${live}`;
       else A.hint.textContent = `Prism apex ${R.A}°, glass n = ${(R as PongRound).n}. Photon must just bounce off the second face. ${live}`;
@@ -133,6 +135,7 @@ export default defineGame({
       const resolving = A.phase === 'resolve' && attempt !== null;
       const iShown = resolving ? attempt!.i : inc;
       const nRel = nRelOf();
+      const since = flash.since(A.clock, k);
       const tr = trace3(R.A, nRel, iShown);
       const isGel = game.kind === 'gel';
       g.fillStyle = isGel ? 'rgba(93,255,154,0.08)' : 'rgba(255,255,255,0.03)';
@@ -148,13 +151,14 @@ export default defineGame({
         const cpos = ts.out ? add(ts.P2, ts.out, 190) : ts.P2;
         const cx = Math.min(W - 30, cpos[0]);
         const cy = Math.max(70, Math.min(H - 40, cpos[1]));
-        const shown = R.assist === 0 || resolving;
+        // live in round 1, for a moment after a test beam in round 2, never in round 3; after a miss it is not drawn
+        const shown = helperOn(R.assist, resolving && attempt!.ok, since);
         const lit = resolving && attempt!.ok && A.rt > 1.3;
         if (shown) crystal(g, cx, cy, lit, t);
         else text(g, '?', cx, cy + 12, PAL.dim, 34);
       }
       // the beam
-      const live = R.assist === 0 || resolving || (R.assist === 1 && A.phase === 'play');
+      const live = helperOn(R.assist, false, since) || resolving;
       const src = add(tr.E1, tr.u, -190);
       const pts: V[] = [src, tr.E1, tr.P2];
       if (tr.out) pts.push(add(tr.P2, tr.out, 260));

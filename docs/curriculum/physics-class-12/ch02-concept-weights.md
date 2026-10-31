@@ -48,8 +48,10 @@ Class 12 Physics, Chapter 2: Electrostatic Potential and Capacitance (NCERT 2026
 | 2 (done) | Equipotential maps (§2.6): surfaces and the field–potential link | P5, P5b | 13 (8.2%) | Ex 2.3; Example 2.3 |
 | 3 (done) | Energy bench (§2.7 to 2.8): energy of a system, a charge in a field, a dipole in a field | P6, P7, P7b | 24 (15.2%) | Examples 2.4, 2.5, 2.6 |
 | 4 (done) | Conductor lab (§2.9 to 2.10): inside and surface of conductors, shielding, shell, dielectrics | P8, P8b, P9, P9b | 23 (14.6%) | Ex 2.4; Example 2.7 |
-| 5 (done) | Capacitor bench (§2.11 to 2.13): C = Q/V, the parallel plate, dielectric with the supply on or off | P10, P11, P12 | 30 (19.0%) | Ex 2.5, 2.8, 2.9; Example 2.8 |
+| 5 (done) | Lightning on Set, id `capacitor-bench` (§2.11 to 2.13, 2.15; rebuilt 2026-10-30 from the old number-entry bench): C = Q/V, the parallel plate, a dielectric with the charger on or off, air breakdown, energy density | P10, P11, P12 | 30 (19.0%) | Ex 2.5, 2.8, 2.9; Example 2.8 |
 | 6 (done) | Circuit builder (§2.14 to 2.15): series and parallel, energy stored and lost | P13, P14, P14b | 30 (19.0%) | Ex 2.6, 2.7, 2.10, 2.11; Examples 2.9, 2.10 |
+
+Since 2026-10-30 wave 5 also plays two items that have no exercise and so carry no weight above: the dielectric strength of air, about 3 × 10⁶ V/m (§2.11, levels 1 to 4), and the energy density of the field, u = ½ε₀E² (§2.15, level 4).
 
 Wave 6 (series, parallel and energy) and wave 5 (the capacitor itself) are the heaviest, and between them cover most of the numerical questions (Ex 2.5 to 2.11).
 

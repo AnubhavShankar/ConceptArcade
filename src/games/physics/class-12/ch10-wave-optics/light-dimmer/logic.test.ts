@@ -44,27 +44,57 @@ describe('every level has three solvable rounds', () => {
       }
     }
   });
-  it('level 2: 30°, 45° and 60° in some order; exactly one dial setting wins each', () => {
+  it('level 2: three of six wanted fractions, each checked numerically; exactly one whole-degree dial setting wins each', () => {
+    const seen = new Set<number>();
     for (const s of seeds) {
       const rounds = shadeRounds(lcg(s));
-      expect(rounds.map((r) => r.thetaSol).sort((a, b) => a - b)).toEqual([30, 45, 60]);
+      expect(new Set(rounds.map((r) => r.target)).size).toBe(3);
       for (const r of rounds) {
-        expect(twoPolaroids(r.thetaSol)).toBeCloseTo(r.target, 9);
-        expect(grid(SLIDERS.theta.min, SLIDERS.theta.max, SLIDERS.theta.step).filter((t) => judgeShade(r, t))).toEqual([r.thetaSol]);
+        seen.add(r.target);
+        expect(twoPolaroids(r.thetaSol)).toBeCloseTo(r.target, 6);
+        expect(Math.round(r.target * 1000) / 1000).toBe(r.target);
+        const winners = grid(SLIDERS.theta.min, SLIDERS.theta.max, SLIDERS.theta.step).filter((t) => judgeShade(r, t));
+        expect(winners).toHaveLength(1);
+        expect(Math.abs(winners[0] - r.thetaSol)).toBeLessThanOrEqual(0.5);
+        // the winning whole degree really gives the wanted fraction to within a percent
+        expect(Math.abs(twoPolaroids(winners[0]) - r.target) / r.target).toBeLessThan(0.02);
       }
     }
+    expect([...seen].sort((a, b) => a - b)).toEqual([0.125, 0.18, 0.25, 0.32, 0.375, 0.405]);
   });
-  it('level 3: the angle and its mirror image 90° − θ both win, 45° is the single peak, and nothing else does', () => {
+  it('level 3: three of five wanted fractions; the angle and its mirror image 90° − θ both win, 45° is the single peak, and nothing else does', () => {
+    const seen = new Set<number>();
     for (const s of seeds) {
       const rounds = middleRounds(lcg(s));
-      expect(rounds.map((r) => r.target).sort((a, b) => a - b)).toEqual([0.0625, 0.1875, 0.25]);
+      expect(new Set(rounds.map((r) => r.target)).size).toBe(3);
       for (const r of rounds) {
-        for (const sol of r.solutions) expect(middlePolaroid(sol)).toBeCloseTo(r.target, 9);
+        seen.add(r.target);
+        for (const sol of r.solutions) expect(middlePolaroid(sol)).toBeCloseTo(r.target, 6);
         const winners = grid(SLIDERS.theta.min, SLIDERS.theta.max, SLIDERS.theta.step).filter((t) => judgeMiddle(r, t));
         expect(winners.length).toBeGreaterThanOrEqual(r.solutions.length);
         for (const w of winners) expect(Math.abs(middlePolaroid(w) - r.target)).toBeLessThan(0.02);
         expect(r.solutions.length).toBe(r.target === 0.25 ? 1 : 2);
+        expect(grid(SLIDERS.theta.min, SLIDERS.theta.max, SLIDERS.theta.step).filter((t) => judgeMiddle(r, t) && Math.abs(t - 45) <= 1).length > 0).toBe(r.target === 0.25);
       }
+    }
+    expect([...seen].sort((a, b) => a - b)).toEqual([0.0625, 0.09, 0.16, 0.1875, 0.25]);
+  });
+  it('rounds 1 and 2 never fix round 3 (levels 2 and 3 slice three from a bigger pool)', () => {
+    for (const make of [shadeRounds, middleRounds] as const) {
+      const third = new Map<string, Set<number>>();
+      for (let s = 0; s < 400; s++) {
+        const [a, b, c] = make(lcg(s * 7919 + 13));
+        const key = `${a.target},${b.target}`;
+        third.set(key, (third.get(key) ?? new Set()).add(c.target));
+      }
+      expect([...third.values()].every((v) => v.size >= 2)).toBe(true);
+    }
+  });
+  it('the dials start where no round of any level is won', () => {
+    for (const s of seeds) {
+      for (const r of slitRounds(lcg(s))) expect(judgeSlit(r, 1500)).toBe(false);
+      for (const r of shadeRounds(lcg(s))) expect(judgeShade(r, 10)).toBe(false);
+      for (const r of middleRounds(lcg(s))) expect(judgeMiddle(r, 5)).toBe(false);
     }
   });
 });

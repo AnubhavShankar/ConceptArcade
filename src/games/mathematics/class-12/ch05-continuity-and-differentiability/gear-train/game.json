@@ -16,7 +16,8 @@
     "Derivatives of e^x, a^x and ln x",
     "Implicit differentiation",
     "Parametric derivatives",
-    "Second order derivative"
+    "Second order derivative",
+    "Chain rule with trigonometric layers"
   ],
   "learningOutcome": "The student can find the derivative of a composite, exponential, implicit or parametric function at a point and the second derivative, and use it as a rate: output rate = derivative × input rate.",
   "mechanic": "tune-to-target",
@@ -26,7 +27,7 @@
       "title": "Layers of gears",
       "tier": "concept",
       "kind": "foundation",
-      "adds": "Baseline: the chain rule on powers of linear and quadratic expressions at a point; output rate = derivative × crank rate (Ex 5.2 Q1 to Q8).",
+      "adds": "Baseline: the chain rule on powers of linear and quadratic expressions at a point; output rate = derivative × crank rate (Ex 5.2; Misc Q1).",
       "hints": [
         "Peel the layers from the outside in and multiply the derivatives.",
         "First find the derivative at the given x, then divide the target rate by it.",
@@ -37,7 +38,7 @@
       "title": "Exponent and log gears",
       "tier": "application",
       "kind": "concept",
-      "adds": "New: derivatives of e^g, ln g and a^g, with the output counted in units of e to a power or of ln a (Ex 5.4 Q2 to Q8; Ex 5.5).",
+      "adds": "New: derivatives of e^g, ln g and a^g, with the output counted in units of e to a power or of ln a (Ex 5.4 Q2 to Q8).",
       "hints": [
         "d/dx e^g = g′·e^g: the target is a multiple of e^g(x₀).",
         "d/dx ln g = g′/g, which is a fraction at a point.",
@@ -64,6 +65,17 @@
         "x moves steadily, so x″ = 0 and y″ = f″(x)·w².",
         "Differentiate twice, then put in x.",
         "Divide the target by f″ and take the square root."
+      ]
+    },
+    {
+      "title": "Wobble gears",
+      "tier": "challenge",
+      "kind": "complexity",
+      "adds": "Harder: trigonometric chains such as sin 3x, sin² x and tan 2x at special angles; peel the layers from the outside in (Ex 5.2 Q1 to Q8).",
+      "hints": [
+        "(sin u)′ = cos u · u′, (cos u)′ = −sin u · u′, (tan u)′ = sec² u · u′.",
+        "sin² x is (sin x)²: the outer layer is a square.",
+        "Put in the special angle at the end: cos(π/3) = 1/2, sec²(π/4) = 2."
       ]
     }
   ],

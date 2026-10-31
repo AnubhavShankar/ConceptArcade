@@ -1,235 +1,379 @@
+// "Lights of the High Pass" (Section 7.4 and 7.5). Inspirations (code comment only): survival-in-the-snow games (guide the lost party home before they freeze),
+// lighthouse-keeper games, and rhythm games for the level 4 finale (the beat must be steady).
+// Core verb: throttle the water turbine. In every level the player drags the sluice lever, which sets the turbine's speed and so the supply frequency, then flips the lamp switch.
+// Never leak the answer: the lamps are dark before Fire whatever the setting; the lamp meter (LCD) is the only helper (live in round 1, 1.5 s after a paid check in round 2,
+// never in round 3); lamp glow, the trekkers' four paths and the level 4 flicker take only fixed forms; the turbine's take speed is the same for every setting;
+// `hit` is a fixed point; every animation ends by 2.3 s. The art is in art.ts.
+import { PAL } from '@core/arcade';
+import { helperOn, paidFlash } from '@core/aidflash';
 import { defineGame } from '@core/define';
-import { disc, label, themeColors } from '@core/draw';
-import { h } from '@core/dom';
-import { parseNumber } from '@core/quiz';
-import { fitCanvas, startLoop } from '@core/sim';
-import { buildLevel, explainSolution, fmt, judgeCapacitor, judgeFrequency, judgeInductor, judgePower, starsFor, type Brightness, type Lead } from './logic';
+import { mountDialLevel, type DialLevel, type DialSpec, type HandleSpec, type SceneInput } from '@core/dialgame';
+import { text } from '@core/neon';
+import { pointerToLocal } from '@core/sim';
+import {
+  CAP_CAN, CHOKE_BOX, DRIFT_DOOR, DRIFT_TRAIL, JACKETS, LAMPS, LCD, PORCH, ROOF, SLUICE, TRAIL_LEN, YAK, capCan, choke, clamp01, dolma, dropper, drift, ease, inset, lamp, leverY, lever, lodge, mountain,
+  party, pathAt, post, roofWire, shed, snow, stream, tag, trail, yak, type DolmaMood, type PartyState, type YakState,
+} from './art';
+import { DIAL, GLOW, LCD_OFF, TWO_PI, buildRounds, dialOf, fault, goal, hintText, judge, lcdText, meterText, missText, verdictDelay, winText, type Round } from './logic';
 
-const W = 640;
-const H = 340;
-const REVEAL = 0.9;
-const RUN = 3;
-const GX = 330;
-const GW = 280;
-const GY = 130;
+const ARIA = 'A snowbound mountain lodge at night: its keeper stands at the sluice lever of a small water turbine, and a roped party of trekkers waits on the trail for the lamps to light.';
+const ROLE = 'the keeper of a high-pass trekkers’ lodge, whose lamps run on a water turbine she sets by hand';
+const HEROES = [
+  {
+    story: 'A blizzard has caught a party of trekkers below the pass. Dolma’s lodge makes its own AC with a small water turbine: the regulator holds the voltage, but the frequency follows the turbine’s speed, set by the sluice lever. The trail lamps are 12-volt lamps fed through a sealed choke, so the choke’s reactance X_L = 2πfL sets their current.',
+    objective: 'Set the turbine’s frequency so the trail lamps get exactly the current they need, in three storms.',
+  },
+  {
+    story: 'The red porch beacon shows the trekkers the lodge door. It is a 12-volt lamp fed through a sealed capacitor, whose reactance X_C = 1/(2πfC) sets the current. A capacitor works the other way round from a choke: the faster the turbine, the smaller its reactance.',
+    objective: 'Set the frequency so the porch beacon gets exactly its current, in three storms.',
+  },
+  {
+    story: 'Tonight one turbine feeds both: the trail lamps through the choke and the porch beacon through the capacitor. Speeding up dims one and brightens the other. These lamps can take far more than they need; the danger in a blizzard is too little light.',
+    objective: 'Find the one frequency at which both the trail and the beacon are bright enough, in three storms.',
+  },
+  {
+    story: 'Deep winter: the stream is low, the turbine turns slowly, and a lamp flickers so much that the falling snow strobes. The roof beacon has two lamps. One is fed through a resistor dropper, with its current in step with the voltage; the other through the choke or the capacitor, with its current a quarter cycle out of step. If the two currents are equal, one lamp is at its brightest just as the other goes dark.',
+    objective: 'Set the frequency that makes the two beacon lamps carry equal currents, so the light is steady, in three storms.',
+  },
+];
+
+const PEEK_SECONDS = 1.5;
+/** Where the party starts: the leader's distance along the trail from its right end; the others trail behind by GAP. */
+const S0 = 70;
+const GAP = 22;
+/** The leader's distance at the second lamp, where a dim party veers off. */
+const S_VEER = Math.hypot(560 - 630, 296 - 312) + Math.hypot(490 - 560, 282 - 296);
+/** Just past the door, where a party that found the beacon dark walks on. */
+const S_PAST = TRAIL_LEN + 30;
+const TRAIL_DRIFT = (i: number): [number, number] => [DRIFT_TRAIL[0] - 24 + i * 24, DRIFT_TRAIL[1]];
+const DOOR_DRIFT = (i: number): [number, number] => [DRIFT_DOOR[0] - 24 + i * 24, DRIFT_DOOR[1]];
+
+type Out = 'win' | NonNullable<ReturnType<typeof fault>>;
+
+/** A thin cable between two parts of the scene. */
+function cord(g: CanvasRenderingContext2D, pts: [number, number][]) {
+  for (const [c, w] of [['#0a0d1c', 3], ['#6a6f8f', 1.2]] as const) {
+    g.strokeStyle = c;
+    g.lineWidth = w;
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (const p of pts.slice(1)) g.lineTo(p[0], p[1]);
+    g.stroke();
+  }
+}
+
+function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
+  const rounds = buildRounds(n, random);
+  const { min: lo, max: hi } = dialOf(n);
+  const flash = paidFlash();
+  const fx = { shot: null as unknown, done: new Set<string>() };
+  const grab = { held: false, touched: false, bound: null as HTMLCanvasElement | null, f: lo };
+
+  /** One watcher per canvas: whether the lever's grip is held, and whether it was ever touched (the first-touch cue). */
+  function watch(c: HTMLCanvasElement) {
+    if (grab.bound === c) return;
+    grab.bound = c;
+    c.addEventListener('pointerdown', (e) => {
+      const p = pointerToLocal(e, c, 640, 340);
+      if (Math.hypot(p.x - SLUICE.x, p.y - leverY(grab.f, lo, hi)) <= 34) {
+        grab.held = true;
+        grab.touched = true;
+      }
+    });
+    const release = () => {
+      grab.held = false;
+    };
+    c.addEventListener('pointerup', release);
+    c.addEventListener('pointercancel', release);
+  }
+
+  function draw(s: SceneInput<Round>) {
+    const { g, r, k, t, rt, shot, A } = s;
+    const f = s.v.f;
+    const kk = Math.min(2, k);
+    grab.f = f;
+    watch(A.canvas);
+    if (fx.shot !== shot) {
+      fx.shot = shot;
+      fx.done.clear();
+    }
+    const once = (key: string, fn: () => void) => {
+      if (!fx.done.has(key)) {
+        fx.done.add(key);
+        fn();
+      }
+    };
+
+    // the lamp meter: live in round 1, for 1.5 s after a paid check in round 2, never in round 3
+    const since = flash.since(t, k);
+    const live = r.assist === 0 || (!shot && helperOn(r.assist, false, since) && since < PEEK_SECONDS);
+    A.canvas.dataset.lcd = live ? '1' : '0';
+    const lcd = live ? lcdText(r, { f }) : LCD_OFF;
+    const lcdColor = r.assist === 0 ? PAL.green : PAL.yellow;
+
+    const tv = shot ? verdictDelay(r, shot.v) : 0;
+    const ft = shot ? fault(r, shot.v) : null;
+    const win = !!shot && shot.ok;
+    const out: Out | null = shot ? (win ? 'win' : ft!) : null;
+    if (out) A.canvas.dataset.take = out;
+    else delete A.canvas.dataset.take;
+
+    // ---- the lamps (fixed forms only) ----
+    const on = !!shot && rt >= 0.5;
+    let trailA = 0;
+    let porchA = 0;
+    let roofA = 0;
+    let flashV = 0;
+    let broken = false;
+    if (on) {
+      if (n === 1 || n === 2) {
+        const a = ft === 'burst' ? GLOW.right : win ? GLOW.right : GLOW.dim;
+        if (ft === 'burst') {
+          if (rt < 0.6) flashV = 0.45;
+          else broken = true;
+        }
+        if (n === 1) trailA = a;
+        else porchA = a;
+      } else if (n === 3) {
+        trailA = ft === 'trail' ? GLOW.dim : GLOW.right;
+        porchA = ft === 'porch' ? GLOW.dim : GLOW.right;
+      } else {
+        roofA = win ? 1 : 0.3 + 0.7 * (0.5 - 0.5 * Math.cos(TWO_PI * 2 * (rt - 0.5)));
+      }
+    }
+    const pulse = n === 4 && on && !win ? (roofA - 0.3) / 0.7 : 0;
+    const lampXY: [number, number][] = n === 1 || n === 3 ? LAMPS : [];
+    if (shot && ft === 'burst' && rt >= 0.6) {
+      once('pop', () => {
+        const pts: [number, number][] = n === 2 ? [[PORCH.x, PORCH.y]] : lampXY;
+        const cx = pts.reduce((a, p) => a + p[0], 0) / pts.length;
+        const top = Math.min(...pts.map((p) => p[1]));
+        A.float('POP!', cx, top - 22, PAL.white);
+        for (const [x, y] of pts) A.burst(x, y, PAL.white, 10, 120);
+      });
+    }
+
+    // ---- the party's path ----
+    const colors = JACKETS[kk];
+    let pState: PartyState = 'walk';
+    let sLead = S0;
+    let topple = 0;
+    let hidden = false;
+    let driftAt: 'trail' | 'door' | null = null;
+    let beam = 0.3 * Math.sin((t * TWO_PI) / 3);
+    let veer = 0;
+    let veerTo: (i: number) => [number, number] = TRAIL_DRIFT;
+    if (shot) {
+      if (win) sLead = S0 + (TRAIL_LEN - S0) * clamp01((rt - 0.6) / 1.2);
+      else if (ft === 'burst') {
+        if (rt >= 0.6) {
+          pState = 'huddle';
+          beam = Math.sin(rt * 8);
+        }
+      } else if (ft === 'part' || ft === 'dropper') {
+        if (rt >= 0.6) pState = 'shield';
+      } else if (ft === 'dim' || ft === 'trail') {
+        sLead = S0 + (S_VEER - S0) * clamp01((rt - 0.6) / 0.3);
+        veer = ease((rt - 0.9) / 0.25);
+        topple = clamp01((rt - 1.0) / 0.15);
+        if (rt >= 0.9) driftAt = 'trail';
+        if (rt >= 1.15) hidden = true;
+      } else if (ft === 'porch') {
+        sLead = S0 + (S_PAST - S0) * clamp01((rt - 0.6) / 0.7);
+        veer = ease((rt - 1.3) / 0.1);
+        topple = clamp01((rt - 1.3) / 0.1);
+        veerTo = DOOR_DRIFT;
+        if (rt >= 1.3) driftAt = 'door';
+        if (rt >= 1.4) hidden = true;
+      }
+    }
+    const partyPts = (): [number, number][] =>
+      [0, 1, 2].map((i) => {
+        const [px, py] = pathAt(sLead - i * GAP);
+        const [dx, dy] = veerTo(i);
+        return [px + (dx - px) * veer, py + (dy - py) * veer] as [number, number];
+      });
+    if (shot) {
+      if (ft === 'burst' && rt >= 0.6) once('huddle', () => A.float('?', 560, 252, PAL.white));
+      if ((ft === 'part' || ft === 'dropper') && rt >= 0.9) once('which', () => A.float('WHICH WAY?', 540, 250, PAL.white));
+      if ((ft === 'dim' || ft === 'trail') && rt >= 1.15) once('flump', () => A.float('FLUMP', DRIFT_TRAIL[0], DRIFT_TRAIL[1] - 30, PAL.white));
+      if (ft === 'porch' && rt >= 1.4) once('flump', () => A.float('FLUMP', DRIFT_DOOR[0], DRIFT_DOOR[1] - 30, PAL.white));
+      if (win && rt >= 1.8) once('namaste', () => A.float('NAMASTE!', 120, 250, PAL.yellow));
+    }
+
+    // ---- Norbu ----
+    let yState: YakState = 'idle';
+    let yU = 0;
+    if (shot) {
+      yState = 'lift';
+      yU = rt;
+      if (ft === 'burst') {
+        if (rt >= 0.6) {
+          yState = 'back';
+          yU = rt - 0.6;
+        }
+      } else if (win) {
+        if (rt >= tv) {
+          yState = 'toss';
+          yU = rt - tv;
+          once('grunt', () => A.float('GRUNT!', YAK.x, YAK.y - 44, PAL.yellow));
+        }
+      } else if (rt >= tv) {
+        yState = 'low';
+        yU = rt - tv;
+      }
+    }
+
+    // ---- Dolma ----
+    let mood: DolmaMood = 'happy';
+    let lean = 0;
+    let both = 0;
+    let armsUp = 0;
+    let wave = false;
+    let shift = 0;
+    if (shot) {
+      lean = 8 * (rt < 0.25 ? ease(rt / 0.25) : 1 - ease((rt - 0.25) / 0.25));
+      both = rt < 0.5 ? ease(rt / 0.25) : 1 - ease((rt - 0.5) / 0.3);
+      shift = 6 * Math.sin(Math.PI * clamp01(rt / 0.25));
+      once('clunk', () => A.float('CLUNK', 250, 150, PAL.white));
+      if (ft === 'burst') {
+        if (rt >= 0.6) mood = 'startled';
+        if (rt >= tv + 0.8) mood = 'worried';
+      } else if (win) {
+        if (rt >= tv) {
+          mood = 'cheer';
+          armsUp = ease((rt - tv) / 0.2);
+          if (rt >= tv + 0.7) {
+            wave = true;
+            armsUp = 0;
+          }
+        }
+      } else if (rt >= tv) mood = 'worried';
+    }
+    const fast = shot ? ease(rt / 0.5) : 0;
+
+    // ---- compose the frame ----
+    mountain(g, kk);
+    stream(g, t, fast);
+    lodge(g, t, kk);
+    yak(g, t, yState, yU);
+    trail(g);
+    if (n === 1 || n === 3) for (const [x, y] of LAMPS) post(g, x, y);
+    shed(g, t, { f, supply: r.kind === 'choke' || r.kind === 'cap' ? r.v : undefined, fast });
+    lever(g, f, lo, hi, shift);
+
+    // the sealed parts and their cords
+    if (r.kind === 'choke') {
+      choke(g, `CHOKE ${r.l} mH`, [[348, 224], [354, 216]]);
+      cord(g, [[390, 214], [408, 214], [420, 236], [490, 250], [560, 264]]);
+    } else if (r.kind === 'cap') {
+      capCan(g, `CAP ${r.c} µF`, [[228, 226], [179, 222]]);
+      cord(g, [[158, 222], [128, 226]]);
+    } else if (r.kind === 'both') {
+      choke(g, 'CHOKE', [[348, 224], [354, 216]]);
+      cord(g, [[390, 214], [408, 214], [420, 236], [490, 250], [560, 264]]);
+      capCan(g, 'CAP', [[228, 226], [179, 222]]);
+      cord(g, [[158, 222], [128, 226]]);
+    } else if (r.part === 'L') {
+      choke(g, `CHOKE ${r.l} mH`, roofWire([CHOKE_BOX.x - 18, CHOKE_BOX.y]));
+    } else {
+      capCan(g, `CAP ${r.c} µF`, roofWire([CAP_CAN.x, CAP_CAN.y - 15]));
+    }
+    if (r.kind === 'steady') dropper(g, `R ${r.r} Ω`);
+
+    // the lamps
+    const big = ft === 'part' ? 'b' : ft === 'dropper' ? 'a' : '';
+    if (n === 1 || n === 3) for (const [x, y] of LAMPS) lamp(g, x, y, { a: broken ? 0 : trailA, flash: flashV, broken });
+    if (n === 2 || n === 3) lamp(g, PORCH.x, PORCH.y, { a: broken ? 0 : porchA, red: true, flash: flashV, broken });
+    if (n === 4) {
+      lamp(g, ROOF.a[0], ROOF.a[1], { a: roofA, big: big === 'a' });
+      lamp(g, ROOF.b[0], ROOF.b[1], { a: roofA, big: big === 'b' });
+    }
+
+    if (driftAt === 'trail') drift(g, DRIFT_TRAIL[0], DRIFT_TRAIL[1], hidden, colors);
+    if (driftAt === 'door') drift(g, DRIFT_DOOR[0], DRIFT_DOOR[1], hidden, colors);
+    if (!hidden) party(g, t, { pts: partyPts(), state: pState, colors, topple, beam });
+    dolma(g, t, { mood, lean, gripY: leverY(f, lo, hi) + shift, both, armsUp, wave, lamp: !!shot, snow: 3 * clamp01(A.t / 45) });
+    if (n === 4 && win && rt >= tv) inset(g);
+    snow(g, kk, t, n === 4 && !win && on ? { near: [(ROOF.a[0] + ROOF.b[0]) / 2, ROOF.a[1]], pulse } : {});
+
+    // the lamp meter
+    g.fillStyle = '#02060a';
+    g.fillRect(LCD.x, LCD.y, LCD.w, LCD.h);
+    g.strokeStyle = '#555c7d';
+    g.lineWidth = 1;
+    g.strokeRect(LCD.x, LCD.y, LCD.w, LCD.h);
+    text(g, lcd, LCD.x + LCD.w / 2, LCD.y + 13, live ? lcdColor : PAL.dim, 12);
+
+    // the lever's grip with the player's own setting, and the round's goal; both only while setting up
+    if (!shot) {
+      const y = leverY(f, lo, hi);
+      const cue = n === 1 && k === 0 && !grab.touched;
+      if (cue) {
+        const u = (t * 1.1) % 1;
+        g.globalAlpha = 0.7 * (1 - u);
+        g.strokeStyle = PAL.yellow;
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(SLUICE.x, y, 20 + 4 + u * 12, 0, Math.PI * 2);
+        g.stroke();
+        g.globalAlpha = 1;
+      }
+      g.fillStyle = grab.held ? 'rgba(255,210,63,0.4)' : 'rgba(10,16,48,0.25)';
+      g.beginPath();
+      g.arc(SLUICE.x, y, 20, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = grab.held ? PAL.yellow : PAL.white;
+      g.lineWidth = grab.held ? 4 : 2;
+      g.beginPath();
+      g.arc(SLUICE.x, y, 20, 0, Math.PI * 2);
+      g.stroke();
+      text(g, '⇕', SLUICE.x, y - 26, grab.held ? PAL.yellow : PAL.white, 13);
+      text(g, '⇕', SLUICE.x, y + 36, grab.held ? PAL.yellow : PAL.white, 13);
+      tag(g, `${f} Hz`, SLUICE.x + 26, y + 4, 'left', PAL.yellow, 13);
+      if (cue) text(g, 'drag', SLUICE.x + 26, y + 20, PAL.white, 11, 'left');
+      g.fillStyle = 'rgba(6,10,36,0.8)';
+      g.fillRect(170, 16, 300, 20);
+      text(g, goal(r), 320, 31, PAL.white, 13);
+    }
+  }
+
+  const dial: DialSpec<Round> = { key: 'f', aria: 'Turbine frequency in hertz', label: 'Turbine', unit: 'Hz', step: DIAL.f.step, min: lo, max: hi, start: dialOf(n).start };
+  const handle: HandleSpec<Round> = {
+    dial: 'f',
+    at: (_r, v) => [SLUICE.x, leverY(v.f, lo, hi)],
+    drag: (_r, _px, py) => lo + ((SLUICE.y0 - py) / (SLUICE.y0 - SLUICE.y1)) * (hi - lo),
+    radius: 20,
+  };
+
+  return {
+    hero: { name: 'Dolma', role: ROLE, ...HEROES[n - 1] },
+    rounds,
+    charges: [1, 1, 0],
+    dials: [dial],
+    handles: [handle],
+    test: {
+      button: '🔎 Meter check',
+      aria: 'Meter check: read the lamp meter for this frequency',
+      read: (r, v) => {
+        flash.paid();
+        return meterText(r, v);
+      },
+    },
+    fire: { button: '💡 Light the lamps', aria: 'Open the sluice and switch on the lamps' },
+    judge: (r, v) => judge(r, v),
+    miss: (r, v) => missText(r, v),
+    win: (r) => winText(r),
+    hint: (r) => hintText(r),
+    hit: () => [320, 80],
+    delay: (r, v) => verdictDelay(r, v),
+    draw,
+  };
+}
 
 export default defineGame({
   mount(ctx) {
-    const lvl = buildLevel(ctx.level, ctx.random);
-    const col = themeColors();
-
-    let misses = 0;
-    let finished = false;
-    let pendingWin: 1 | 2 | 3 | null = null;
-    let wonAt: number | null = null;
-    let clock = 0;
-    let verdictAt: number | null = null;
-    let verdictOk = false;
-    let runT: number | null = null;
-    let glowPick: Brightness | null = null;
-    let leadPick: Lead | null = null;
-
-    // ---- DOM --------------------------------------------------------------------------------
-    const canvas = h('canvas', { role: 'img', 'aria-label': 'An inductor or capacitor on an AC source, with the voltage and current waves showing their phase difference.' });
-    const g = fitCanvas(canvas, W, H);
-    const feedback = h('p', { class: 'feedback', hidden: true, 'aria-live': 'polite' });
-    const solution = h('section', { class: 'panel solution', hidden: true });
-    const hint = h('p', { class: 'muted note' });
-    const controls = h('div', { class: 'lab-controls' });
-    const free = lvl.freeTests;
-    const say = (text: string, good = false) => {
-      feedback.hidden = false;
-      feedback.className = `feedback ${good ? 'good' : 'bad'}`;
-      feedback.textContent = text;
-    };
-    const costNote = () => (misses > free ? ' That cost a star.' : free > 0 ? ` ${free - misses} free test${free - misses === 1 ? '' : 's'} left.` : '');
-    const freeNote = (m: string) => say(`${m} That does not cost you anything.`);
-    const miss = (text: string) => {
-      misses++;
-      say(text + costNote());
-    };
-    const succeed = (text: string) => {
-      finished = true;
-      say(text, true);
-      solution.replaceChildren(h('h3', null, 'Why that works'), ...explainSolution(lvl).map((t) => h('p', null, t)));
-      solution.hidden = false;
-      controls.querySelectorAll('button, input').forEach((b) => b.setAttribute('disabled', ''));
-      pendingWin = starsFor(misses, free);
-    };
-    const verdict = (ok: boolean) => {
-      verdictAt = clock;
-      verdictOk = ok;
-      runT = 0;
-    };
-    const busy = () => runT !== null && runT < RUN;
-    const field = (aria: string, placeholder: string) => h('input', { class: 'field', type: 'text', inputmode: 'decimal', autocomplete: 'off', 'aria-label': aria, placeholder }) as HTMLInputElement;
-    const num = (el: HTMLInputElement) => parseNumber(el.value);
-    const actionBtn = (text: string, aria: string, fn: () => void) => h('button', { class: 'btn', type: 'button', 'aria-label': aria, onclick: fn }, text);
-    const row = (name: string, input: HTMLElement, unit: string) => h('div', { class: 'control' }, h('span', { class: 'control-label' }, name), input, h('span', { class: 'unit' }, unit));
-    const positive = (...vs: (number | null)[]) => vs.every((v) => v !== null && v > 0);
-    const choice = <T extends string>(name: string, opts: [T, string, string][], onPick: (v: T) => void) => {
-      const btns: HTMLElement[] = opts.map(([v, aria, text]) => {
-        const b = h('button', { class: 'btn btn-ghost', type: 'button', 'aria-label': aria, 'aria-pressed': 'false', onclick: () => {
-          onPick(v);
-          btns.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
-        } }, text);
-        return b;
-      });
-      return h('div', { class: 'control' }, h('span', { class: 'control-label' }, name), ...btns);
-    };
-
-    // ---- the levels -------------------------------------------------------------------------------------------
-    if (lvl.kind === 'inductor') {
-      const xIn = field('Inductive reactance in Ω', 'X_L = ? Ω');
-      const iIn = field('Rms current in A', 'I = ? A');
-      const run = () => {
-        if (finished || busy()) return;
-        const x = num(xIn);
-        const i = num(iIn);
-        if (!positive(x, i)) return freeNote('Enter both answers as positive numbers.');
-        const res = judgeInductor(lvl, x as number, i as number);
-        verdict(res.ok);
-        if (res.ok) return succeed(`X_L = ${fmt(lvl.x)} Ω and I = ${fmt(lvl.i)} A.`);
-        const parts: string[] = [];
-        if (!res.xOk) parts.push('The reactance is not right: X_L = ωL with ω = 2πf and L in henry.');
-        if (!res.iOk) parts.push('The current is not right: it is the rms voltage divided by the reactance.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Reactance', xIn, 'Ω'), row('Rms current', iIn, 'A'), actionBtn('Switch on the source', 'Switch on the source', run));
-      hint.textContent = `A ${lvl.lMilliH} mH inductor on a ${lvl.v} V rms, ${lvl.hz} Hz source.`;
-    }
-    if (lvl.kind === 'capacitor') {
-      const xIn = field('Capacitive reactance in Ω', 'X_C = ? Ω');
-      const iIn = field('Rms current in A', 'I = ? A');
-      const run = () => {
-        if (finished || busy()) return;
-        const x = num(xIn);
-        const i = num(iIn);
-        if (!positive(x, i)) return freeNote('Enter both answers as positive numbers.');
-        const res = judgeCapacitor(lvl, x as number, i as number);
-        verdict(res.ok);
-        if (res.ok) return succeed(`X_C = ${fmt(lvl.x)} Ω and I = ${fmt(lvl.i)} A.`);
-        const parts: string[] = [];
-        if (!res.xOk) parts.push('The reactance is not right: X_C = 1/ωC with ω = 2πf and C in farad.');
-        if (!res.iOk) parts.push('The current is not right: it is the rms voltage divided by the reactance.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Reactance', xIn, 'Ω'), row('Rms current', iIn, 'A'), actionBtn('Switch on the source', 'Switch on the source', run));
-      hint.textContent = `A ${lvl.cMicroF} µF capacitor on a ${lvl.v} V rms, ${lvl.hz} Hz source.`;
-    }
-    if (lvl.kind === 'frequency') {
-      const xIn = field('Reactance at the new frequency in Ω', 'X′ = ? Ω');
-      const run = () => {
-        if (finished || busy()) return;
-        const x = num(xIn);
-        if (!positive(x)) return freeNote('Enter the reactance as a positive number of ohms.');
-        if (glowPick === null) return freeNote('Choose whether the lamp glows brighter or dimmer.');
-        const res = judgeFrequency(lvl, x as number, glowPick);
-        verdict(res.ok);
-        if (res.ok) return succeed(`X′ = ${fmt(lvl.x2)} Ω and the lamp glows ${lvl.glow}.`);
-        const parts: string[] = [];
-        if (!res.xOk) parts.push(lvl.element === 'inductor' ? 'The new reactance is not right: how does the reactance of an inductor depend on frequency?' : 'The new reactance is not right: how does the reactance of a capacitor depend on frequency?');
-        if (!res.gOk) parts.push('The brightness is not right: compare the new reactance with the old one, and think about what that does to the current.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('New reactance', xIn, 'Ω'), choice<Brightness>('The lamp glows', [['brighter', 'The lamp glows brighter', 'Brighter'], ['dimmer', 'The lamp glows dimmer', 'Dimmer']], (v) => (glowPick = v)), actionBtn('Change the frequency', 'Change the frequency', run));
-      hint.textContent = `The ${lvl.element} has a reactance of ${lvl.x1} Ω at ${lvl.hz1} Hz. The source goes to ${lvl.hz2} Hz.`;
-    }
-    if (lvl.kind === 'power') {
-      const pIn = field('Average power in W', 'P = ? W');
-      const run = () => {
-        if (finished || busy()) return;
-        const p = num(pIn);
-        if (p === null || p < 0) return freeNote('Enter the power as a number of watts, zero or more.');
-        if (leadPick === null) return freeNote('Choose whether the current lags or leads the voltage.');
-        const res = judgePower(lvl, p, leadPick);
-        verdict(res.ok);
-        if (res.ok) return succeed(`No net power, and the current ${lvl.lead} the voltage.`);
-        const parts: string[] = [];
-        if (!res.pOk) parts.push('The net power is not right: the phase angle between v and i decides the average power, P = V I cos φ.');
-        if (!res.lOk) parts.push(`The lag or lead is not right: ${lvl.element === 'inductor' ? 'an inductor opposes any change of current, which delays it' : 'the current charges the capacitor, so it reaches its peak before the voltage does'}.`);
-        miss(parts.join(' '));
-      };
-      controls.append(row('Net power', pIn, 'W'), choice<Lead>('The current', [['lags', 'The current lags the voltage', 'Lags'], ['leads', 'The current leads the voltage', 'Leads']], (v) => (leadPick = v)), actionBtn('Run the cycle', 'Run the cycle', run));
-      hint.textContent = `A pure ${lvl.element}, reactance ${lvl.x} Ω, on a ${lvl.v} V rms source.`;
-    }
-
-    // ---- drawing --------------------------------------------------------------------------------------------------------
-    const verdictLabel = (text: string, x: number, y: number) => {
-      if (verdictAt !== null && verdictOk) label(g, text, x, y, { size: 14, color: col.good });
-    };
-    function drawScene() {
-      const element = lvl.kind === 'inductor' ? 'inductor' : lvl.kind === 'capacitor' ? 'capacitor' : lvl.element;
-      const speed = lvl.kind === 'frequency' ? (runT === null ? 1.2 : Math.log2(lvl.hz2 / lvl.hz1) * 0.6 + 1.2) : 1.5;
-      const ang = clock * Math.max(0.6, speed);
-      const shift = element === 'inductor' ? -Math.PI / 2 : Math.PI / 2;
-      // the element and a lamp on the left
-      g.strokeStyle = col.text;
-      g.lineWidth = 3;
-      g.beginPath();
-      if (element === 'inductor') {
-        for (let k = 0; k < 6; k++) g.arc(70 + k * 20, 90, 10, Math.PI, 0);
-      } else {
-        g.moveTo(130, 60);
-        g.lineTo(130, 120);
-        g.moveTo(146, 60);
-        g.lineTo(146, 120);
-      }
-      g.stroke();
-      label(g, element, 130, 140, { size: 12, color: col.muted });
-      const bright = lvl.kind === 'frequency' && runT !== null ? (lvl.glow === 'brighter' ? 1 : 0.2) : 0.5;
-      disc(g, 130, 220, 20, `rgba(244,180,0,${0.15 + 0.85 * bright})`);
-      label(g, 'lamp', 130, 254, { size: 11, color: col.muted });
-      // the traces: v and i with the 90° shift
-      g.strokeStyle = col.muted;
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.moveTo(GX, GY);
-      g.lineTo(GX + GW, GY);
-      g.moveTo(GX, GY - 80);
-      g.lineTo(GX, GY + 80);
-      g.stroke();
-      for (const [shiftBy, color, name] of [[0, col.accent, 'v'], [shift, '#c0392b', 'i']] as [number, string, string][]) {
-        g.strokeStyle = color;
-        g.lineWidth = 2.5;
-        g.beginPath();
-        for (let k = 0; k <= 120; k++) {
-          const u = k / 120;
-          const y = GY - Math.sin(ang - (1 - u) * 7 + shiftBy) * 60;
-          if (k) g.lineTo(GX + u * GW, y);
-          else g.moveTo(GX + u * GW, y);
-        }
-        g.stroke();
-        label(g, name, GX + GW + 14, GY - Math.sin(ang + shiftBy) * 60, { size: 13, color });
-      }
-      label(g, 'voltage v and current i', GX + GW / 2, GY - 94, { size: 11, color: col.muted });
-      if (runT !== null) label(g, element === 'inductor' ? 'i is a quarter cycle behind v' : 'i is a quarter cycle ahead of v', GX + GW / 2, GY + 100, { size: 12, color: col.text });
-    }
-
-    ctx.root.append(h('p', null, lvl.story), canvas, hint, controls, feedback, solution);
-    return startLoop((dt) => {
-      clock += dt;
-      if (runT !== null && runT < RUN + 0.2) runT += dt;
-      g.clearRect(0, 0, W, H);
-      drawScene();
-      verdictLabel(lvl.kind === 'inductor' || lvl.kind === 'capacitor' ? `X = ${fmt(lvl.x)} Ω, I = ${fmt(lvl.i)} A` : lvl.kind === 'frequency' ? `X′ = ${fmt(lvl.x2)} Ω, ${lvl.glow}` : `P = 0, i ${lvl.lead} v`, 320, 326);
-      if (verdictAt !== null && clock - verdictAt < REVEAL) {
-        g.strokeStyle = verdictOk ? col.good : col.bad;
-        g.lineWidth = 6;
-        g.globalAlpha = 1 - (clock - verdictAt) / REVEAL;
-        g.strokeRect(3, 3, W - 6, H - 6);
-        g.globalAlpha = 1;
-      }
-      const phase = verdictAt === null ? 'idle' : busy() || clock - verdictAt < REVEAL ? 'testing' : 'done';
-      canvas.dataset.phase = phase;
-      if (pendingWin !== null && phase !== 'testing') {
-        wonAt ??= clock;
-        if (clock - wonAt > 0.3) {
-          const s = pendingWin;
-          pendingWin = null;
-          ctx.win({ stars: s });
-        }
-      }
-    });
+    const n = Math.max(1, Math.min(4, ctx.level)) as 1 | 2 | 3 | 4;
+    return mountDialLevel(ctx as never, level(n, ctx.random) as never, ARIA);
   },
 });

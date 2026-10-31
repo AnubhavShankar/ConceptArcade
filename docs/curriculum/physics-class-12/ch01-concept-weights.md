@@ -1,4 +1,4 @@
-# Chapter 1 concept weights
+| ✅ || ✅ || ✅ || ✅ || ✅ |# Chapter 1 concept weights
 
 **Working rule (from the owner, 2026-10-27): for every chapter, start by listing ALL its concepts and weighting each one by the questions asked about it. Build games in weight order, and make each game test the same checks the exercise and worked-example questions test.**
 
@@ -18,15 +18,15 @@ This file does that for Class 12 Physics, Chapter 1 (Electric Charges and Fields
 |---|---|---|---|---|
 | A. Charge itself (1.2 to 1.4) | 9 | 35 | 13.4% | 99% |
 | B. Coulomb's law and superposition (1.5 to 1.6) | 8 | 61 | 23.3% | 90% |
-| C. Electric field (1.7) | 6 | 38 | 14.5% | 63% |
-| D. Field lines (1.8) | 3 | 12 | 4.6% | 0% |
+| C. Electric field (1.7) | 6 | 38 | 14.5% | 97% |
+| D. Field lines (1.8) | 3 | 12 | 4.6% | 100% |
 | E. Flux (1.9) | 3 | 21 | 8.0% | 93% |
 | F. Dipole (1.10 to 1.11) | 5 | 30 | 11.5% | 100% |
 | G. Continuous charge (1.12) | 1 | 5 | 1.9% | 100% |
 | H. Gauss's law (1.13 to 1.14) | 7 | 60 | 22.9% | 100% |
-| **Chapter 1** | **42** | **262** | **100%** | **87%** |
+| **Chapter 1** | **42** | **262** | **100%** | **97%** |
 
-Only about **87%** of the exam-weighted content is covered by the seven built games.
+About **97%** of the exam-weighted content is covered by the Chapter 1 games (updated 2026-10-30: Field Bench levels 3 and 4 cover C4 and C6, and the Field-Line Detective covers D1 to D3; the flags below were stale).
 
 ## Every concept, heaviest first
 
@@ -40,8 +40,8 @@ Only about **87%** of the exam-weighted content is covered by the seven built ga
 | 6 | H6 | Spherical shell: outside like a point charge, zero inside | 1.14.3 | 1.20 | 1.12 | A | 10 | 3.8% | ✅ |
 | 7 | A6 | Quantisation, q = ne; charge from electron count | 1.4.3 | 1.4, 1.11 | 1.1 | B | 9 | 3.4% | ✅ |
 | 8 | C1 | Definition E = F/q; force on a test charge | 1.7 | 1.8 | – | A | 8 | 3.1% | ✅ |
-| 9 | C4 | Charged particle in a uniform field (kinematics) | 1.7.2 | – | 1.7 | A | 8 | 3.1% | ⬜ |
-| 10 | D1 | Properties of field lines | 1.8 | 1.7 | – | A | 8 | 3.1% | ⬜ |
+| 9 | C4 | Charged particle in a uniform field (kinematics) | 1.7.2 | – | 1.7 | A | 8 | 3.1% | ✅ |
+| 10 | D1 | Properties of field lines | 1.8 | 1.7 | – | A | 8 | 3.1% | ✅ |
 | 11 | E1 | Flux through a flat area, EΔS cosθ | 1.9 | 1.14 | – | A | 8 | 3.1% | ✅ |
 | 12 | F1 | Dipole moment p = 2qa; total charge of a dipole | 1.10 | 1.9 | – | A | 8 | 3.1% | ✅ |
 | 13 | F2 | Dipole field on the axis and the equatorial plane | 1.10.1 | – | 1.9 | A | 8 | 3.1% | ✅ |
@@ -57,7 +57,7 @@ Only about **87%** of the exam-weighted content is covered by the seven built ga
 | 23 | H3 | Choosing a Gaussian surface by symmetry | 1.14 | – | – | A | 6 | 2.3% | ✅ |
 | 24 | A5 | Conservation of charge | 1.4.2 | 1.5 | – | B | 5 | 1.9% | ✅ |
 | 25 | B4 | Sharing of charge between identical spheres, then the force | 1.5 | – | 1.4 | B | 5 | 1.9% | ✅ |
-| 26 | C6 | Reading tracks of charged particles: sign and charge-to-mass ratio | 1.7.2 | 1.13 | – | B | 5 | 1.9% | ⬜ |
+| 26 | C6 | Reading tracks of charged particles: sign and charge-to-mass ratio | 1.7.2 | 1.13 | – | B | 5 | 1.9% | ✅ |
 | 27 | G1 | Linear, surface, volume charge density | 1.12 | 1.21 | – | B | 5 | 1.9% | ✅ |
 | 28 | H1b | Zero net flux does not mean no charge inside | 1.13 | 1.16 | – | B | 5 | 1.9% | ✅ |
 | 29 | H2 | Flux through part of a surface by symmetry (cube face) | 1.13 | 1.17 | – | B | 5 | 1.9% | ✅ |
@@ -65,7 +65,7 @@ Only about **87%** of the exam-weighted content is covered by the seven built ga
 | 31 | A2b | Mass transferred when charging is negligible | 1.2 | 1.11 | – | C | 3 | 1.1% | ✅ |
 | 32 | A6b | Quantisation is invisible at macroscopic scale | 1.4.3 | 1.4 | – | C | 3 | 1.1% | ✅ |
 | 33 | A7 | Size of the coulomb; k and 1 C = 1 A s | 1.5 | – | 1.1 | C | 3 | 1.1% | ✅ |
-| 34 | D2 | Reading a field-line picture | 1.8 | – | – | B | 3 | 1.1% | ⬜ |
+| 34 | D2 | Reading a field-line picture | 1.8 | – | – | B | 3 | 1.1% | ✅ |
 | 35 | E3 | Units and dimensions of E and flux | 1.9 | – | – | B | 3 | 1.1% | 🟡 |
 | 36 | F3 | Dipole field falls as 1/r³; zero total charge but non-zero field | 1.10.2 | – | – | B | 3 | 1.1% | ✅ |
 | 37 | F5 | Stable versus unstable equilibrium of a dipole | 1.11 | – | – | B | 3 | 1.1% | ✅ |
@@ -73,7 +73,7 @@ Only about **87%** of the exam-weighted content is covered by the seven built ga
 | 39 | A4 | Additivity: charge is a scalar, algebraic sum | 1.4.1 | – | – | C | 1 | 0.4% | ✅ |
 | 40 | B6b | Superposition means no extra many-body forces | 1.6 | – | – | C | 1 | 0.4% | ✅ |
 | 41 | C5 | Field undefined at a point charge; discontinuity across a surface | 1.7 | – | – | C | 1 | 0.4% | ⬜ |
-| 42 | D3 | Motion of a charge versus field lines | 1.8 | – | – | C | 1 | 0.4% | ⬜ |
+| 42 | D3 | Motion of a charge versus field lines | 1.8 | – | – | C | 1 | 0.4% | ✅ |
 
 ## Build waves, by weight
 

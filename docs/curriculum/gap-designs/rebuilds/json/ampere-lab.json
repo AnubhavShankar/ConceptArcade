@@ -1,0 +1,93 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "ampere-lab",
+  "title": "First Plasma",
+  "summary": "Drive a repair robot inside a fusion reactor and set field probes, a null plate, a solenoid and a toroid so the first plasma holds.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 4,
+    "name": "Moving Charges and Magnetism"
+  },
+  "ncertRef": "Section 4.6, Ampere's circuital law",
+  "order": 1,
+  "concepts": [
+    "Field of a long wire, B = μ₀I/2πr",
+    "Right-hand grip rule for the field direction",
+    "Field inside and outside a thick wire",
+    "Neutral point of two parallel currents",
+    "Solenoid B = μ₀nI, turns in all layers",
+    "Toroid B = μ₀NI/2πr, zero in the hole"
+  ],
+  "learningOutcome": "The student can use Ampère’s law to find the field of a long wire, inside and outside a thick wire, at a neutral point, in a solenoid and in a toroid.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "Calibrate the busbar probe",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: B = μ₀I/2πr, with the field circling the wire by the right-hand grip rule (Ex 4.2, 4.3, 4.4).",
+      "hints": [
+        "B = μ₀I/2πr = 2 × 10⁻⁷ I/r, with r in metres.",
+        "The field is at right angles to the line from the busbar to the probe.",
+        "Right-hand grip: thumb along the current, fingers curl the way the field goes."
+      ]
+    },
+    {
+      "title": "Inside the plasma",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: inside a column with a uniform current only the enclosed part counts, B = μ₀Ir/2πa², so one field occurs twice (Example 4.7).",
+      "hints": [
+        "Outside, the Amperian circle encloses all of the current: B = μ₀I/2πr.",
+        "Inside, the circle encloses only I r²/a², so B grows in proportion to r.",
+        "The same field occurs once inside and once outside, and r_in × r_out = a²."
+      ]
+    },
+    {
+      "title": "The X-point",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: superpose the fields of two currents and find where they cancel (Ex 4.4).",
+      "hints": [
+        "Currents the same way cancel between them; opposite ways, only outside.",
+        "At the null the two fields are equal in size: I₁/x = I₂/(distance from current 2).",
+        "The null is always nearer the smaller current."
+      ]
+    },
+    {
+      "title": "Stretch the solenoid",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: inside a long solenoid B = μ₀nI, with n the turns per metre in all the layers (Ex 4.8, Example 4.8).",
+      "hints": [
+        "Count the turns in all the layers, then divide by the length in metres.",
+        "B = μ₀nI, with μ₀ = 4π × 10⁻⁷ T m/A. Give the field in mT.",
+        "The same turns spread over a longer coil give a weaker field."
+      ]
+    },
+    {
+      "title": "The toroidal field",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: a toroid is a solenoid bent into a ring, B = μ₀NI/2πr in the winding and zero in the hole (beyond Section 4.7).",
+      "hints": [
+        "A circle inside the winding encloses N turns of the current.",
+        "B = μ₀NI/2πr, so the field falls as 1/r across the winding.",
+        "A circle in the hole, or outside the ring, encloses no net current."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The field of a straight wire points along the wire",
+    "The field inside a current-carrying wire is zero everywhere",
+    "The field of a solenoid is strongest outside it",
+    "A toroid has a strong field in its hole",
+    "The neutral point of two currents lies midway between them"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

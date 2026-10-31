@@ -1,336 +1,269 @@
+// Inspirations (code comment only): deep-sea exploration games (a diver, a robot submarine and the dark below), the real practice of powering sealed underwater lamps and
+// sensors by induction because seawater shorts any plug, and rhythm games for level 4 (the brightest flash lands on the steepest beat).
+// Kavya, the salvage diver, turns and sizes a hoop by hand (level 1: its tilt, level 2: a ring's size, level 3: how fast to flip it, level 4: its turns) and signals the ship.
+// Tug, the robot submarine, works the station console. Wink, the sealed beacon, lights from the emf: the art is in art.ts.
+// Never leak the answer: the console LCD is the only place the player's resulting emf or current is drawn, live in round 1, for 1.5 s after a check in round 2 and never in
+// round 3; Wink's glow on a miss is one fixed value (GLOW) and never proportional to the emf; `hit` is a fixed point; every animation ends by 2.4 s.
+import { helperOn, paidFlash } from '@core/aidflash';
+import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
-import { disc, label, themeColors } from '@core/draw';
-import { h } from '@core/dom';
-import { parseNumber } from '@core/quiz';
-import { fitCanvas, startLoop } from '@core/sim';
-import { buildLevel, explainSolution, fluxMilli, fmt, judgeFlip, judgeFlux, judgeGraph, judgeSolenoid, starsFor } from './logic';
+import { mountDialLevel, type DialLevel, type DialSpec, type HandleSpec, type SceneInput } from '@core/dialgame';
+import { trackHandle, verdict } from '@core/mathkit';
+import { text } from '@core/neon';
+import {
+  HOOP, KAVYA, PAD, PX_PER_CM, RING_Y, SLEEVE, WINK_AT, WINK_L2,
+  calm, clamp01, consoleBody, consoleControls, ease, easeOut, field, grip, graphScreen, hoop, hoopLeads, kavya, pad, pedestal, ring, ringLeads, sea, slate, sleeve, tag, topside, trackBar, tug, wink, winkBob,
+  type KavyaMood, type TopState, type TugMood, type WinkMood,
+} from './art';
+import {
+  LCD_OFF, SHOW_AT, SHOW_STEP, buildRounds, crackAt, fault, goalLine, hintText, judge, lcdText, meterText, missText, rad, slopes, steepest, verdictDelay, winText, winkGlow,
+  type Round, type Values,
+} from './logic';
 
-const W = 640;
-const H = 340;
-const POS = '#c0392b';
-const REVEAL = 0.9;
-const RUN = 3;
-const ease = (t: number) => 1 - Math.pow(1 - t, 3);
-const CX = 320;
-const CY = 175;
-const rad = (deg: number) => (deg * Math.PI) / 180;
+const ROLE = 'a salvage diver who lights a sealed beacon with a hoop of wire over a seabed electromagnet';
+const HEROES = [
+  {
+    story: 'Kavya is marking a shipwreck for the survey ship above. Seawater would short any plug, so Wink, the beacon, is sealed in glass and wired to a hoop of wire. The station’s docking pad is an electromagnet whose field points straight up through the hoop. The flux is Φ = BA cos θ, where θ is the tilt of the hoop’s normal from the field. When Tug switches the pad off, the flux dies in 0.5 s, and the emf ε = NΔΦ/Δt lights Wink only while the flux is changing.',
+    objective: 'Tilt the hoop so that, when the pad switches off, Wink gets exactly the voltage it needs, in three dives.',
+  },
+  {
+    story: 'Next, the charging sleeve: a long tube on the station, wound as a solenoid, so the field inside is B = μ₀nI. Kavya lowers a ring of 200 turns into it, flat across the tube, and Tug ramps the current up in 0.2 s. The flux through the ring rises with the current, and Wink glows only while the current is changing.',
+    objective: 'Pick the ring size that gives Wink exactly its voltage when the current ramps, in three dives.',
+  },
+  {
+    story: 'The flip: Kavya holds the hoop flat over the docking pad and turns it over through 180°. The flux per turn goes from +BA to −BA, a change of 2BA, so the average emf is 2NBA/t and the current through Wink is ε/R. How fast she flips sets the current.',
+    objective: 'Choose how fast to flip so Wink gets exactly the current it needs, in three dives.',
+  },
+  {
+    story: 'The ship wants a signal it can film. The station’s program drives the flux per turn through the hoop step by step, as its screen shows. The emf in each step is the slope of the graph, so Wink flashes brightest in the steepest step, whether the flux is rising or falling. Kavya chooses how many turns her hoop has.',
+    objective: 'Pick the number of turns so Wink reaches exactly its rating at the brightest moment, without cracking, in three dives.',
+  },
+];
+const ARIA = 'Under the sea beside a shipwreck: a diver holds a wire hoop over a seabed electromagnet pad, a sealed beacon floats above the hoop, and a small robot submarine waits at the station console.';
+const SLATES = ['DIVE 1', 'DIVE 2', 'FINAL DIVE'];
+
+const track = { x0: 60, x1: 580 };
+const trackX = (v: number, lo: number, hi: number) => track.x0 + ((v - lo) / (hi - lo)) * (track.x1 - track.x0);
+
+function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
+  const rounds = buildRounds(n, random);
+  const flash = paidFlash();
+  const fx = { shot: null as unknown, done: new Set<string>() };
+  let lastK = -1;
+  let slateAt = -10;
+  let touched = false;
+
+  function draw(s: SceneInput<Round>) {
+    const { g, r, k, t, rt, shot, A } = s;
+    const v = s.v as Required<Values>; // the dial values to draw: the live ones, or the ones that were fired
+    if (k !== lastK) {
+      lastK = k;
+      slateAt = t;
+      A.float('PLONK', 400, 70, PAL.white);
+    }
+    if (fx.shot !== shot) {
+      fx.shot = shot;
+      fx.done.clear();
+    }
+    const once = (key: string, fn: () => void) => {
+      if (!fx.done.has(key)) {
+        fx.done.add(key);
+        fn();
+      }
+    };
+    // the console LCD helper: live in round 1, for 1.5 s after a paid check in round 2, never in round 3 (and the true value on a win)
+    const since = flash.since(A.clock, k);
+    const helper = helperOn(r.assist, !!shot?.ok, shot ? Infinity : since);
+    A.canvas.dataset.helper = helper ? '1' : '0';
+    const f = shot ? fault(r, v) : null;
+    const tv = shot ? verdictDelay(r, v) : 0;
+    const sinceV = shot ? rt - tv : -1;
+    const crackT = shot && f === 'blown' ? crackAt(r, v) : Infinity;
+    const cracked = rt >= crackT;
+    const glow = shot ? winkGlow(r, v, rt) : 0;
+    if (shot) {
+      A.canvas.dataset.take = shot.ok ? 'win' : (f ?? 'miss');
+      A.canvas.dataset.glow = glow.toFixed(2);
+    } else {
+      delete A.canvas.dataset.take;
+      delete A.canvas.dataset.glow;
+    }
+    const flipEnd = n === 3 && v.t !== undefined ? 0.3 + v.t : 0;
+    const lcd = { s: helper ? lcdText(r, v) : LCD_OFF, color: !helper ? PAL.dim : r.assist === 0 || shot?.ok ? PAL.green : PAL.yellow };
+    const wpos = n === 2 ? WINK_L2 : WINK_AT;
+    const wy = wpos.y + winkBob(t);
+
+    // the moods, one per character
+    const winkMood: WinkMood = !shot ? 'sleepy' : cracked ? 'blown' : rt < 0.3 ? 'sleepy' : f === 'dim' ? 'dim' : 'win';
+    const kMood: KavyaMood = cracked ? 'frazzled' : sinceV >= 0 ? (shot!.ok ? 'cheer' : 'worried') : 'happy';
+    const uK = cracked ? rt - crackT : sinceV;
+    const tMood: TugMood = cracked ? 'blown' : sinceV >= 0 ? (shot!.ok ? 'win' : 'dim') : 'idle';
+    const top: TopState = sinceV >= 0 ? (shot!.ok ? 'win' : (f as 'dim' | 'blown')) : 'idle';
+
+    sea(g, t, k);
+
+    if (n === 2) {
+      // ---- level 2: the charging sleeve ----
+      const rad2 = v.r;
+      const ringY = shot ? RING_Y.held + (RING_Y.inside - RING_Y.held) * easeOut(rt / 0.3) : RING_Y.held;
+      const boost = shot ? ease((rt - 0.3) / 0.2) * (1 - ease((rt - 1.0) / 0.5)) : 0;
+      sleeve(g, boost);
+      pedestal(g, WINK_L2.x, WINK_L2.y);
+      ringLeads(g, [SLEEVE.x + PX_PER_CM * rad2, ringY], [WINK_L2.x, wy + 30]);
+      ring(g, SLEEVE.x, ringY, rad2);
+      wink(g, t, { x: wpos.x, y: wpos.y, glow, mood: winkMood, u: cracked ? rt - crackT : -1, bubbles: rt <= 2.3 });
+      kavya(g, t, { mood: kMood, rt: shot ? rt : -1, u: uK, rod: [SLEEVE.x - PX_PER_CM * rad2, ringY] });
+    } else {
+      // ---- levels 1, 3, 4: the docking pad, its field and the hoop ----
+      const on = n === 1 && shot ? 1 - ease((rt - 0.3) / 0.5) : 1;
+      let fieldA = 0.35 * on;
+      if (n === 4 && shot) {
+        const p = clamp01((rt - SHOW_AT) / (3 * SHOW_STEP)) * 3;
+        const i = Math.min(2, Math.floor(p));
+        const phi = r.kind === 'show' ? r.phi[i] + (r.phi[i + 1] - r.phi[i]) * (p - i) : 0;
+        fieldA = 0.12 + 0.23 * (phi / 16);
+      }
+      if (k === 2) {
+        g.fillStyle = 'rgba(255,243,196,0.12)';
+        g.beginPath();
+        g.moveTo(154, 224);
+        g.lineTo(PAD.x0 + 4, PAD.top);
+        g.lineTo(PAD.x0 + 120, PAD.top);
+        g.closePath();
+        g.fill();
+      }
+      pad(g, t, on);
+      field(g, fieldA);
+      text(g, 'B ⬆', 360, 126, PAL.cyan, 11, 'left');
+      if (n === 1 && r.kind === 'out') tag(g, `docking pad · B ${r.b} T ⬆`, 300, 314, 'center', PAL.dim, 11);
+      if (n === 3 && r.kind === 'flip') {
+        text(g, 'docking pad', 396, 268, PAL.dim, 11, 'left');
+        text(g, `B ${r.b} T ⬆`, 396, 282, PAL.dim, 11, 'left');
+      }
+      if (n === 4) text(g, 'docking pad', 396, 268, PAL.dim, 11, 'left');
+      const th = n === 1 ? v.th : n === 3 ? (shot ? 180 * clamp01((rt - 0.3) / v.t) : 0) : 0;
+      const turns = n === 4 ? v.n : (r as { n: number }).n;
+      hoopLeads(g, [wpos.x, wy + 30], th);
+      hoop(g, th, 2 + turns / 40, { normal: true, arc: true });
+      wink(g, t, { x: wpos.x, y: wpos.y, glow, mood: winkMood, u: cracked ? rt - crackT : -1, bubbles: rt <= 2.3 });
+      const left: [number, number] = n === 3 ? [HOOP.x, HOOP.y] : [HOOP.x - HOOP.r * Math.cos(rad(th)), HOOP.y - HOOP.r * Math.sin(rad(th))];
+      kavya(g, t, { mood: kMood, rt: shot ? rt : -1, u: uK, rod: left });
+      if (n !== 4) tag(g, `${turns} turns`, 196, 246, 'center', PAL.white, 11);
+      if (n === 4 && r.kind === 'show') graphScreen(g, r, shot ? (rt - SHOW_AT) / (3 * SHOW_STEP) : -1);
+    }
+
+    // the console and Tug (Tug drops behind the console when Wink cracks)
+    const ctl = { i1: r.kind === 'tube' ? r.i1 : 0, i2: r.kind === 'tube' ? r.i2 : 0, flipEnd, t };
+    consoleBody(g, lcd);
+    consoleControls(g, n, shot ? rt : -1, ctl);
+    tug(g, t, { n, rt: shot ? rt : -1, flipEnd, mood: tMood, u: tMood === 'blown' ? rt - crackT : sinceV });
+    if (tMood === 'blown') {
+      consoleBody(g, lcd);
+      consoleControls(g, n, rt, ctl);
+    }
+    topside(g, t, top);
+
+    // floaters and bursts on the beats of the dive
+    if (shot) {
+      once('signal', () => {
+        A.float('SIGNAL!', KAVYA.x, 140, PAL.yellow);
+        A.burst(172, 190, '#e6f6ff', 8, 60);
+      });
+      if (n === 1 && rt >= 0.25) once('click', () => A.float('CLICK', 520, 244, PAL.white));
+      if (cracked) {
+        once('crack', () => {
+          A.burst(wpos.x, wy, '#e6f6ff', 14, 140);
+          A.float('CRACK', wpos.x + 38, wy - 12, PAL.white);
+        });
+        if (!calm() && rt - crackT < 0.12) {
+          g.fillStyle = `rgba(255,255,255,${0.35 * (1 - (rt - crackT) / 0.12)})`;
+          g.fillRect(0, 0, 640, 340);
+        }
+      }
+      if (n === 4 && shot.ok && r.kind === 'show') {
+        const best = slopes(r).findIndex((x) => Math.abs(x) === steepest(r));
+        if (rt >= SHOW_AT + SHOW_STEP * best) once('flash', () => A.float('FLASH!', wpos.x, wy - 34, PAL.yellow));
+      }
+    }
+
+    // the goal line and the player's own setting by its handle (hidden during a dive; the verdict line takes y = 22)
+    if (!shot) tag(g, goalLine(r), 320, 40, 'center', PAL.white, 13);
+    else if (sinceV >= 0) verdict(g, shot.ok, 'WINK IS LIT!', f === 'blown' ? 'WINK CRACKED!' : 'WINK TOO DIM');
+    if (!shot) {
+      if (n === 1) {
+        const hx = HOOP.x + HOOP.r * Math.cos(rad(v.th));
+        const hy = HOOP.y + HOOP.r * Math.sin(rad(v.th));
+        grip(g, hx, hy, 20, 'v');
+        tag(g, `θ ${v.th}°`, hx + 26, hy + 5, 'left', PAL.yellow, 13);
+        if (v.th !== 90) touched = true;
+        if (k === 0 && !touched && (calm() || Math.floor(t * 3) % 2 === 0)) tag(g, 'drag', hx, hy + 30, 'center', PAL.yellow, 11);
+      } else if (n === 2) {
+        const hx = SLEEVE.x + PX_PER_CM * v.r;
+        grip(g, hx, RING_Y.held, 20, 'h');
+        tag(g, `r ${v.r} cm`, hx + 26, 100, 'left', PAL.yellow, 13);
+      } else if (n === 3) {
+        trackBar(g, track.x0, track.x1, '0.1 s', '2 s');
+        const hx = trackX(v.t, 0.1, 2);
+        grip(g, hx, 322, 20, 'h');
+        tag(g, `${v.t} s flip`, hx, 296, 'center', PAL.yellow, 13);
+      } else {
+        trackBar(g, track.x0, track.x1, '10', '200');
+        const hx = trackX(v.n, 10, 200);
+        grip(g, hx, 322, 20, 'h');
+        tag(g, `N ${v.n}`, hx, 296, 'center', PAL.yellow, 13);
+      }
+    } else if (n === 3 || n === 4) {
+      trackBar(g, track.x0, track.x1, n === 3 ? '0.1 s' : '10', n === 3 ? '2 s' : '200');
+    }
+    slate(g, t - slateAt, SLATES[k]);
+  }
+
+  const dials: DialSpec<Round>[] = [];
+  const handles: HandleSpec<Round>[] = [];
+  if (n === 1) {
+    dials.push({ key: 'th', aria: 'Tilt of the hoop in degrees from flat', label: 'Tilt', unit: '', step: 5, min: 0, max: 90, start: 90, text: (x) => `${x}°` });
+    handles.push({
+      dial: 'th',
+      at: (_r, v) => [HOOP.x + HOOP.r * Math.cos(rad(v.th)), HOOP.y + HOOP.r * Math.sin(rad(v.th))],
+      drag: (_r, px, py) => (Math.atan2(py - HOOP.y, Math.max(1, px - HOOP.x)) * 180) / Math.PI,
+      radius: 20,
+    });
+  } else if (n === 2) {
+    dials.push({ key: 'r', aria: 'Radius of the ring in centimetres', label: 'Ring', unit: 'cm', step: 0.5, min: 1, max: 8, start: 1 });
+    handles.push({ dial: 'r', at: (_r, v) => [SLEEVE.x + PX_PER_CM * v.r, RING_Y.held], drag: (_r, px) => (px - SLEEVE.x) / PX_PER_CM, radius: 20 });
+  } else if (n === 3) {
+    dials.push({ key: 't', aria: 'Time for the half-turn flip in seconds', label: 'Flip time', unit: 's', step: 0.1, min: 0.1, max: 2, start: 2 });
+    handles.push(trackHandle<Round>('t', () => 0.1, () => 2));
+  } else {
+    dials.push({ key: 'n', aria: 'Number of turns on the hoop', label: 'Turns', unit: '', step: 10, min: 10, max: 200, start: 10 });
+    handles.push(trackHandle<Round>('n', () => 10, () => 200));
+  }
+
+  return {
+    hero: { name: 'Kavya', role: ROLE, ...HEROES[n - 1] },
+    rounds,
+    charges: [1, 1, 0],
+    dials,
+    handles,
+    test: {
+      button: '🔎 Console check',
+      aria: 'Console check: read the station meter for this setting',
+      read: (r, v) => (flash.paid(), meterText(r, v as Values)),
+    },
+    fire: { button: '🔦 Signal!', aria: 'Signal the ship: run the station and light the beacon' },
+    judge: (r, v) => judge(r, v as Values),
+    miss: (r, v) => missText(r, v as Values),
+    win: (r) => winText(r),
+    hint: (r) => hintText(r),
+    hit: () => [320, 70],
+    delay: (r, v) => verdictDelay(r, v as Values),
+    draw,
+  };
+}
 
 export default defineGame({
   mount(ctx) {
-    const lvl = buildLevel(ctx.level, ctx.random);
-    const col = themeColors();
-
-    let misses = 0;
-    let finished = false;
-    let pendingWin: 1 | 2 | 3 | null = null;
-    let wonAt: number | null = null;
-    let clock = 0;
-    let verdictAt: number | null = null;
-    let verdictOk = false;
-    let runT: number | null = null;
-    let largestPick: number | null = null;
-
-    // ---- DOM --------------------------------------------------------------------------------
-    const canvas = h('canvas', { role: 'img', 'aria-label': 'A coil in a magnetic field whose flux changes, with a meter for the induced emf.' });
-    const g = fitCanvas(canvas, W, H);
-    const feedback = h('p', { class: 'feedback', hidden: true, 'aria-live': 'polite' });
-    const solution = h('section', { class: 'panel solution', hidden: true });
-    const hint = h('p', { class: 'muted note' });
-    const controls = h('div', { class: 'lab-controls' });
-    const free = lvl.freeTests;
-    const say = (text: string, good = false) => {
-      feedback.hidden = false;
-      feedback.className = `feedback ${good ? 'good' : 'bad'}`;
-      feedback.textContent = text;
-    };
-    const costNote = () => (misses > free ? ' That cost a star.' : free > 0 ? ` ${free - misses} free test${free - misses === 1 ? '' : 's'} left.` : '');
-    const freeNote = (m: string) => say(`${m} That does not cost you anything.`);
-    const miss = (text: string) => {
-      misses++;
-      say(text + costNote());
-    };
-    const succeed = (text: string) => {
-      finished = true;
-      say(text, true);
-      solution.replaceChildren(h('h3', null, 'Why that works'), ...explainSolution(lvl).map((t) => h('p', null, t)));
-      solution.hidden = false;
-      controls.querySelectorAll('button, input').forEach((b) => b.setAttribute('disabled', ''));
-      pendingWin = starsFor(misses, free);
-    };
-    const verdict = (ok: boolean) => {
-      verdictAt = clock;
-      verdictOk = ok;
-      runT = 0;
-    };
-    const busy = () => runT !== null && runT < RUN;
-    const field = (aria: string, placeholder: string) => h('input', { class: 'field', type: 'text', inputmode: 'decimal', autocomplete: 'off', 'aria-label': aria, placeholder }) as HTMLInputElement;
-    const num = (el: HTMLInputElement) => parseNumber(el.value);
-    const actionBtn = (text: string, aria: string, fn: () => void) => h('button', { class: 'btn', type: 'button', 'aria-label': aria, onclick: fn }, text);
-    const row = (name: string, input: HTMLElement, unit: string) => h('div', { class: 'control' }, h('span', { class: 'control-label' }, name), input, h('span', { class: 'unit' }, unit));
-
-    // ---- the levels -------------------------------------------------------------------------------------------
-    if (lvl.kind === 'flux') {
-      const change = lvl.mode === 'change';
-      const aria = change ? 'Change in flux in mWb' : 'Flux in mWb';
-      const fIn = field(aria, change ? 'ΔΦ = ? mWb' : 'Φ = ? mWb');
-      const run = () => {
-        if (finished || busy()) return;
-        const v = num(fIn);
-        if (v === null || (!change && v <= 0)) return freeNote(change ? 'Enter the change as a number, with its sign.' : 'Enter the flux as a positive number of mWb.');
-        const ok = judgeFlux(lvl, v).ok;
-        verdict(ok);
-        if (ok) return succeed(change ? `ΔΦ = ${fmt(lvl.answer)} mWb.` : `Φ = ${fmt(lvl.answer)} mWb.`);
-        miss(change ? 'That is not the change in flux: work out the flux in each orientation with Φ = BA cos θ, then subtract, keeping the sign.' : 'That is not the flux: it is B times A times the cosine of the angle between the field and the normal to the coil. Use A in m² and give mWb.');
-      };
-      controls.append(row(change ? 'Change in flux' : 'Flux', fIn, 'mWb'), actionBtn('Measure the flux', 'Measure the flux', run));
-      hint.textContent = change ? `B = ${lvl.b} T, A = ${lvl.aCm2} cm². The normal turns from ${lvl.theta1}° to ${lvl.theta2}° from the field.` : `B = ${lvl.b} T, A = ${lvl.aCm2} cm², the normal makes ${lvl.theta1}° with the field.`;
-    }
-    if (lvl.kind === 'solenoid') {
-      const eIn = field('Induced emf in µV', 'ε = ? µV');
-      const run = () => {
-        if (finished || busy()) return;
-        const v = num(eIn);
-        if (v === null || v <= 0) return freeNote('Enter the emf as a positive number of µV.');
-        const ok = judgeSolenoid(lvl, v).ok;
-        verdict(ok);
-        if (ok) return succeed(`ε = ${fmt(lvl.microV)} µV.`);
-        miss('That is not the induced emf: the flux through the loop is the field of the solenoid, μ₀nI, times the area of the loop, and the emf is its rate of change. Use turns per metre and area in m².');
-      };
-      controls.append(row('Induced emf', eIn, 'µV'), actionBtn('Change the current', 'Change the current', run));
-      hint.textContent = `${lvl.nPerCm} turns per cm, loop area ${lvl.aCm2} cm². The current goes from ${lvl.i1} A to ${lvl.i2} A in ${lvl.dt} s.`;
-    }
-    if (lvl.kind === 'flip') {
-      const eIn = field('Average emf in mV', 'ε = ? mV');
-      const iIn = field('Average current in mA', 'I = ? mA');
-      const run = () => {
-        if (finished || busy()) return;
-        const e = num(eIn);
-        const i = num(iIn);
-        if (e === null || i === null || e <= 0 || i <= 0) return freeNote('Enter both answers as positive numbers.');
-        const res = judgeFlip(lvl, e, i);
-        verdict(res.ok);
-        if (res.ok) return succeed(`ε = ${fmt(lvl.emf)} mV and I = ${fmt(lvl.current)} mA.`);
-        const parts: string[] = [];
-        if (!res.eOk) parts.push('The emf is not right: the flux changes from +BA to −BA, and every turn has the same emf.');
-        if (!res.iOk) parts.push('The current is not right: it is the emf divided by the resistance of the coil. Mind the units.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Average emf', eIn, 'mV'), row('Average current', iIn, 'mA'), actionBtn('Turn the coil', 'Turn the coil', run));
-      hint.textContent = `${lvl.n} turns of radius ${lvl.rCm} cm, resistance ${lvl.r} Ω, in a field of ${lvl.bGauss} G (1 G = 10⁻⁴ T), turned through 180° in ${lvl.t} s.`;
-    }
-    if (lvl.kind === 'graph') {
-      const eIn = field('Emf in the chosen segment in mV', 'ε = ? mV');
-      const btns: HTMLElement[] = [1, 2, 3].map((k) => {
-        const b = h('button', { class: 'btn btn-ghost', type: 'button', 'aria-label': `Segment ${k} has the largest emf`, 'aria-pressed': 'false', onclick: () => {
-          largestPick = k;
-          btns.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
-        } }, `Segment ${k}`);
-        return b;
-      });
-      const run = () => {
-        if (finished || busy()) return;
-        const e = num(eIn);
-        if (e === null || e <= 0) return freeNote('Enter the emf as a positive number of mV.');
-        if (largestPick === null) return freeNote('Choose the segment with the largest emf.');
-        const res = judgeGraph(lvl, e, largestPick);
-        verdict(res.ok);
-        if (res.ok) return succeed(`${lvl.emf} mV in segment ${lvl.segment}, and segment ${lvl.largest} is the largest.`);
-        const parts: string[] = [];
-        if (!res.eOk) parts.push('The emf is not right: it is the slope of the graph, in mWb per second.');
-        if (!res.lOk) parts.push('The segment is not right: the largest emf is where the graph is steepest, up or down.');
-        miss(parts.join(' '));
-      };
-      controls.append(row(`Segment ${lvl.segment}`, eIn, 'mV'), h('div', { class: 'control' }, h('span', { class: 'control-label' }, 'Largest emf'), ...btns), actionBtn('Read the graph', 'Read the graph', run));
-      hint.textContent = `Flux (mWb) at 0, 1, 2 and 3 s: ${lvl.flux.join(', ')}. Find the emf in segment ${lvl.segment}.`;
-    }
-
-    // ---- drawing helpers -------------------------------------------------------------------------------------------------
-    const arrow = (x: number, y: number, dx: number, color: string) => {
-      g.strokeStyle = color;
-      g.fillStyle = color;
-      g.lineWidth = 2;
-      g.beginPath();
-      g.moveTo(x, y);
-      g.lineTo(x + dx, y);
-      g.stroke();
-      g.beginPath();
-      g.moveTo(x + dx + 7, y);
-      g.lineTo(x + dx - 1, y - 4);
-      g.lineTo(x + dx - 1, y + 4);
-      g.fill();
-    };
-    const fieldArrows = () => {
-      for (let k = 0; k < 5; k++) {
-        const y = 60 + k * 55;
-        const t = (((clock * 0.2 + k * 0.13) % 1) + 1) % 1;
-        g.globalAlpha = 0.45;
-        arrow(40 + t * 70, y, 44, col.muted);
-        g.globalAlpha = 1;
-      }
-      label(g, 'B', 40, 34, { size: 13, color: col.muted });
-    };
-    /** A coil seen edge-on: its width follows |cos| of the angle between the normal and the field. */
-    const coil = (x: number, y: number, thetaDeg: number, size = 70) => {
-      const nx = Math.cos(rad(thetaDeg));
-      const ny = -Math.sin(rad(thetaDeg));
-      g.strokeStyle = '#b87333';
-      g.lineWidth = 8;
-      g.beginPath();
-      g.moveTo(x + ny * size, y - nx * size);
-      g.lineTo(x - ny * size, y + nx * size);
-      g.stroke();
-      g.strokeStyle = col.text;
-      g.fillStyle = col.text;
-      g.lineWidth = 2.5;
-      g.beginPath();
-      g.moveTo(x, y);
-      g.lineTo(x + nx * 60, y + ny * 60);
-      g.stroke();
-      label(g, 'n', x + nx * 76, y + ny * 76, { size: 12, color: col.text });
-    };
-    const meter = (x: number, y: number, value: number, text: string) => {
-      g.strokeStyle = col.text;
-      g.lineWidth = 2;
-      g.strokeRect(x - 100, y - 14, 200, 28);
-      g.beginPath();
-      g.moveTo(x, y - 14);
-      g.lineTo(x, y + 14);
-      g.stroke();
-      const sw = Math.max(-1, Math.min(1, value)) * 96;
-      g.fillStyle = POS;
-      g.globalAlpha = 0.8;
-      g.fillRect(sw >= 0 ? x : x + sw, y - 10, Math.abs(sw), 20);
-      g.globalAlpha = 1;
-      label(g, text, x, y + 30, { size: 12, color: col.text });
-    };
-    const verdictLabel = (text: string, x: number, y: number) => {
-      if (verdictAt !== null && verdictOk) label(g, text, x, y, { size: 14, color: col.good });
-    };
-    const runF = () => (runT === null ? 0 : ease(Math.min(1, runT / RUN)));
-
-    function drawFlux() {
-      if (lvl.kind !== 'flux') return;
-      fieldArrows();
-      const f = runF();
-      const th = lvl.mode === 'change' ? lvl.theta1 + (lvl.theta2 - lvl.theta1) * f : lvl.theta1;
-      coil(CX, CY, th);
-      label(g, `θ = ${fmt(th)}°`, CX + 110, CY - 70, { size: 13, color: col.muted });
-      const phi = fluxMilli(lvl.b, lvl.aCm2, th);
-      meter(CX, 300, phi / (lvl.b * lvl.aCm2 * 0.1 + 1e-9), `Φ now ${fmt(phi)} mWb`);
-      verdictLabel(lvl.mode === 'flux' ? `Φ = ${fmt(lvl.answer)} mWb` : `ΔΦ = ${fmt(lvl.answer)} mWb`, CX, 30);
-    }
-    function drawSolenoid() {
-      if (lvl.kind !== 'solenoid') return;
-      const f = runF();
-      const x0 = 110;
-      const x1 = 530;
-      g.strokeStyle = '#b87333';
-      g.lineWidth = 3;
-      for (let k = 0; k < 20; k++) {
-        g.beginPath();
-        g.ellipse(x0 + ((k + 0.5) / 20) * (x1 - x0), 130, 6, 52, 0, 0, Math.PI * 2);
-        g.stroke();
-      }
-      // the small loop inside, and the field arrows whose density follows the current
-      g.strokeStyle = col.accent;
-      g.lineWidth = 4;
-      g.beginPath();
-      g.ellipse(CX, 130, 5, 24, 0, 0, Math.PI * 2);
-      g.stroke();
-      const cur = lvl.i1 + (lvl.i2 - lvl.i1) * f;
-      const nArrows = Math.round(3 + cur * 1.2);
-      for (let k = 0; k < nArrows; k++) {
-        const y = 130 - 40 + (k / Math.max(1, nArrows - 1)) * 80;
-        const t = (((clock * 0.4 + k * 0.1) % 1) + 1) % 1;
-        g.globalAlpha = 0.5;
-        arrow(x0 + 10 + t * 300, y, 40, col.accent);
-        g.globalAlpha = 1;
-      }
-      label(g, `I = ${fmt(cur)} A`, CX, 215, { size: 14, color: col.text });
-      meter(CX, 280, f > 0 && f < 1 ? 0.6 : 0, f > 0 && f < 1 ? 'emf flows while I changes' : f >= 1 ? 'steady: no emf' : 'steady');
-      verdictLabel(`ε = ${fmt(lvl.microV)} µV`, CX, 30);
-    }
-    function drawFlip() {
-      if (lvl.kind !== 'flip') return;
-      fieldArrows();
-      const f = runF();
-      const th = 180 * f;
-      coil(CX, CY, th);
-      meter(CX, 290, f > 0 && f < 1 ? Math.sin(f * Math.PI) : 0, f > 0 && f < 1 ? `emf ≈ ${fmt(lvl.emf)} mV on average` : 'at rest');
-      label(g, `${lvl.n} turns`, CX + 100, CY + 80, { size: 12, color: col.muted });
-      verdictLabel(`ε = ${fmt(lvl.emf)} mV, I = ${fmt(lvl.current)} mA`, CX, 30);
-    }
-    function drawGraph() {
-      if (lvl.kind !== 'graph') return;
-      const f = runF();
-      const gx = 110;
-      const gy = 280;
-      const sx = 120;
-      const sy = 16;
-      g.strokeStyle = col.muted;
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.moveTo(gx, gy);
-      g.lineTo(gx + 3 * sx + 40, gy);
-      g.moveTo(gx, gy);
-      g.lineTo(gx, 60);
-      g.stroke();
-      label(g, 't (s)', gx + 3 * sx + 40, gy + 14, { size: 11, color: col.muted });
-      label(g, 'Φ (mWb)', gx, 48, { size: 11, color: col.muted });
-      lvl.flux.forEach((v, k) => {
-        label(g, String(k), gx + k * sx, gy + 14, { size: 11, color: col.muted });
-        disc(g, gx + k * sx, gy - v * sy, 4, col.accent);
-      });
-      for (let k = 1; k <= 3; k++) {
-        const hot = k === lvl.segment;
-        g.strokeStyle = hot ? col.accent : col.text;
-        g.lineWidth = hot ? 4 : 2.5;
-        g.beginPath();
-        g.moveTo(gx + (k - 1) * sx, gy - lvl.flux[k - 1] * sy);
-        g.lineTo(gx + k * sx, gy - lvl.flux[k] * sy);
-        g.stroke();
-        label(g, `${k}`, gx + (k - 0.5) * sx, gy - ((lvl.flux[k] + lvl.flux[k - 1]) / 2) * sy - 14, { size: 12, color: hot ? col.accent : col.muted });
-      }
-      // the marker running along and the emf it sees
-      const tt = f * 3;
-      const k = Math.min(2, Math.floor(tt));
-      const a = lvl.flux[k];
-      const b = lvl.flux[k + 1];
-      const mx = gx + tt * sx;
-      const my = gy - (a + (b - a) * (tt - k)) * sy;
-      if (runT !== null) {
-        disc(g, mx, my, 6, POS);
-        label(g, `ε = ${Math.abs(b - a)} mV`, mx, my - 18, { size: 12, color: POS });
-      }
-      verdictLabel(`segment ${lvl.largest} is the steepest`, 400, 40);
-    }
-
-    ctx.root.append(h('p', null, lvl.story), canvas, hint, controls, feedback, solution);
-    return startLoop((dt) => {
-      clock += dt;
-      if (runT !== null && runT < RUN + 0.2) runT += dt;
-      g.clearRect(0, 0, W, H);
-      drawFlux();
-      drawSolenoid();
-      drawFlip();
-      drawGraph();
-      if (verdictAt !== null && clock - verdictAt < REVEAL) {
-        g.strokeStyle = verdictOk ? col.good : col.bad;
-        g.lineWidth = 6;
-        g.globalAlpha = 1 - (clock - verdictAt) / REVEAL;
-        g.strokeRect(3, 3, W - 6, H - 6);
-        g.globalAlpha = 1;
-      }
-      const phase = verdictAt === null ? 'idle' : busy() || clock - verdictAt < REVEAL ? 'testing' : 'done';
-      canvas.dataset.phase = phase;
-      if (pendingWin !== null && phase !== 'testing') {
-        wonAt ??= clock;
-        if (clock - wonAt > 0.3) {
-          const s = pendingWin;
-          pendingWin = null;
-          ctx.win({ stars: s });
-        }
-      }
-    });
+    const n = Math.max(1, Math.min(4, ctx.level)) as 1 | 2 | 3 | 4;
+    return mountDialLevel(ctx as never, level(n, ctx.random) as never, ARIA);
   },
 });

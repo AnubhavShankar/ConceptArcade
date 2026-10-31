@@ -58,6 +58,8 @@ export interface MagRound {
   f: number;
   /** The object distance that puts the image at the near point (exact), and its linear and angular magnification. */
   uSol: number;
+  /** The answer on the dial: the 0.1 cm dial value nearest the exact solution. It is the only winning setting. */
+  uAns: number;
   m: number;
   assist: Assist;
 }
@@ -77,8 +79,12 @@ export type Game =
   | { kind: 'mag'; hero: Hero; rounds: MagRound[]; charges: number[] }
   | { kind: 'scope'; hero: Hero; rounds: ScopeRound[]; charges: number[] };
 
-/** Focal lengths whose near-point object distance is a unique multiple of 0.1 cm. */
-const MAG_F = [5, 8, 9, 10, 12, 15, 20];
+/** Level 1 lenses: each has one dial value nearest its exact near-point distance. */
+export const MAG_F = [5, 8, 9, 10, 12, 15, 20];
+/** The dial value (0.1 cm steps) nearest the exact distance. */
+export const dialNearest = (x: number) => Math.round(x * 10) / 10;
+/** A level 1 round for a lens of focal length f. */
+export const magRound = (f: number, assist: Assist = 0): MagRound => ({ f, uSol: nearPointU(f), uAns: dialNearest(nearPointU(f)), m: 1 + D / f, assist });
 /** [fo, fe, M, exercise]: Ex 9.11(a), Ex 9.12 and Ex 9.26. */
 const SCOPE: [number, number, number, string][] = [[2, 6.25, 20, 'Exercise 9.11(a)'], [0.8, 2.5, 88, 'Exercise 9.12'], [1.25, 5, 30, 'Exercise 9.26']];
 
@@ -108,7 +114,7 @@ export function buildGame(level: number, random: () => number): Game {
         story: `Mite is too small to see. A magnifying glass makes a virtual image of it, but your eye can only focus on an image at least ${D} cm away, so the picture is sharp only when the image sits at that near point or farther. Slide Mite nearer the lens and the picture looks bigger, but its virtual image comes nearer too, and once it is closer than that your eye cannot focus on it.`,
         objective: 'Slide Mite to the spot where the picture is as big as it can be while still sharp, in three rounds. A test shot costs a charge; the live eye view fades.',
       },
-      rounds: fs.map((f, k) => ({ f, uSol: nearPointU(f), m: 1 + D / f, assist: assist(k) })),
+      rounds: fs.map((f, k) => magRound(f, assist(k))),
       charges: [1, 1, 1],
     };
   }
@@ -129,14 +135,25 @@ export function buildGame(level: number, random: () => number): Game {
 
 export const magRange = (f: number) => ({ min: SLIDERS.mag.min, max: Math.round((f - 0.1) * 10) / 10 });
 /**
- * A setting wins when the eye can focus on the image AND Mite looks at least 98% as big as at the best spot
- * (the apparent size is the angular magnification D/u, which grows as Mite moves nearer the lens).
+ * Where a setting stands against the best spot, in dial steps: 'near' (Mite closer than the best dial value: bigger, but the image is nearer than
+ * the eye can focus), 'best' (the dial value nearest the exact solution), 'far' (sharp, but smaller than it could be). Real and infinity images
+ * have no side.
+ */
+export type MagSide = 'real' | 'infinity' | 'near' | 'best' | 'far';
+export function magSide(r: MagRound, u: number): MagSide {
+  const o = magnifier(r.f, u);
+  if (o.kind === 'real') return 'real';
+  if (o.kind === 'infinity') return 'infinity';
+  return Math.abs(u - r.uAns) < 0.05 ? 'best' : u < r.uAns ? 'near' : 'far';
+}
+/**
+ * A setting wins on exactly one dial value: the one nearest the exact solution u = fD/(f + D) (a value like 7.1 for 7.14 cm), so the exact answer
+ * rounded to the dial always wins. The image there sits at the near point to within one dial step.
  */
 export function judgeMag(r: MagRound, u: number): { ok: boolean; v: number | null; sharp: boolean } {
   const o = magnifier(r.f, u);
-  const sharp = o.kind === 'virtual' ? eyeSees(o.v) : o.kind === 'infinity';
-  const ok = o.kind === 'virtual' && sharp && D / u >= 0.98 * (D / r.uSol);
-  return { ok, v: o.kind === 'virtual' ? o.v : null, sharp };
+  const side = magSide(r, u);
+  return { ok: side === 'best', v: o.kind === 'virtual' ? o.v : null, sharp: side === 'best' || side === 'far' || side === 'infinity' };
 }
 export function judgeScope(r: ScopeRound, uo: number, L: number): { ok: boolean; uOk: boolean; lOk: boolean } {
   const uOk = Math.abs(uo - r.uSol) <= 0.05;
@@ -145,11 +162,11 @@ export function judgeScope(r: ScopeRound, uo: number, L: number): { ok: boolean;
 }
 
 /** A test shot in words. */
-export function magReading(f: number, u: number): string {
-  const o = magnifier(f, u);
+export function magReading(r: MagRound, u: number): string {
+  const o = magnifier(r.f, u);
   if (o.kind === 'real') return `At ${fmt(u)} cm the lens makes a real image: you cannot look through it as a magnifier.`;
   if (o.kind === 'infinity') return `At ${fmt(u)} cm the image is at infinity: relaxed, but only ${fmt(o.M)}× big.`;
-  return `At ${fmt(u)} cm the virtual image is ${fmt(o.v)} cm away and looks ${fmt(o.M)}× bigger${eyeSees(o.v) ? '' : ', but it is nearer than your eye can focus'}.`;
+  return `At ${fmt(u)} cm the virtual image is ${fmt(o.v)} cm away and looks ${fmt(o.M)}× bigger${magSide(r, u) === 'near' ? ', but it is nearer than your eye can focus' : ''}.`;
 }
 export function scopeReading(r: ScopeRound, uo: number, L: number): string {
   const c = compound(r.fo, r.fe, L, uo);
@@ -162,7 +179,7 @@ export function explainRound(g: Game, k: number): string[] {
   if (g.kind === 'mag') {
     const r = g.rounds[k];
     return [
-      `For the image at the near point, v = −${D} cm: 1/u = 1/v − 1/f gives u = fD/(f + D) = ${r.f} × ${D}/(${r.f} + ${D}) = ${fmt(r.uSol)} cm.`,
+      `For the image at the near point, v = −${D} cm: 1/u = 1/v − 1/f gives u = fD/(f + D) = ${r.f} × ${D}/(${r.f} + ${D}) = ${fmt(r.uSol)} cm, so ${fmt(r.uAns)} cm on the dial.`,
       `The linear magnification is m = |v|/u = 1 + D/f = ${fmt(r.m)}, and here it equals the magnifying power, because the image is at the near point (Exercise 9.23).`,
     ];
   }
@@ -183,10 +200,17 @@ export function missText(g: Game, k: number, tried: { u: number; L?: number }): 
     const o = magnifier(r.f, tried.u);
     if (o.kind === 'real') return 'Mite is outside the focal length: the lens makes a real image, so there is nothing to look at.';
     if (o.kind === 'infinity') return 'The image is at infinity: relaxed and sharp, but Mite could be bigger.';
-    return eyeSees(o.v) ? `Sharp, but Mite only looks ${fmt(o.M)}× bigger: he could look bigger and still be sharp.` : `The image is only ${fmt(o.v)} cm away, nearer than the eye can focus: it is a blur.`;
+    return magSide(r, tried.u) === 'near' ? 'The image is nearer than the eye can focus: it is a blur.' : 'Sharp, but Mite could look bigger and still be sharp.';
   }
   const r = g.rounds[k];
   const c = compound(r.fo, r.fe, tried.L ?? 10, tried.u);
   if (c.M === null || c.ve === null) return 'No clear picture forms with those settings.';
-  return `With those settings the picture is ${fmt(c.M)}× and its image is ${Number.isFinite(c.ve) ? `${fmt(c.ve)} cm` : 'at infinity'} away${eyeSees(c.ve) ? '' : ', too near to focus'}: not the picture the lab wants.`;
+  return scopeSides(r, c);
+}
+/** The direction of each side of a scope miss, in fixed words: the size against the wanted one, and the final image against the near point. */
+export function scopeSides(r: ScopeRound, c: Compound): string {
+  if (c.M === null || c.ve === null) return 'No clear picture forms with those settings.';
+  const size = c.M < r.M * 0.99 ? 'The picture magnifies less than the lab wants' : c.M > r.M * 1.01 ? 'The picture magnifies more than the lab wants' : 'The picture is close to the size the lab wants';
+  const focus = c.ve < D - 0.5 ? 'the final image is nearer than the eye can focus' : c.ve > D + 0.5 ? 'the final image is farther out than the near point' : 'the final image is near the near point';
+  return `${size}, and ${focus}: not the picture the lab wants.`;
 }

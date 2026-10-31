@@ -54,6 +54,26 @@ describe('words', () => {
       }
     }
   });
+  it('a miss names the direction only: no digit at all, the same words for every wrong λ on one side', () => {
+    for (const level of [1, 2, 3]) {
+      for (const r of all(level).slice(0, 60)) {
+        const wrongs = span(r.min, r.max).filter((l) => l !== r.ans);
+        const target = r.kind === 'perp' ? 0 : r.T;
+        const bySide = new Map<boolean, Set<string>>();
+        for (const l of wrongs) {
+          const t = missText(r, l);
+          expect(t).not.toMatch(/\d/);
+          const up = measure(r, l) > target;
+          bySide.set(up, (bySide.get(up) ?? new Set()).add(t));
+        }
+        for (const set of bySide.values()) expect(set.size).toBe(1);
+        if (bySide.size === 2) expect([...bySide.get(true)!][0]).not.toBe([...bySide.get(false)!][0]);
+      }
+    }
+  });
+  it('the start is one constant (0) in every round and never wins', () => {
+    for (const level of [1, 2, 3]) for (const r of all(level)) expect([r.start, judge(r, r.start)]).toEqual([0, false]);
+  });
   it('rounds in a level differ', () => {
     for (const s of seeds) for (const level of [1, 2, 3]) {
       const rs = buildRounds(level, createRng(s));

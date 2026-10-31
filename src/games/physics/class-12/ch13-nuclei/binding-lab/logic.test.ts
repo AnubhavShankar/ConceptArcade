@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SLIDERS, bindExplain, bindMiss, bindReading, bindRounds, bindingMeV, judgeBind, judgePower, judgeQ, massDefect, powerExplain, powerMiss, powerReading, powerRounds, qExplain, qMeV, qMiss, qReading, qRounds } from './logic';
+import { HIT, SLIDERS, START, bindExplain, markX, bindMiss, bindReading, bindRounds, bindingMeV, judgeBind, judgePower, judgeQ, massDefect, powerExplain, powerMiss, powerReading, powerRounds, qExplain, qMeV, qMiss, qReading, qRounds } from './logic';
 
 const grid = (min: number, max: number, step: number) => Array.from({ length: Math.round((max - min) / step) + 1 }, (_, i) => Math.round((min + i * step) * 1e6) / 1e6);
 
@@ -109,5 +109,45 @@ describe('words: the working and the misses', () => {
     expect(bindReading(bindRounds()[0])).toMatch(/mass defect is/);
     expect(qReading(qRounds()[0])).toMatch(/difference of/);
     expect(powerReading(powerRounds()[0])).toMatch(/atoms|kilogram/);
+  });
+});
+
+describe('no leaks: the start, the burst point and the misses', () => {
+  const levels = [
+    { key: 'be' as const, rounds: bindRounds, judge: judgeBind, miss: bindMiss, S: SLIDERS.be },
+    { key: 'q' as const, rounds: qRounds, judge: judgeQ, miss: qMiss, S: SLIDERS.q },
+    { key: 'e' as const, rounds: powerRounds, judge: judgePower, miss: powerMiss, S: SLIDERS.e },
+  ];
+  it('the start never wins any round of its level, and the hit point is never where the answer is', () => {
+    for (const L of levels) {
+      for (const r of L.rounds() as never[]) {
+        expect(L.judge(r, START[L.key])).toBe(false);
+        // the burst of points is a fixed point: it is not above the true value on the bar or track
+        expect(Math.abs(HIT[L.key][0] - markX(L.key, (r as { sol: number }).sol))).toBeGreaterThan(20);
+      }
+    }
+  });
+  it('the burst point is a constant, not a function of the round', () => {
+    expect(HIT.be).toEqual([200, 170]);
+    expect(HIT.q).toEqual([330, 170]);
+    expect(HIT.e).toEqual([330, 150]);
+  });
+  it('two wrong settings on the same side give the same miss text, and no miss text holds the answer or a number', () => {
+    for (const L of levels) {
+      for (const r of L.rounds() as never[]) {
+        const sol = (r as { sol: number }).sol;
+        const wrong = grid(L.S.min, L.S.max, L.S.step * 10).filter((x) => !L.judge(r, x));
+        // for the Q level the sign counts as a side of its own
+        const side = (x: number) => (L.key === 'q' ? `${Math.sign(x) !== Math.sign(sol)}${x > sol}` : `${x > sol}`);
+        const texts = new Map<string, Set<string>>();
+        for (const x of wrong) {
+          const s = side(x);
+          if (!texts.has(s)) texts.set(s, new Set());
+          texts.get(s)!.add(L.miss(r, x));
+        }
+        for (const set of texts.values()) expect(set.size).toBe(1);
+        for (const set of texts.values()) for (const t of set) expect(t).not.toMatch(/\d/);
+      }
+    }
   });
 });

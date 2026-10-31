@@ -5,6 +5,7 @@ import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
 import { backdrop, face, num, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
+import { helperOn, paidFlash } from '@core/aidflash';
 import { DIALS, buildRounds, explain, intel, judge, missText, plateOk, plateText, spotText, type Round } from './logic';
 
 type G = CanvasRenderingContext2D;
@@ -74,16 +75,20 @@ function vault(g: G, cx: number, cy: number, t: number, vals: string[], open: nu
   vals.forEach((v, i) => {
     const wx = cx - 52 + i * 52;
     g.fillStyle = '#060a24';
-    g.fillRect(wx - 20, cy + 46, 40, 28);
+    g.fillRect(wx - 25, cy + 46, 50, 28);
     g.strokeStyle = PAL.cyan;
     g.lineWidth = 1.5;
-    g.strokeRect(wx - 20, cy + 46, 40, 28);
-    text(g, v, wx, cy + 66, PAL.yellow, 15);
+    g.strokeRect(wx - 25, cy + 46, 50, 28);
+    text(g, v, wx, cy + 65, PAL.yellow, v.length > 5 ? 11 : 14);
   });
 }
 
+const GOALS = ['Open the vault: set both tumblers so both plates hold', 'Open the vault: set all three tumblers so every plate holds', 'Find the price of each good so all three bills are right', 'Dial |A|, then declare one code, none or many'];
+
 function level(n: number, random: () => number): DialLevel<Round> {
   const hero = HEROES[n - 1];
+  // Round 2: the plate lamps show only for a moment after a paid Plate check. Round 3: never, not even after Fire.
+  const flash = paidFlash();
   const digits = n < 4;
   const count = n === 1 ? 2 : 3;
   const keys = digits ? ['x', 'y', 'z'].slice(0, count) : ['d', 'm'];
@@ -98,24 +103,35 @@ function level(n: number, random: () => number): DialLevel<Round> {
     rounds: buildRounds(n, random),
     charges: [1, 1, 0],
     dials,
-    test: { button: '🩺 Plate check', aria: 'Plate check: listen to the plates at these settings', read: (r, v) => spotText(r, v) },
+    test: {
+      button: '🩺 Plate check',
+      aria: 'Plate check: listen to the plates at these settings',
+      read: (r, v) => {
+        flash.paid();
+        return spotText(r, v);
+      },
+    },
     fire: { button: n === 4 ? '🔒 Declare' : '🔓 Try the code', aria: FIRE[n - 1] },
     judge: (r, v) => judge(r, v),
     miss: (r, v) => missText(r, v),
     win: (r) => `Open! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? (n < 4 ? 'The plate lamps are live.' : 'The plates are shown in full.') : r.assist === 1 ? 'The lamps are dim: a plate check costs a charge.' : 'Boss round: no lamps, no check.'}`,
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? (n < 4 ? 'The plate lamps are live.' : 'The plates are shown in full.') : r.assist === 1 ? 'No lamps: a plate check lights them for a moment and costs a charge.' : 'Boss round: no lamps, no check.'}`,
     hit: () => [470, 160],
     delay: VERDICT,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
       backdrop(g);
+      const since = flash.since(t, k);
       const mood: Mood = shot ? (rt > VERDICT ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
       tumbler(g, 330, 180, t, mood, shot ? rt * 8 : 0);
-      const vals = digits ? keys.map((k) => String(v[k])) : [`|A|=${v.d}`, `#${v.m}`];
+      const vals = digits ? keys.map((kk) => `${kk}=${n === 3 ? '₹' : ''}${v[kk]}`) : [`|A|=${num(v.d)}`, `#${v.m}`];
       const resolved = shot && rt > 0.9;
       vault(g, 500, 150, t, vals, resolved && shot.ok ? Math.min(1, (rt - 0.9) * 2) : 0, resolved ? !shot.ok : false, shot ? rt * 6 : 0);
       text(g, 'CLUE PLATES', 22, 40, PAL.dim, 12, 'left');
-      const tumblers = digits ? keys.map((k) => v[k]) : [];
-      const lampMode = digits ? (r.assist === 0 || shot ? 1 : r.assist === 1 ? 0.3 : 0) : 0;
+      if (!(shot && rt > VERDICT)) text(g, GOALS[n - 1], 320, 22, PAL.yellow, 12);
+      const tumblers = digits ? keys.map((kk) => v[kk]) : [];
+      // The lamps are the paid plate check: live in round 1, a moment after a check in round 2, never in round 3, and after a shot only on a win.
+      const lamps = digits && helperOn(r.assist, shot !== null && shot.ok, since);
+      A.canvas.dataset.lamps = lamps ? '1' : '0';
       r.A.forEach((_, i) => {
         const y = 78 + i * 52;
         g.fillStyle = '#10163a';
@@ -124,17 +140,16 @@ function level(n: number, random: () => number): DialLevel<Round> {
         g.lineWidth = 1.2;
         g.strokeRect(14, y - 24, 270, 38);
         text(g, plateText(r, i), 22, y, PAL.white, 12, 'left');
-        if (lampMode > 0) {
+        if (lamps) {
           const ok = plateOk(r, tumblers)[i];
-          g.globalAlpha = lampMode;
           g.fillStyle = ok ? PAL.green : PAL.red;
           g.beginPath();
-          g.arc(298, y - 5, 6, 0, Math.PI * 2);
+          g.arc(300, y - 5, 9, 0, Math.PI * 2);
           g.fill();
-          g.globalAlpha = 1;
+          text(g, ok ? '✓' : '✗', 300, y - 1, '#060a24', 12);
         }
       });
-      if (n === 4) text(g, 'pick |A| and the verdict', 150, 270, PAL.dim, 12);
+      if (n === 4) text(g, 'dial |A|, then pick the verdict', 150, 270, PAL.dim, 12);
       if (shot && rt > VERDICT) verdict(g, shot.ok, 'VAULT OPEN', 'ALARM');
     },
   };

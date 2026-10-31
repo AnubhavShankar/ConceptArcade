@@ -1,0 +1,90 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "thrill-ride",
+  "title": "Thrill Ride",
+  "summary": "Build a roller coaster whose track is the antiderivative: integrate by parts so the rails fit every pylon and the car stays on.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 7,
+    "name": "Integrals"
+  },
+  "ncertRef": "Section 7.6, Integration by Parts",
+  "concepts": [
+    "∫ u dv = uv − ∫ v du",
+    "Choosing u: log, inverse trig, algebra, trig, exp",
+    "Integrating by parts twice",
+    "Integrals of log x and tan⁻¹ x",
+    "The pattern ∫ eˣ[f(x) + f′(x)] dx = eˣ f(x) + C",
+    "Cyclic integrals such as ∫ eˣ sin x dx"
+  ],
+  "learningOutcome": "The student can integrate products by parts, choose u well, repeat the method, spot the eˣ[f + f′] pattern and solve cyclic integrals such as ∫ eˣ sin x dx.",
+  "mechanic": "build-the-setup",
+  "estimatedMinutes": 24,
+  "levels": [
+    {
+      "title": "x times a wave",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: ∫ u dv = uv − ∫ v du with u = x, so ∫ x sin x dx = −x cos x + sin x + C (Ex 7.6 Q1, Q2, Q12; Example 17).",
+      "hints": [
+        "Take u = x, because its derivative is simpler, and dv = the wave.",
+        "∫ x sin x dx = x(−cos x) − ∫ (−cos x) dx.",
+        "For sin 2x, the integral of the wave brings a factor 1/2, and the second integral another 1/2."
+      ]
+    },
+    {
+      "title": "Twice by parts",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: exponentials, and x² needs the method twice: ∫ x² eˣ dx = eˣ(x² − 2x + 2) + C (Ex 7.6 Q3; Example 19).",
+      "hints": [
+        "Keep u the power of x and dv the exponential.",
+        "After one step, ∫ x² eˣ dx = x² eˣ − 2∫ x eˣ dx: do it again.",
+        "For e^(2x) each integration brings a factor 1/2."
+      ]
+    },
+    {
+      "title": "Log and inverse trig",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: take u = log x or tan⁻¹ x and dv = dx or x dx, as in ∫ log x dx = x log x − x + C (Ex 7.6 Q4 to Q9, Q13; Example 18).",
+      "hints": [
+        "Log and inverse trigonometric functions have easy derivatives, so make them u.",
+        "∫ log x dx: u = log x, dv = dx, so v = x.",
+        "∫ tan⁻¹ x dx = x tan⁻¹ x − ∫ x/(1 + x²) dx, and the last part is (1/2) log(1 + x²)."
+      ]
+    },
+    {
+      "title": "The eˣ pattern",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: when the integrand is eˣ[f(x) + f′(x)], the answer is eˣ f(x) + C; find f (Ex 7.6 Q16 to Q20; Example 22).",
+      "hints": [
+        "Split the bracket into a function and its own derivative.",
+        "eˣ(sin x + cos x): f = sin x, since (sin x)′ = cos x.",
+        "eˣ(1/x − 1/x²): f = 1/x, because (1/x)′ = −1/x²."
+      ]
+    },
+    {
+      "title": "Round and round",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: cyclic integrals. By parts twice brings the integral back, so solve for it: ∫ eˣ sin x dx = ½eˣ(sin x − cos x) + C (Ex 7.6 Q21; Example 21).",
+      "hints": [
+        "Call the integral I and integrate by parts twice, keeping the same choice of u.",
+        "The integral you started with comes back: I = (something) − I.",
+        "Solve 2I = (something), then divide."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "∫ uv dx = ∫ u dx · ∫ v dx",
+    "The choice of u does not matter",
+    "A cyclic integral by parts goes round forever and cannot be solved"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

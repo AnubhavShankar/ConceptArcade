@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createRng } from '@core/random';
-import { buildRounds, explain, frac, intel, judge, missText, probability, spotText, type Round } from './logic';
+import { buildRounds, dropCounts, explain, frac, intel, judge, missText, probability, spotText, type Round } from './logic';
 
 const seeds = Array.from({ length: 60 }, (_, i) => i * 7919 + 13);
 const all = (level: number) => seeds.flatMap((s) => buildRounds(level, createRng(s)));
@@ -75,6 +75,43 @@ describe('words', () => {
         expect(explain(r)).toContain(probability(r));
         expect(intel(r)).toMatch(/balls drop/);
       }
+    }
+  });
+  it('the Bayes miss text is one text for every wrong pair: it never says which count is right and holds no count', () => {
+    for (const level of [2, 3]) {
+      for (const r of all(level).slice(0, 40)) {
+        const texts = new Set<string>();
+        for (const [a, b] of [[0, 0], [r.ans[0] + 1, r.ans[1]], [r.ans[0], r.ans[1] + 1], [r.ans[0] + 2, r.ans[1] - 1], [60, 60]]) texts.add(missText(r, [a, b]));
+        expect(texts.size).toBe(1);
+        expect(/\d/.test([...texts][0])).toBe(false);
+        expect(/was right|smaller|larger|fewer|more/i.test([...texts][0])).toBe(false);
+      }
+    }
+  });
+  it('the level 1 miss text gives only the direction of the one count, with no number', () => {
+    for (const r of all(1).slice(0, 40)) {
+      expect(missText(r, [r.ans[0] - 1])).toBe(missText(r, [0]));
+      expect(missText(r, [r.ans[0] + 1])).toBe(missText(r, [60]));
+      expect(/\d/.test(missText(r, [r.ans[0] + 1]))).toBe(false);
+    }
+  });
+  it('a miss drops a fixed generic mix, the same for every round; only a win drops the real counts', () => {
+    for (const level of [1, 2, 3]) {
+      for (const r of all(level)) {
+        const miss = dropCounts(r, false);
+        expect(miss.reduce((s, g) => s + g.n, 0)).toBe(r.N);
+        // an equal share per gate and half of each red, whatever the gates really do
+        expect(new Set(miss.map((g) => `${g.n}:${g.red}`)).size).toBe(1);
+        expect(miss.every((g) => g.red * 2 === g.n)).toBe(true);
+        expect(dropCounts(r, true).map((g) => g.red)).toEqual(r.gates.map((g) => g.red));
+      }
+    }
+    expect(dropCounts(all(1)[0], false).map((g) => g.red)).toEqual(dropCounts(all(1)[1], false).map((g) => g.red));
+  });
+  it('the generic drop has the same red total in every round of a level, so it carries no information about the round', () => {
+    for (const level of [1, 2, 3]) {
+      const reds = new Set(all(level).map((r) => dropCounts(r, false).reduce((s, g) => s + g.red, 0)));
+      expect(reds.size).toBe(1);
     }
   });
   it('rounds in a level differ', () => {

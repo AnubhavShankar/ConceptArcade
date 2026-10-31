@@ -11,6 +11,8 @@ type G = CanvasRenderingContext2D;
 type Mood = 'happy' | 'worried' | 'cheer';
 const VERDICT = 1.6;
 const C = { x: 400, y: 180, R: 92 };
+/** How long a paid check keeps the principal-range arc on screen in round 2 (seconds). */
+const PULSE = 1.5;
 
 const HEROES = [
   { story: 'Beam is a signal that has to reach a satellite. The dish controller only ever reports principal values: sin⁻¹ lies in [−π/2, π/2], cos⁻¹ in [0, π] and tan⁻¹ in (−π/2, π/2). So the angle in the expression is not always the angle the dish must take: first bring it inside the branch without changing the value of the sine, cosine or tangent.', objective: 'Point the dish at the value of the expression, in three rounds. The shaded arc shows the principal branch in round 1; a check costs a charge.' },
@@ -65,6 +67,8 @@ function dish(g: G, a: number) {
 function level(n: number, random: () => number): DialLevel<Round> {
   const hero = HEROES[n - 1];
   const rounds = buildRounds(n, random);
+  /** The last paid check: its round and the clock time it first showed (set by the first frame that draws it). */
+  let pulse: { r: Round; t0: number | null } | null = null;
   return {
     hero: { name: 'Beam', role: 'a signal spark racing to a relay tower, which must point its dish at an angle given by an inverse trigonometric expression', story: hero.story, objective: hero.objective },
     rounds,
@@ -76,16 +80,29 @@ function level(n: number, random: () => number): DialLevel<Round> {
       drag: (_r, px, py) => Math.round(Math.atan2(C.y - py, px - C.x) / STEP),
       radius: 20,
     }],
-    test: { button: '📡 Check', aria: 'Check the dish against the range of the outer function', read: (r, v) => spotText(r, v.k) },
+    test: {
+      button: '📡 Check',
+      aria: 'Check the dish against the range of the outer function',
+      read: (r, v) => {
+        pulse = { r, t0: null };
+        return spotText(r, v.k);
+      },
+    },
     fire: { button: '📶 Send the signal', aria: 'Send the signal' },
     judge: (r, v) => judge(r, v.k),
     miss: (r, v) => missText(r, v.k),
     win: (r) => `Signal received! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The principal range is shaded.' : r.assist === 1 ? 'The range is dim: a check costs a charge.' : 'Boss round: no shading, no check.'}`,
-    hit: (r) => [C.x + 130 * Math.cos(r.ans * STEP), C.y - 130 * Math.sin(r.ans * STEP)],
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The principal range is shaded.' : r.assist === 1 ? 'No shading: a check shows the range for a moment and costs a charge.' : 'Boss round: no shading, no check.'}`,
+    hit: () => [C.x, C.y - 120],
     delay: VERDICT,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, v, t, rt, shot, A }) => {
       backdrop(g);
+      if (pulse && pulse.r === r && pulse.t0 === null) pulse.t0 = t;
+      // The principal-range arc shows live in round 1, for a moment after a paid check in round 2, and after a win; never before Fire in the boss round and never after a miss.
+      const frozen = !shot && r.assist === 1 && pulse !== null && pulse.r === r && pulse.t0 !== null && t - pulse.t0 < PULSE;
+      const showArc = r.assist === 0 || frozen || (shot !== null && shot.ok);
+      A.canvas.dataset.arc = showArc ? '1' : '0';
+      A.canvas.dataset.satellite = shot && shot.ok && rt > 0.4 ? '1' : '0';
       const use = shot ? shot.v.k : v.k;
       const mood: Mood = shot ? (rt > VERDICT ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
       text(g, r.text, 320, 28, PAL.yellow, 14);
@@ -102,8 +119,8 @@ function level(n: number, random: () => number): DialLevel<Round> {
         if (s % 6 === 0) text(g, piText(s), C.x + (C.R + 26) * Math.cos(a), C.y - (C.R + 26) * Math.sin(a) + 4, PAL.dim, 10);
         else if (s % 3 === 0) text(g, piText(s), C.x + (C.R + 24) * Math.cos(a), C.y - (C.R + 24) * Math.sin(a) + 4, 'rgba(143,155,214,0.6)', 9);
       }
-      if (r.assist <= 1 || shot) {
-        g.globalAlpha = r.assist === 1 && !shot ? 0.3 : 0.55;
+      if (showArc) {
+        g.globalAlpha = 0.55;
         g.strokeStyle = PAL.green;
         g.lineWidth = 8;
         g.beginPath();
@@ -115,10 +132,11 @@ function level(n: number, random: () => number): DialLevel<Round> {
       const aim = use * STEP;
       const beamLen = shot ? Math.min(150, rt * 220) : 0;
       if (shot) glow(g, shot.ok && rt > 0.7 ? PAL.green : PAL.yellow, 10, () => line(g, C.x, C.y, C.x + beamLen * Math.cos(aim), C.y - beamLen * Math.sin(aim), PAL.yellow, 3));
-      if (shot && rt > 0.4) {
+      // The satellite is drawn only when the signal reaches it: a miss never shows where it was.
+      if (shot && shot.ok && rt > 0.4) {
         const sx = C.x + 135 * Math.cos(r.ans * STEP);
         const sy = C.y - 135 * Math.sin(r.ans * STEP);
-        g.fillStyle = shot.ok && rt > 0.8 ? PAL.green : PAL.pink;
+        g.fillStyle = rt > 0.8 ? PAL.green : PAL.pink;
         g.fillRect(sx - 9, sy - 5, 18, 10);
         line(g, sx - 17, sy, sx - 9, sy, PAL.white, 3);
         line(g, sx + 9, sy, sx + 17, sy, PAL.white, 3);

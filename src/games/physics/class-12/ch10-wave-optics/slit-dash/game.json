@@ -21,13 +21,14 @@
     "Fringe positions x = nλD/d",
     "Fringe width",
     "Fringes of two colours coinciding",
-    "Intensity from path difference"
+    "Intensity from path difference",
+    "Coherent and incoherent addition"
   ],
   "learningOutcome": "The student can use x = nλD/d to find a wavelength or a fringe position, find where bright fringes of two colours coincide, and find the intensity from the path difference.",
   "estimatedMinutes": 25,
   "levels": [
     {
-      "title": "Hawkeye’s range",
+      "title": "Kestrel’s range",
       "tier": "concept",
       "kind": "foundation",
       "adds": "Baseline: the n-th bright fringe is at x = nλD/d, so the colour of the light decides where a stripe lands (Ex 10.4).",
@@ -57,6 +58,17 @@
         "The phase difference is φ = 2πΔ/λ, and I = 4I₀cos²(φ/2).",
         "At Δ = λ the brightness is K = 4I₀, the maximum.",
         "So I/K = cos²(πΔ/λ). Work in degrees: π × Δ/λ is 180° × Δ/λ."
+      ]
+    },
+    {
+      "title": "Lamps or lasers",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: two lamps are incoherent: their intensities just add to 2I₀ everywhere, while coherent beams give 4I₀cos²(φ/2) (Section 10.4).",
+      "hints": [
+        "Coherent sources keep a fixed phase difference; independent bulbs do not.",
+        "Incoherent: the intensities add, I₀ + I₀ = 2I₀.",
+        "Coherent: I = 4I₀cos²(φ/2) with φ = 2πΔ/λ."
       ]
     }
   ],

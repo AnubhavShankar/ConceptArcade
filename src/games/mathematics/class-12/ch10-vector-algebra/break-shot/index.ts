@@ -1,6 +1,7 @@
 // Inspirations: pool and snooker (an off-centre hit of equal balls sends the two balls off at a right angle) and Golf Clash style aiming. Cue is a pool
 // player with a visor. The object ball's path is fixed; the cue ball's path is (λ, k) and λ is the player's call. The meters read dot products and shadows.
 import { PAL } from '@core/arcade';
+import { helperOn, paidFlash } from '@core/aidflash';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
 import { backdrop, face, num, track, trackHandle, verdict } from '@core/mathkit';
@@ -70,22 +71,32 @@ function room(x: number, y: number, dx: number, dy: number) {
 function level(n: number, random: () => number): DialLevel<Round> {
   const hero = HEROES[n - 1];
   const rounds = buildRounds(n, random);
+  /** The preview and the readings: live in round 1, for 1.5 s after a paid meter in round 2, never in the boss round. */
+  const flash = paidFlash();
   return {
     hero: { name: 'Cue', role: 'a pool player in a visor who sends the cue ball off along a vector', story: hero.story, objective: hero.objective },
     rounds,
     charges: [1, 1, 0],
     dials: [{ key: 'l', aria: 'Cue ball path component λ', label: 'Rebound λ', unit: '', step: 1, min: (r: Round) => r.min, max: (r: Round) => r.max, start: (r: Round) => r.start, text: (v: number) => `λ = ${num(v)}` }],
     handles: [trackHandle<Round>('l', (r) => r.min, (r) => r.max)],
-    test: { button: '📏 Meter', aria: 'Meter: read the shot for this λ', read: (r, v) => spotText(r, v.l) },
+    test: {
+      button: '📏 Meter',
+      aria: 'Meter: read the shot for this λ',
+      read: (r, v) => {
+        flash.paid();
+        return spotText(r, v.l);
+      },
+    },
     fire: { button: '🎱 Take the shot', aria: 'Take the shot' },
     judge: (r, v) => judge(r, v.l),
     miss: (r, v) => missText(r, v.l),
     win: (r) => `Clean break! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The preview is live.' : r.assist === 1 ? 'The preview is dim: a meter costs a charge.' : 'Boss round: no preview, no meter.'}`,
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The preview is live.' : r.assist === 1 ? 'No preview: a meter shows it for a moment and costs a charge.' : 'Boss round: no preview, no meter.'}`,
     hit: () => [C0.x, C0.y],
     delay: RUN,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
       backdrop(g);
+      const since = flash.since(t, k);
       const l = shot ? shot.v.l : v.l;
       // The table
       g.fillStyle = '#3a2a1a';
@@ -109,18 +120,19 @@ function level(n: number, random: () => number): DialLevel<Round> {
         line(g, T.x0 + 40, T.y1 - 20, T.x0 + 40 + ux, T.y1 - 20 + uy, PAL.pink, 3);
         text(g, `rail (${num(r.u[0])}, ${num(r.u[1])})`, T.x0 + 40 + ux / 2, T.y1 - 26 + uy / 2, PAL.pink, 10);
       }
-      const live = r.assist === 0;
-      const dim = r.assist === 1;
+      // The preview is the helper: before Fire only, and only while helperOn says so (the player's own setting; a shot never redraws it).
+      const helper = !shot && helperOn(r.assist, false, since);
+      A.canvas.dataset.helper = helper ? '1' : '0';
       const p = shot ? Math.max(0, Math.min(1, (rt - 0.45) / (RUN - 0.6))) : 0;
       const hit = shot ? rt > 0.45 : false;
       // The paths (object ball always, the cue ball preview while aiming)
       if (r.kind !== 'proj') line(g, C0.x, C0.y, C0.x + od[0], C0.y + od[1], PAL.cyan, 2, [5, 4]);
-      if (!shot && (live || dim)) {
-        g.globalAlpha = dim ? 0.3 : 0.9;
+      if (helper) {
+        g.globalAlpha = 0.9;
         line(g, C0.x, C0.y, C0.x + cd[0], C0.y + cd[1], PAL.yellow, 2.5, [5, 4]);
         g.globalAlpha = 1;
-        if (live && r.kind === 'perp' && Math.abs(angle(r, l) - 90) < 1e-6) text(g, '⊾ 90°', C0.x + 18, C0.y - 12, PAL.green, 12);
-        if (live) text(g, r.kind === 'proj' ? `shadow ${num(Math.round(measure(r, l) * 10) / 10)}` : r.kind === 'dot' ? `dot ${num(measure(r, l))}` : `angle ${num(Math.round(angle(r, l) * 10) / 10)}°`, 480, 40, PAL.yellow, 12);
+        if (r.kind === 'perp' && Math.abs(angle(r, l) - 90) < 1e-6) text(g, '⊾ 90°', C0.x + 18, C0.y - 12, PAL.green, 12);
+        text(g, r.kind === 'proj' ? `shadow ${num(Math.round(measure(r, l) * 10) / 10)}` : r.kind === 'dot' ? `dot ${num(measure(r, l))}` : `angle ${num(Math.round(angle(r, l) * 10) / 10)}°`, 480, 40, PAL.yellow, 12);
       }
       // The balls
       const sc = room(C0.x, C0.y, cd[0], cd[1]);

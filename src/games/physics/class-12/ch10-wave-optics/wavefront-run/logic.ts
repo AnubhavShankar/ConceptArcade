@@ -90,3 +90,83 @@ export function bandExplain(r: BandRound): string[] {
     `sin r = (${r.v2}/${r.v1}) × sin ${r.i}° = ${fmt((r.v2 / r.v1) * sinD(r.i))}, so r = ${fmt(r.rSol)}° (Huygens’ construction, Section 10.3).`,
   ];
 }
+
+// ---- level 3: Rainbow race (dispersion). Times are in tenths of a nanosecond (integers). ---------------------------------------
+
+export interface RainbowRound {
+  /** Thickness of the glass block (m) and the indices for red and violet. */
+  d: number;
+  nr: number;
+  nv: number;
+  /** The head start violet needs, in tenths of a ns: d(n_v − n_r)/c. */
+  dt: number;
+  /** Time each pulse spends inside the glass, in tenths of a ns: d·n/c. */
+  trT: number;
+  tvT: number;
+  assist: 0 | 1 | 2;
+}
+
+/** [d, n_red, n_violet] per round; round 3 picks one of its two rows. */
+const RAINBOW: [number, number, number][][] = [[[3, 1.51, 1.53]], [[6, 1.5, 1.53]], [[15, 1.52, 1.54], [12, 1.51, 1.535]]];
+
+/** The head-start dial, in tenths of a ns. Positive: violet starts first. The start (0) is never an answer. */
+export const HEAD = { min: -30, max: 30, step: 1, start: 0 };
+
+/** Time through a block of thickness d (m) at index n, in tenths of a ns (c = 3 × 10⁸ m/s). */
+export const transitT = (d: number, n: number) => Math.round(((d * n) / C) * 100);
+
+export function rainbowRounds(random: () => number): RainbowRound[] {
+  return RAINBOW.map((pool, k) => {
+    const [d, nr, nv] = pool.length === 1 ? pool[0] : shuffle(pool, random)[0];
+    return { d, nr, nv, dt: Math.round(((d * (nv - nr)) / 3e8) * 1e10), trT: transitT(d, nr), tvT: transitT(d, nv), assist: aid(k) };
+  });
+}
+
+/** Exactly one head start wins. */
+export const judgeRainbow = (r: RainbowRound, x: number) => x === r.dt;
+/** Who leaves the block first. */
+export const rainbowLeader = (r: RainbowRound, x: number): 'red' | 'violet' | 'together' => (x < r.dt ? 'red' : x > r.dt ? 'violet' : 'together');
+
+/** A head start in tenths of a ns, as written for a student: 0.6, 3, −0.5. */
+export const fmtHead = (x: number) => `${x < 0 ? '−' : ''}${Number((Math.abs(x) / 10).toFixed(1))}`;
+const tenths = (t: number) => (t / 10).toFixed(1);
+
+/** The paid test race: numbers are allowed here. */
+export function rainbowTest(r: RainbowRound, x: number): string {
+  const gap = r.tvT - r.trT - x;
+  const when = gap === 0 ? 'together with red' : gap > 0 ? `${tenths(gap)} ns after red` : `${tenths(-gap)} ns before red`;
+  return `Test race with a head start of ${fmtHead(x)} ns: red takes ${tenths(r.trT)} ns through the glass, violet takes ${tenths(r.tvT)} ns, so violet leaves ${when}.`;
+}
+
+/** After a miss: only which pulse left the block first. */
+export const rainbowMiss = (r: RainbowRound, x: number) => `With a head start of ${fmtHead(x)} ns the ${rainbowLeader(r, x) === 'red' ? 'red' : 'violet'} pulse left the block first.`;
+
+export function rainbowExplain(r: RainbowRound): string[] {
+  const dn = Math.round((r.nv - r.nr) * 1000) / 1000;
+  return [
+    `In glass v = c/n, so violet (n = ${r.nv}) is slower than red (n = ${r.nr}). The extra time is d(n_v − n_r)/c = ${r.d} × ${dn}/(3 × 10⁸) s = ${tenths(r.dt)} ns, so violet needs that head start.`,
+    `Through ${r.d} m of glass red needs ${tenths(r.trT)} ns and violet ${tenths(r.tvT)} ns (Exercise 10.3 gives the same speeds, c/n).`,
+  ];
+}
+
+/**
+ * The race as drawn, in seconds of animation. The start lights are scaled from the head start the player set (a clamp keeps long head
+ * starts inside the 2.4 s of the shot). The exit gap is FIXED: zero on a win, GAP on a miss, whichever way the player was off, so the
+ * picture never grows with the error.
+ */
+export const RACE = { dr: 1.1, gap: 0.3, perNs: 0.6, cap: 0.6 };
+export function raceTimes(r: RainbowRound, x: number) {
+  const xd = Math.max(-RACE.cap, Math.min(RACE.cap, (x / 10) * RACE.perNs));
+  const lead = rainbowLeader(r, x);
+  const g = lead === 'together' ? 0 : lead === 'red' ? RACE.gap : -RACE.gap;
+  const sr = Math.max(0, xd);
+  const sv = Math.max(0, -xd);
+  const exitR = sr + RACE.dr;
+  const exitV = exitR + g;
+  return { sr, sv, exitR, exitV, durR: RACE.dr, durV: exitV - sv, xd };
+}
+/** When the verdict lands: just after the later pulse leaves the block. */
+export const rainbowDelay = (r: RainbowRound, x: number) => {
+  const t = raceTimes(r, x);
+  return Math.max(t.exitR, t.exitV) + 0.1;
+};

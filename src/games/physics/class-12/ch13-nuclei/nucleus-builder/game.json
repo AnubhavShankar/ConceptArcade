@@ -21,13 +21,14 @@
     "Constant nuclear density",
     "The Coulomb barrier",
     "Radioactive decays",
-    "Conservation of mass number and charge"
+    "Conservation of mass number and charge",
+    "Isotopes, isobars and isotones"
   ],
   "learningOutcome": "The student can find a nuclear radius from R₀A^⅓, find the Coulomb barrier Z₁Z₂e²/(4πε₀d) for two touching nuclei, and balance α and β decays with A and Z conserved.",
   "estimatedMinutes": 25,
   "levels": [
     {
-      "title": "Katamari’s radius",
+      "title": "Clump’s radius",
       "tier": "concept",
       "kind": "foundation",
       "adds": "Baseline: R = R₀A^⅓ with R₀ = 1.2 fm, so the volume is proportional to A and the density is the same for every nucleus (Ex 13.4, 13.10; Example 13.1).",
@@ -57,6 +58,17 @@
         "An α-particle takes away A = 4 and Z = 2.",
         "A β⁻ decay sends out an electron: A does not change, and Z goes up by 1. For β⁺, Z goes down by 1.",
         "Check both sums: A_parent = A_daughter + A_particle and the same for Z."
+      ]
+    },
+    {
+      "title": "Nuclide twins",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: isotopes share Z, isobars share A and isotones share N; build the nuclide that matches the clue (Section 13.2).",
+      "hints": [
+        "A = Z + N.",
+        "Isotope: same Z. Isobar: same A. Isotone: same N.",
+        "Use the clue’s extra fact to fix the other number."
       ]
     }
   ],

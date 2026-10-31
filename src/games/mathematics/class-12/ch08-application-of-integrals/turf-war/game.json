@@ -16,7 +16,8 @@
     "Area is positive: the part below the axis adds",
     "Splitting an area at a crossing point",
     "Area under sine arches",
-    "Area under a cubic over symmetric-looking limits"
+    "Area under a cubic over symmetric-looking limits",
+    "Area with respect to y: ∫ x dy"
   ],
   "learningOutcome": "The student can find the area under a curve as a definite integral, split it where the curve crosses the axis and add the absolute parts, and use the area of an ellipse, πab.",
   "mechanic": "tune-to-target",
@@ -64,6 +65,28 @@
         "The cubic is negative for x < 0 and positive for x > 0.",
         "Take the absolute value of the integral from −p to 0.",
         "Add k p⁴/4 and k q⁴/4 and match the paint needed."
+      ]
+    },
+    {
+      "title": "Sideways turf",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: area between x = g(y), the y-axis and y = c, y = d is ∫ g(y) dy; drag the top edge (Ex 8.1 Q4).",
+      "hints": [
+        "Take horizontal strips: each has length x = g(y).",
+        "Area = ∫₀^v g(y) dy.",
+        "Set the area equal to the target and solve for v."
+      ]
+    },
+    {
+      "title": "Round turf",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: ∫ √(a² − x²) dx = (x/2)√(a² − x²) + (a²/2) sin⁻¹(x/a); the turf is part of a circle (Ex 7.7 Q1, Q2; Ex 8.1 Q3).",
+      "hints": [
+        "The fence is y = √(a² − x²), a quarter of the circle of radius a.",
+        "Use ∫ √(a² − x²) dx = (x/2)√(a² − x²) + (a²/2) sin⁻¹(x/a).",
+        "sin⁻¹(1/2) = π/6 and sin⁻¹ 1 = π/2."
       ]
     }
   ],

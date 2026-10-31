@@ -42,10 +42,28 @@ describe('the matrix method works on every generated system', () => {
 });
 
 describe('level 4: determinant and verdict', () => {
-  it('every round has |A| and one verdict; the three kinds each appear, and singular rounds follow the (adj A)B test', () => {
+  it('verdicts are drawn at random (not a permutation, never all the same), and every kind turns up across seeds', () => {
+    const seen = new Set<string>();
+    let notPermutation = 0;
+    for (const s of seeds) {
+      const vs = buildRounds(4, createRng(s)).map((r) => r.verdict);
+      expect(new Set(vs).size).toBeGreaterThan(1);
+      if (new Set(vs).size < 3) notPermutation++;
+      vs.forEach((v) => seen.add(String(v)));
+    }
+    expect([...seen].sort()).toEqual(['1', '2', '3']);
+    expect(notPermutation).toBeGreaterThan(10);
+  });
+  it('d = 0 is the answer in some rounds and not in others, across seeds, so it is no fixed pattern', () => {
+    const counts = [0, 1, 2, 3].map(() => 0);
+    for (const s of seeds) counts[buildRounds(4, createRng(s)).filter((r) => r.det === 0).length]++;
+    expect(counts[0]).toBe(0);
+    expect(counts[1]).toBeGreaterThan(0);
+    expect(counts[2]).toBeGreaterThan(0);
+  });
+  it('every round has |A| and one verdict, and singular rounds follow the (adj A)B test', () => {
     for (const s of seeds) {
       const rs = buildRounds(4, createRng(s));
-      expect(rs.map((r) => r.verdict).sort()).toEqual([1, 2, 3]);
       for (const r of rs) {
         expect(det3(r.A)).toBe(r.det);
         expect(Math.abs(r.det)).toBeLessThanOrEqual(30);
@@ -68,6 +86,26 @@ describe('level 4: determinant and verdict', () => {
   });
 });
 
+describe('a miss says the same thing wherever the wrong setting is', () => {
+  it('the miss text is identical for every wrong setting of a round (it names no plate and no dial)', () => {
+    for (const level of [1, 2, 3, 4]) {
+      for (const r of all(level).slice(0, 12)) {
+        const texts = new Set<string>();
+        for (const d of [-3, 1, 7, 12]) {
+          const v: Record<string, number> = r.kind === 'jam' ? { d: d === r.det ? d + 1 : d, m: 1 } : { x: d + 20, y: d, z: d + 1 };
+          texts.add(missText(r, v));
+        }
+        expect(texts.size).toBe(1);
+      }
+    }
+  });
+  it('the start (all tumblers 0, or |A| = 0 with verdict 1) never wins', () => {
+    for (const level of [1, 2, 3, 4]) {
+      for (const r of all(level)) expect(judge(r, r.kind === 'jam' ? { d: 0, m: 1 } : { x: 0, y: 0, z: 0 })).toBe(false);
+    }
+  });
+});
+
 describe('words', () => {
   it('helpers fade; plates read as equations; misses and checks never state the code', () => {
     for (const level of [1, 2, 3, 4]) {
@@ -77,6 +115,7 @@ describe('words', () => {
         expect(intel(r).length).toBeGreaterThan(30);
         const wrong: Record<string, number> = r.kind === 'jam' ? { d: r.det + 1, m: r.verdict } : { x: r.sol[0] + 1, y: r.sol[1], z: r.sol[2] ?? 0 };
         expect(missText(r, wrong)).not.toMatch(/\d{1,2}, \d/);
+        expect(missText(r, wrong)).not.toMatch(/plate \d|plates \d|locked/i);
         expect(spotText(r, wrong)).toMatch(/Plate check/);
         expect(explain(r)).toMatch(/|A|/);
       }

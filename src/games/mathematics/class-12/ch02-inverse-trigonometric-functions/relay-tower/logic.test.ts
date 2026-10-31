@@ -28,12 +28,40 @@ describe('every round points the dish at the true value', () => {
       expect(Math.abs(fn(r.ans * STEP) - fn(r.value() === 0 ? 0 : r.ans * STEP))).toBeLessThan(1e-9);
     }
   });
-  it('level 1 has one round for each of sin⁻¹, cos⁻¹ and tan⁻¹, and level 2 ends past π/2', () => {
-    for (const s of seeds.slice(0, 10)) {
+  it('level 1 has one round for each of sin⁻¹, cos⁻¹ and tan⁻¹, and the level 2 boss ends past π/2 in size', () => {
+    for (const s of seeds) {
       expect(buildRounds(1, createRng(s)).map((r) => r.text.slice(0, 3))).toEqual(['sin', 'cos', 'tan']);
-      expect(buildRounds(2, createRng(s))[2].ans).toBe(9);
-      expect(buildRounds(2, createRng(s))[1].ans).toBe(6);
+      const rs = buildRounds(2, createRng(s));
+      expect(Math.abs(rs[2].ans)).toBeGreaterThan(6);
+      expect(Math.abs(rs[0].ans)).toBeLessThan(6);
     }
+  });
+  it('level 2: the answer of each round varies with the seed, no two rounds of a level share an answer, and no fixed guess wins every seed', () => {
+    for (const slot of [0, 1, 2]) {
+      const answers = new Set(seeds.map((s) => buildRounds(2, createRng(s))[slot].ans));
+      expect(answers.size).toBeGreaterThanOrEqual(slot === 0 ? 4 : 3);
+      // the commonest answer is not the answer of more than half the seeds
+      const count = new Map<number, number>();
+      for (const s of seeds) {
+        const a = buildRounds(2, createRng(s))[slot].ans;
+        count.set(a, (count.get(a) ?? 0) + 1);
+      }
+      expect(Math.max(...count.values())).toBeLessThanOrEqual(seeds.length * 0.5);
+    }
+    for (const s of seeds) expect(new Set(buildRounds(2, createRng(s)).map((r) => r.ans)).size).toBe(3);
+  });
+  it('level 2: every new row is checked against the real functions, has a worked reason, and keeps its answer inside the range it shows', () => {
+    const seen = new Set<string>();
+    for (const s of seeds) for (const r of buildRounds(2, createRng(s))) {
+      if (seen.has(r.text)) continue;
+      seen.add(r.text);
+      expect(Math.abs(r.value() - r.ans * STEP)).toBeLessThan(1e-9);
+      expect(r.work.length).toBeGreaterThan(30);
+      expect(r.ans).toBeGreaterThanOrEqual(r.range[0]);
+      expect(r.ans).toBeLessThanOrEqual(r.range[1]);
+      expect(dial.filter((k) => judge(r, k))).toEqual([r.ans]);
+    }
+    expect(seen.size).toBeGreaterThanOrEqual(18);
   });
   it('helpers fade, and a level never repeats an expression', () => {
     for (const level of [1, 2, 3]) {
@@ -50,6 +78,9 @@ describe('words', () => {
         for (const k of dial.filter((x) => x !== r.ans)) {
           const t = missText(r, k);
           expect(t).toMatch(/clockwise|can only lie/);
+          // only round 1 names the range (it is on screen live); rounds 2 and 3 give the direction for every wrong setting
+          if (r.assist !== 0) expect(t).toMatch(/clockwise/);
+          if (r.assist !== 0) expect(t).not.toMatch(/can only lie|\[/);
           if (!/can only lie/.test(t)) expect(t.replace(piText(k), "")).not.toContain(piText(r.ans));
           expect(spotText(r, k)).toMatch(/Check/);
         }

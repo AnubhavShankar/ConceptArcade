@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { C, SLIDERS, asinD, bandExplain, bandMiss, bandRounds, freq, judgeBand, judgeMud, mudExplain, mudMiss, mudReading, mudRounds, sinD } from './logic';
+import { C, HEAD, RACE, SLIDERS, asinD, bandExplain, bandMiss, bandRounds, fmtHead, freq, judgeBand, judgeMud, judgeRainbow, mudExplain, mudMiss, mudReading, mudRounds, raceTimes, rainbowDelay, rainbowExplain, rainbowLeader, rainbowMiss, rainbowRounds, rainbowTest, sinD } from './logic';
 
 const lcg = (seed: number) => {
   let s = seed >>> 0;
@@ -95,5 +95,168 @@ describe('words: the working and the misses', () => {
     expect(mudReading(r, r.lamSol, r.vSol)).toMatch(/They agree/);
     expect(mudReading(r, r.lambda, r.vSol)).toMatch(/do not agree/);
     expect(mudReading(r, r.lambda, C)).toMatch(/They agree/);
+  });
+});
+
+// ---- level 3: Rainbow race ---------------------------------------------------------------------------------------------------
+const headGrid = grid(HEAD.min, HEAD.max, HEAD.step);
+/** Δt = d(n_v − n_r)/c computed straight from the formula, in tenths of a ns. */
+const dtFormula = (d: number, nr: number, nv: number) => Math.round(((d * (nv - nr)) / 3e8) * 1e9 * 10);
+
+describe('rainbow race: the numbers', () => {
+  it('every row of the brief gives Δt = d(n_v − n_r)/c with c = 3 × 10⁸ m/s', () => {
+    const rows: [number, number, number, number][] = [
+      [3, 1.51, 1.53, 2],
+      [6, 1.5, 1.53, 6],
+      [15, 1.52, 1.54, 10],
+      [12, 1.51, 1.535, 10],
+    ];
+    for (const [d, nr, nv, dt] of rows) {
+      expect(dtFormula(d, nr, nv)).toBe(dt);
+      // the same figure to within rounding, in seconds
+      expect((d * (nv - nr)) / 3e8).toBeCloseTo(dt * 1e-10, 12);
+    }
+  });
+  it('the rounds on every seed: 0.2, 0.6 and 1.0 ns, matching the formula and the times through the glass', () => {
+    const seen = new Set<string>();
+    for (const s of seeds.slice(0, 80)) {
+      const rounds = rainbowRounds(lcg(s));
+      expect(rounds).toHaveLength(3);
+      expect(rounds.map((r) => r.assist)).toEqual([0, 1, 2]);
+      expect(rounds.map((r) => r.dt)).toEqual([2, 6, 10]);
+      for (const r of rounds) {
+        expect(r.dt).toBe(dtFormula(r.d, r.nr, r.nv));
+        expect(r.nv).toBeGreaterThan(r.nr);
+        // red takes d·n_r/c and violet d·n_v/c in the glass: the difference is the head start
+        expect(r.trT).toBe(Math.round(((r.d * r.nr) / 3e8) * 1e10));
+        expect(r.tvT).toBe(Math.round(((r.d * r.nv) / 3e8) * 1e10));
+        expect(r.tvT - r.trT).toBe(r.dt);
+        expect(r.dt / 10).toBeGreaterThanOrEqual(HEAD.min / 10);
+        expect(r.dt / 10).toBeLessThanOrEqual(HEAD.max / 10);
+      }
+      seen.add(`${rounds[2].d}/${rounds[2].nv}`);
+    }
+    expect([...seen].sort()).toEqual(['12/1.535', '15/1.54']);
+  });
+});
+
+describe('rainbow race: only the answer wins', () => {
+  it('exactly one head start on the dial wins, in every round on every seed, and the start never does', () => {
+    for (const s of seeds.slice(0, 80)) {
+      for (const r of rainbowRounds(lcg(s))) {
+        const winners = headGrid.filter((x) => judgeRainbow(r, x));
+        expect(winners).toEqual([r.dt]);
+        expect(judgeRainbow(r, HEAD.start)).toBe(false);
+        expect(r.dt).not.toBe(HEAD.start);
+        expect(headGrid).toContain(r.dt);
+      }
+    }
+  });
+  it('the sign matters: red first, the unchanged setting, the doubled answer and the transit times all fail', () => {
+    for (const r of rainbowRounds(lcg(3))) {
+      expect(judgeRainbow(r, -r.dt)).toBe(false);
+      expect(judgeRainbow(r, 0)).toBe(false);
+      expect(judgeRainbow(r, 2 * r.dt)).toBe(false);
+      expect(judgeRainbow(r, r.dt - 1)).toBe(false);
+      expect(judgeRainbow(r, r.dt + 1)).toBe(false);
+      expect(judgeRainbow(r, r.dt)).toBe(true);
+    }
+  });
+  it('the answer is not a fixed position: it differs by round and the boss row is not given away by the round alone', () => {
+    const answers = rainbowRounds(lcg(3)).map((r) => r.dt);
+    expect(new Set(answers).size).toBe(3);
+  });
+});
+
+describe('rainbow race: a miss shows direction only', () => {
+  it('who leaves first follows the sign of the error', () => {
+    for (const r of rainbowRounds(lcg(5))) {
+      for (const x of headGrid) {
+        const lead = rainbowLeader(r, x);
+        expect(lead).toBe(x < r.dt ? 'red' : x > r.dt ? 'violet' : 'together');
+        // the pulses really would leave in that order: violet leaves at tvT − x, red at trT
+        const gap = r.tvT - x - r.trT;
+        // violet later than red (gap > 0) means red leaves first
+        expect(Math.sign(gap)).toBe(lead === 'red' ? 1 : lead === 'violet' ? -1 : 0);
+      }
+    }
+  });
+  it('the miss text names only the pulse that left first, and nothing else but the player’s own figure', () => {
+    for (const r of rainbowRounds(lcg(5))) {
+      for (const x of headGrid) {
+        if (judgeRainbow(r, x)) continue;
+        const t = rainbowMiss(r, x);
+        expect(t).toMatch(x < r.dt ? /the red pulse left the block first\.$/ : /the violet pulse left the block first\.$/);
+        // take out the player's own figure: no number is left, so no answer, no gap, no time
+        expect(t.replace(fmtHead(x), '')).not.toMatch(/\d/);
+        expect(t).not.toMatch(/Δt|n_v|n_r|speed|c\/n/);
+      }
+    }
+  });
+  it('the drawn race: exit gap is zero on a win and the SAME fixed gap on every miss, whatever the error', () => {
+    for (const r of rainbowRounds(lcg(5))) {
+      const gaps = { red: new Set<number>(), violet: new Set<number>() };
+      for (const x of headGrid) {
+        const t = raceTimes(r, x);
+        const gap = Math.round((t.exitV - t.exitR) * 1e6) / 1e6;
+        if (judgeRainbow(r, x)) {
+          expect(gap).toBe(0);
+          continue;
+        }
+        // red leaves first: violet exits after red (gap > 0); violet first: gap < 0
+        if (rainbowLeader(r, x) === 'red') gaps.red.add(gap);
+        else gaps.violet.add(gap);
+      }
+      expect([...gaps.red]).toEqual([RACE.gap]);
+      expect([...gaps.violet]).toEqual([-RACE.gap]);
+    }
+  });
+  it('the drawn race fits the 2.4 s shot, every kart has a positive run time, and the verdict lands after the later exit', () => {
+    for (const r of rainbowRounds(lcg(5))) {
+      for (const x of headGrid) {
+        const t = raceTimes(r, x);
+        expect(t.durR).toBeGreaterThan(0.5);
+        expect(t.durV).toBeGreaterThan(0.5);
+        expect(Math.max(t.exitR, t.exitV)).toBeLessThan(2.2);
+        expect(rainbowDelay(r, x)).toBeGreaterThan(Math.max(t.exitR, t.exitV));
+        expect(rainbowDelay(r, x)).toBeLessThan(2.4);
+        // the later kart starts after the earlier one in the order the player set, and the start gap is only their own setting
+        if (x > 0) expect(t.sv).toBe(0);
+        if (x < 0) expect(t.sr).toBe(0);
+      }
+    }
+  });
+  it('the exit gap does not depend on the error: two different misses on one side draw the same race after the start', () => {
+    const r = rainbowRounds(lcg(5))[2];
+    const a = raceTimes(r, -30);
+    const b = raceTimes(r, -10);
+    expect(a.exitV - a.exitR).toBe(b.exitV - b.exitR);
+    const c = raceTimes(r, r.dt + 5);
+    const d = raceTimes(r, 30);
+    expect(c.exitV - c.exitR).toBe(d.exitV - d.exitR);
+  });
+});
+
+describe('rainbow race: words and the helper that fades', () => {
+  it('the working shows d(n_v − n_r)/c and the answer, and names Exercise 10.3', () => {
+    for (const r of rainbowRounds(lcg(3))) {
+      const [a, b] = rainbowExplain(r);
+      expect(a).toContain(`violet (n = ${r.nv}) is slower than red (n = ${r.nr})`);
+      expect(a).toContain(`${(r.dt / 10).toFixed(1)} ns`);
+      expect(a).toContain('(3 × 10⁸)');
+      expect(b).toMatch(/Exercise 10\.3/);
+    }
+  });
+  it('the paid test may show numbers: the time through the glass for each colour and where violet leaves', () => {
+    const r = rainbowRounds(lcg(3))[0];
+    expect(rainbowTest(r, 0)).toMatch(/red takes 15\.1 ns .* violet takes 15\.3 ns, so violet leaves 0\.2 ns after red/);
+    expect(rainbowTest(r, 5)).toMatch(/0\.3 ns before red/);
+    expect(rainbowTest(r, r.dt)).toMatch(/together with red/);
+  });
+  it('the text of a win is not shown by a miss (a miss never contains the working)', () => {
+    const r = rainbowRounds(lcg(3))[1];
+    expect(rainbowMiss(r, 0)).not.toContain(rainbowExplain(r)[0]);
+    expect(rainbowMiss(r, 0)).toMatch(/red pulse/);
+    expect(rainbowMiss(r, 40 - 10)).toMatch(/violet pulse/);
   });
 });

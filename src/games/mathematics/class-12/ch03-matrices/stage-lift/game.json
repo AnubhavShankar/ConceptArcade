@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "stage-lift",
+  "title": "Stage Lift",
+  "summary": "Program the hydraulic pillars of a concert stage with matrix sums and scalar multiples so a free-runner lands every jump.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": { "number": 3, "name": "Matrices" },
+  "ncertRef": "Section 3.4.1, Addition of matrices",
+  "concepts": [
+    "Adding and subtracting matrices entry by entry",
+    "Building a matrix from a rule for aᵢⱼ",
+    "Multiplying a matrix by a scalar",
+    "Solving a matrix equation such as 2X + B = C",
+    "Two matrix equations in two unknown matrices",
+    "Unknowns inside the entries of a matrix"
+  ],
+  "learningOutcome": "The student can add, subtract and scale matrices, solve matrix equations such as 2X + B = C or a pair X + Y = P, X − Y = Q, and find unknowns from matching entries.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 24,
+  "levels": [
+    {
+      "title": "The second program",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: matrices of the same order add entry by entry, so if A + Y = C then Y = C − A; the boss subtracts instead (Ex 3.2 Q1, Q4).",
+      "hints": [
+        "Work one pillar at a time: the entry in row i, column j of A + Y is aᵢⱼ + yᵢⱼ.",
+        "So each entry of Y is the card’s entry minus the base program’s entry.",
+        "In the boss round the stage computes A − Y, so yᵢⱼ = aᵢⱼ − cᵢⱼ."
+      ]
+    },
+    {
+      "title": "Master gain",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: a scalar multiplies every entry, so 2X + B = C gives X = ½(C − B), and 3X − B = C gives X = ⅓(C + B) (Ex 3.2 Q1, Q8).",
+      "hints": [
+        "kX multiplies every entry of X by k.",
+        "Move B to the other side first, entry by entry, then divide by the scalar.",
+        "Watch the signs: B − 2X = C means 2X = B − C."
+      ]
+    },
+    {
+      "title": "Two crews",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: two unknown matrices. Add or subtract the two equations: X + Y = P and X − Y = Q give X = ½(P + Q), Y = ½(P − Q) (Ex 3.2 Q7).",
+      "hints": [
+        "Treat the two matrix equations like a pair of ordinary equations.",
+        "Adding them removes Y; subtracting them removes X.",
+        "Check one pillar of each stage with your X and Y before showtime."
+      ]
+    },
+    {
+      "title": "Hidden letters",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the unknowns are letters inside the entries; matching entries give equations in x, y, z and t to solve (Ex 3.2 Q9 to Q12).",
+      "hints": [
+        "Two matrices are equal when every matching entry is equal.",
+        "Write one equation per entry of the card, then solve for the letters.",
+        "When two letters share entries, solve the pair together, as in x + y = 5 and x − y = 1."
+      ]
+    },
+    {
+      "title": "Rule cards",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the card is a rule for its entries, such as cᵢⱼ = |i − 3j|; build the matrix entry by entry, with i for rows and j for columns (Ex 3.1 Q4, Q5).",
+      "hints": [
+        "i is the row number and j the column number.",
+        "Work out c₁₁, c₁₂, c₁₃ for the back row, then c₂₁, c₂₂, c₂₃ for the front row.",
+        "Watch the signs: (−1)^(i + j) is +1 when i + j is even."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Matrices of different orders can be added",
+    "In 2X + B = C you can divide by 2 before moving B",
+    "X − Y is the same as Y − X"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

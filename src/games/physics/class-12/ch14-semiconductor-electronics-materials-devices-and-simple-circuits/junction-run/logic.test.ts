@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BIAS_TOL, FREQ_TOL, RES_TOL, SLIDERS, barrierAfter, biasExplain, biasMiss, biasReading, biasRounds, biasSolution, curveExplain, curveMiss, curveReading, curveRounds, judgeBias, judgeCurve, judgeRect, rectExplain, rectMiss, rectReading, rectRounds, resistance, staticResistance } from './logic';
+import { BIAS_TOL, FREQ_TOL, RECT_START, RES_TOL, SLIDERS, SUPPLIES, barrierAfter, biasExplain, biasMiss, biasReading, biasRounds, biasSolution, curveExplain, curveMiss, curveReading, curveRounds, judgeBias, judgeCurve, judgeRect, rectExplain, rectMiss, rectReading, rectRounds, resistance, staticResistance } from './logic';
 
 const lcg = (seed: number) => {
   let s = seed >>> 0;
@@ -21,9 +21,7 @@ describe('the numbers from the textbook', () => {
     expect(biasSolution('silicon', 'raise', 3.7)).toBeCloseTo(-3, 9);
   });
   it('Exercise 14.6: half-wave output has the supply frequency and full-wave has twice', () => {
-    const rounds = rectRounds(lcg(3));
-    expect(rounds.map((r) => r.kind)).toEqual(['half', 'full', 'full']);
-    for (const r of rounds) expect(r.sol).toBe(r.kind === 'half' ? r.f : 2 * r.f);
+    for (const s of seeds) for (const r of rectRounds(lcg(s))) expect(r.sol).toBe(r.kind === 'half' ? r.f : 2 * r.f);
   });
 });
 
@@ -43,18 +41,47 @@ describe('every level has three solvable rounds', () => {
       }
     }
   });
-  it('level 2: a half-wave then two full-wave rounds at different frequencies, each reachable with a short run of winners', () => {
+  it('level 2: kinds are shuffled, the three output frequencies differ, and each round has one run of winners that no other round shares', () => {
+    const kindsAt = [new Set<string>(), new Set<string>(), new Set<string>()];
     for (const s of seeds) {
       const rounds = rectRounds(lcg(s));
-      expect(rounds[1].f).not.toBe(rounds[2].f);
+      const mix = rounds.map((r) => r.kind).sort().join();
+      expect(['full,full,half', 'full,half,half']).toContain(mix);
+      expect(new Set(rounds.map((r) => r.sol)).size).toBe(3);
+      expect(new Set(rounds.map((r) => r.f)).size).toBe(3);
+      rounds.forEach((r, k) => kindsAt[k].add(r.kind));
+      const all = new Map<number, number>();
       for (const r of rounds) {
+        expect(SUPPLIES).toContain(r.f);
         expect(r.sol).toBeGreaterThan(SLIDERS.f.min);
         expect(r.sol).toBeLessThan(SLIDERS.f.max);
         const winners = grid(SLIDERS.f.min, SLIDERS.f.max, SLIDERS.f.step).filter((f) => judgeRect(r, f));
         expect(winners.length).toBe(2 * FREQ_TOL + 1);
         expect(winners).toContain(r.sol);
+        for (const f of winners) all.set(f, (all.get(f) ?? 0) + 1);
       }
+      // no dial value wins two rounds, so no setting is right "for every round"
+      expect([...all.values()].every((n) => n === 1)).toBe(true);
     }
+    for (const k of kindsAt) expect(k.size).toBe(2);
+  });
+  it('level 2: the dial starts where no round of any seed is won, and the pool has enough rows to avoid deduction', () => {
+    for (const s of seeds) for (const r of rectRounds(lcg(s))) expect(judgeRect(r, RECT_START)).toBe(false);
+    for (const f of SUPPLIES) for (const kind of ['half', 'full'] as const) {
+      const sol = kind === 'half' ? f : 2 * f;
+      expect(Math.abs(sol - RECT_START)).toBeGreaterThan(FREQ_TOL);
+      expect(sol).toBeGreaterThan(SLIDERS.f.min + FREQ_TOL);
+      expect(sol).toBeLessThan(SLIDERS.f.max - FREQ_TOL);
+    }
+    expect(SUPPLIES.length).toBeGreaterThanOrEqual(5);
+    // rounds 1 and 2 never fix round 3: over many seeds the same first two rounds are followed by more than one third round
+    const third = new Map<string, Set<string>>();
+    for (let s = 0; s < 400; s++) {
+      const [a, b, c] = rectRounds(lcg(s * 7919 + 13));
+      const key = `${a.kind}${a.f}${b.kind}${b.f}`;
+      third.set(key, (third.get(key) ?? new Set()).add(`${c.kind}${c.f}`));
+    }
+    expect([...third.values()].some((v) => v.size > 1)).toBe(true);
   });
   it('level 3: two forward slopes and one reverse resistance, each on the dial', () => {
     for (const s of seeds) {
@@ -84,6 +111,7 @@ describe('judging: classic mistakes do not win', () => {
   });
   it('level 2: doubling a half-wave frequency or leaving a full-wave one alone fails', () => {
     for (const r of rectRounds(lcg(3))) {
+      expect(Math.abs((r.kind === 'half' ? 2 * r.f : r.f) - r.sol)).toBeGreaterThan(FREQ_TOL);
       expect(judgeRect(r, r.kind === 'half' ? 2 * r.f : r.f)).toBe(false);
       expect(judgeRect(r, r.sol + 3)).toBe(false);
     }
@@ -112,12 +140,20 @@ describe('words: the working and the misses', () => {
     expect(biasMiss(low, low.sol + 0.2)).toMatch(/lower than the one the hopper/);
     expect(biasMiss(low, -2)).not.toContain(String(low.sol));
   });
-  it('a rectifier miss names the effect, and the classic doublings are caught', () => {
-    const [half, full] = rectRounds(lcg(3));
-    expect(rectMiss(half, 2 * half.f)).toMatch(/twice as often/);
-    expect(rectMiss(full, full.f)).toMatch(/missing every second flash/);
-    expect(rectMiss(full, full.sol + 30)).toMatch(/faster than the circuit/);
-    expect(rectMiss(full, full.sol - 30)).toMatch(/more slowly than the circuit/);
+  it('a rectifier miss gives the direction only: the same words for every setting on one side, and never a ratio or a number', () => {
+    for (const r of rectRounds(lcg(3))) {
+      const fast = new Set<string>();
+      const slow = new Set<string>();
+      for (const f of grid(SLIDERS.f.min, SLIDERS.f.max, SLIDERS.f.step)) {
+        if (judgeRect(r, f)) continue;
+        (f > r.sol ? fast : slow).add(rectMiss(r, f));
+      }
+      expect([...fast]).toHaveLength(1);
+      expect([...slow]).toHaveLength(1);
+      expect([...fast][0]).toMatch(/faster than the circuit/);
+      expect([...slow][0]).toMatch(/more slowly than the circuit/);
+      expect(`${[...fast][0]}${[...slow][0]}`).not.toMatch(/\d|twice|half|every second/);
+    }
   });
   it('a curve miss names the effect, and the static-resistance slip gets its own message', () => {
     const [fw, , rv] = curveRounds(lcg(3));

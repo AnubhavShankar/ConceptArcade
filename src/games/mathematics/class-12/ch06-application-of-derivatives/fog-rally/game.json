@@ -1,0 +1,84 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "fog-rally",
+  "title": "Fog Rally",
+  "summary": "Plan throttle and brakes for a rally truck in thick fog, using the sign of f′ to find where the road climbs and where it falls.",
+  "subject": "mathematics",
+  "classLevel": 12,
+  "chapter": { "number": 6, "name": "Application of Derivatives" },
+  "ncertRef": "Section 6.3, Increasing and Decreasing Functions",
+  "concepts": [
+    "Increasing and decreasing functions",
+    "The sign of the first derivative",
+    "Critical points split the domain into intervals",
+    "Sign chart of a factored derivative",
+    "A zero of f′ with no change of sign",
+    "Keeping f increasing on an interval with a parameter"
+  ],
+  "learningOutcome": "The student can find where a function increases or decreases from the sign of f′, including flat spots, trigonometric functions and a parameter that keeps f monotonic on an interval.",
+  "mechanic": "predict-then-reveal",
+  "estimatedMinutes": 22,
+  "levels": [
+    {
+      "title": "Climb or dive",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: where f′ > 0 the road climbs (GAS), where f′ < 0 it falls (BRAKE); a quadratic turns once, where f′ = 0 (Ex 6.2 Q4; Example 10).",
+      "hints": [
+        "Differentiate: for f(x) = ax² + bx + c, f′(x) = 2ax + b.",
+        "Solve f′(x) = 0 to find where the road turns.",
+        "Check the sign of f′ on each side: positive means GAS, negative means BRAKE."
+      ]
+    },
+    {
+      "title": "Two turns",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Harder: a cubic has f′ = k(x − p)(x − q), so the road has three stretches; make a sign chart (Ex 6.2 Q5, Q6; Example 11).",
+      "hints": [
+        "Differentiate, then factor f′ as a number times (x − p)(x − q).",
+        "The two roots split the road into three stretches.",
+        "Pick one test point in each stretch and read the sign of f′ there."
+      ]
+    },
+    {
+      "title": "Flat spots",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New: a squared factor makes f′ = 0 with no change of sign, so the road only flattens and keeps its direction (Ex 6.2 Q8, Q18).",
+      "hints": [
+        "Factor f′ completely and keep squared factors together.",
+        "A factor like (x − a)² is never negative, so it never changes the sign of f′.",
+        "Only roots that change the sign of f′ split the road into climbs and falls."
+      ]
+    },
+    {
+      "title": "Mountain pass",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: trigonometric roads on [0, 2π]; f′ = 0 at multiples of π/4, then the sign of f′ on each stretch decides (Ex 6.2 Q3; Examples 9, 13).",
+      "hints": [
+        "(sin x)′ = cos x and (cos x)′ = −sin x; for sin 2x the chain rule gives 2 cos 2x.",
+        "Find every x in [0, 2π] where f′ = 0; each one is a multiple of π/4.",
+        "Test the sign of f′ in the middle of each stretch, for example at π/8."
+      ]
+    },
+    {
+      "title": "Road builder",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: a parameter. f′ must keep one sign over the whole stage, so set a to put the road’s turn exactly at the start gate (Ex 6.2 Q14).",
+      "hints": [
+        "Write f′(x) with a in it, for example 2x + a.",
+        "On the stage f′ is weakest at the start gate x = m, so that is where it decides.",
+        "The latest the road may turn is at the gate itself: solve f′(m) = 0 for a."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Every zero of f′ separates a rising stretch from a falling one",
+    "If f′(x) = 0 at a point, f cannot be increasing on an interval containing it",
+    "A function that increases at one end of an interval increases on all of it"
+  ],
+  "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
+}

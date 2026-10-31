@@ -13,13 +13,15 @@ import {
   missText,
   path,
   resultLine,
+  sideOf,
   sinD,
+  startAngle,
   testText,
   tirLimit,
   trapped,
   type Game,
 } from './logic';
-import { rot, trace3 } from './geometry';
+import { hitPoint, rot, trace3 } from './geometry';
 
 const lcg = (seed: number) => {
   let s = seed >>> 0;
@@ -211,7 +213,8 @@ describe('words: the working and the misses', () => {
   it('a miss describes the effect and does not hand over the answer', () => {
     const g1 = buildGame(1, lcg(3));
     const r1 = as(g1, 'sweet').rounds[0];
-    expect(missText(g1, 0, { i: r1.iSol + 8, n: r1.nSol })).toMatch(/bent by/);
+    expect(missText(g1, 0, { i: r1.iSol + 8, n: r1.nSol })).toMatch(/too steep/);
+    expect(missText(g1, 0, { i: r1.iSol - 8, n: r1.nSol })).toMatch(/too shallow/);
     expect(missText(g1, 0, { i: r1.iSol + 8, n: r1.nSol })).not.toContain(`${r1.iSol}°`);
     const g3 = buildGame(3, lcg(3));
     const r3 = as(g3, 'pong').rounds[0];
@@ -222,5 +225,85 @@ describe('words: the working and the misses', () => {
     expect(testText(60, 1.5, 49)).toMatch(/bent by [\d.]+°/);
     expect(testText(60, 1.8, 15)).toMatch(/totally reflected/);
     expect(asinD(sinD(33))).toBeCloseTo(33, 9);
+  });
+});
+
+describe('no leaks: the start, the burst point and the misses', () => {
+  it('the start never wins any round of any level (Photon Pong row [60, 1.524] has 29.75°, so Pong starts wide)', () => {
+    const pongRows = new Set<number>();
+    for (const s of seeds) {
+      for (const r of as(buildGame(1, lcg(s)), 'sweet').rounds) expect(judgeSweet(r, startAngle('sweet'), SLIDERS.n.start).ok).toBe(false);
+      for (const r of as(buildGame(1, lcg(s)), 'sweet').rounds) expect(judgeSweet(r, startAngle('sweet'), SLIDERS.n.start).iOk).toBe(false);
+      for (const r of as(buildGame(2, lcg(s)), 'gel').rounds) expect(judgeGel(r, startAngle('gel')).ok).toBe(false);
+      for (const r of as(buildGame(3, lcg(s)), 'pong').rounds) {
+        pongRows.add(Math.round(r.iSol * 100));
+        expect(judgePong(r, startAngle('pong')).ok).toBe(false);
+      }
+    }
+    // all five Pong rows were met, including the one the old start of 30° won
+    expect(pongRows.size).toBe(5);
+    expect(pongRows.has(Math.round(tirLimit(60, 1.524)! * 100))).toBe(true);
+    expect(judgePong({ A: 60, n: 1.524, iSol: tirLimit(60, 1.524)!, assist: 0 }, 30).ok).toBe(true);
+    expect(startAngle('pong')).toBeGreaterThanOrEqual(SLIDERS.i.min);
+    expect(startAngle('pong')).toBeLessThanOrEqual(SLIDERS.i.max);
+  });
+  it('the burst point follows the player’s own beam and is never the winning spot (except at the winning angle)', () => {
+    const edge = (p: [number, number]) => p[0] <= 20 || p[0] >= 620 || p[1] <= 30 || p[1] >= 310;
+    for (const s of seeds.slice(0, 30)) {
+      for (const lv of [1, 2, 3]) {
+        const g = buildGame(lv, lcg(s));
+        for (const r of g.rounds) {
+          const nRel = g.kind === 'sweet' ? indexFromMinDev(r.A, (r as { Dmin: number }).Dmin) : g.kind === 'gel' ? (r as { n: number; nL: number }).n / (r as { nL: number }).nL : (r as { n: number }).n;
+          const win = hitPoint(r.A, nRel, Math.round(r.iSol));
+          for (const d of [-10, -6, -3, 3, 6, 10]) {
+            const i = Math.round(r.iSol) + d;
+            if (i < SLIDERS.i.min || i > SLIDERS.i.max) continue;
+            const p = hitPoint(r.A, nRel, i);
+            // the same angle always gives the same point: it depends on the setting, not on the round's answer
+            expect(hitPoint(r.A, nRel, i)).toEqual(p);
+            if (!edge(p) || !edge(win)) expect(Math.hypot(p[0] - win[0], p[1] - win[1])).toBeGreaterThan(2);
+          }
+        }
+      }
+    }
+  });
+  it('two wrong settings on the same side give the same miss text, and it holds no number', () => {
+    for (const s of seeds.slice(0, 40)) {
+      for (const lv of [1, 2, 3]) {
+        const g = buildGame(lv, lcg(s));
+        for (let k = 0; k < 3; k++) {
+          const r = g.rounds[k];
+          const byKey = new Map<string, Set<string>>();
+          for (const i of ints(SLIDERS.i.min, SLIDERS.i.max)) {
+            if (g.kind === 'sweet') {
+              const sw = g.rounds[k];
+              if (judgeSweet(sw, i, sw.nSol).iOk) continue;
+              const key = sideOf(sw.iSol, i);
+              byKey.set(key, (byKey.get(key) ?? new Set()).add(missText(g, k, { i, n: sw.nSol })));
+            } else if (g.kind === 'gel') {
+              if (judgeGel(g.rounds[k], i).ok) continue;
+              const key = sideOf(g.rounds[k].iSol, i);
+              byKey.set(key, (byKey.get(key) ?? new Set()).add(missText(g, k, { i })));
+            } else {
+              if (judgePong(g.rounds[k], i).ok) continue;
+              const key = String(trapped(g.rounds[k], i));
+              byKey.set(key, (byKey.get(key) ?? new Set()).add(missText(g, k, { i })));
+            }
+          }
+          expect(byKey.size).toBe(2);
+          for (const set of byKey.values()) {
+            expect(set.size).toBe(1);
+            for (const t of set) expect(t).not.toMatch(/\d/);
+          }
+          expect(r.A).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+  it('a wrong index with the right angle gets one fixed text with no number', () => {
+    const r = as(buildGame(1, lcg(3)), 'sweet').rounds[0];
+    const texts = new Set(Array.from({ length: 51 }, (_, k) => Math.round((1.3 + k * 0.01) * 100) / 100).filter((n) => !judgeSweet(r, r.iSol, n).nOk).map((n) => missText(buildGame(1, lcg(3)), 0, { i: r.iSol, n })));
+    expect(texts.size).toBe(1);
+    expect([...texts][0]).not.toMatch(/\d/);
   });
 });

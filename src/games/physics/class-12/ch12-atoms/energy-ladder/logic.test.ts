@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { E1, SLIDERS, absorbExplain, absorbMiss, absorbReading, absorbRounds, beamExplain, beamMiss, beamReading, beamRounds, budgetExplain, budgetMiss, budgetReading, budgetRounds, jumpEv, jumpNm, judgeAbsorb, judgeBeam, judgeBudget, level, linesFor, topLevel } from './logic';
+import { E1, SLIDERS, START, absorbExplain, absorbMiss, absorbReading, absorbRounds, beamExplain, beamMiss, beamReading, beamRounds, budgetExplain, budgetMiss, budgetReading, budgetRounds, jumpEv, jumpNm, judgeAbsorb, judgeBeam, judgeBudget, level, linesFor, topLevel } from './logic';
 
 const lcg = (seed: number) => {
   let s = seed >>> 0;
@@ -109,13 +109,42 @@ describe('words: the working and the misses', () => {
     expect(beamMiss(b, 8)).toMatch(/not lifted high enough/);
     expect(beamMiss(b, 13.5)).toMatch(/lifted too high/);
     const c = budgetRounds(lcg(3))[0];
-    expect(budgetMiss(c, 0, 0)).toMatch(/Neither energy/);
-    expect(budgetMiss(c, 0, level(c.n))).toMatch(/add up to the right total/);
-    expect(budgetMiss(c, c.ke, c.pe - 3)).toMatch(/do not add up|Neither/);
+    expect(budgetMiss(c, 0, 0)).toMatch(/out of balance/);
   });
   it('test shots read out the energies', () => {
     expect(absorbReading(absorbRounds(lcg(3))[0], 100)).toMatch(/each photon has 12\.4 eV/);
     expect(beamReading(12.5)).toMatch(/up to level n = 3/);
     expect(budgetReading(budgetRounds(lcg(3))[0])).toMatch(/total energy/);
+  });
+});
+
+describe('no leaks: the start and the misses', () => {
+  it('the start never wins any round of its level', () => {
+    for (const s of seeds) {
+      for (const r of absorbRounds(lcg(s))) expect(judgeAbsorb(r, START.lam)).toBe(false);
+      for (const r of beamRounds(lcg(s))) expect(judgeBeam(r, START.e)).toBe(false);
+      for (const r of budgetRounds(lcg(s))) expect(judgeBudget(r, START.ke, START.pe).ok).toBe(false);
+    }
+  });
+  it('level 2: every wrong beam on one side gives the same miss text, and it holds no number', () => {
+    for (const s of seeds.slice(0, 20)) {
+      for (const r of beamRounds(lcg(s))) {
+        const wrong = grid(SLIDERS.beam.min, SLIDERS.beam.max, SLIDERS.beam.step * 5).filter((e) => !judgeBeam(r, e));
+        for (const low of [true, false]) {
+          const side = wrong.filter((e) => (linesFor(e) < r.lines) === low);
+          if (side.length === 0) continue;
+          expect(new Set(side.map((e) => beamMiss(r, e))).size).toBe(1);
+          expect(beamMiss(r, side[0])).not.toMatch(/\d/);
+        }
+      }
+    }
+  });
+  it('level 3: one miss text for every wrong pair, with no verdict on either dial and no number', () => {
+    for (const r of budgetRounds(lcg(3))) {
+      const texts = new Set<string>();
+      for (const ke of [0, r.ke, r.ke + 2, 9]) for (const pe of [-20, r.pe, r.pe + 2, level(r.n)]) if (!judgeBudget(r, ke, pe).ok) texts.add(budgetMiss(r, ke, pe));
+      expect(texts.size).toBe(1);
+      expect([...texts][0]).not.toMatch(/\d|right|total/);
+    }
   });
 });

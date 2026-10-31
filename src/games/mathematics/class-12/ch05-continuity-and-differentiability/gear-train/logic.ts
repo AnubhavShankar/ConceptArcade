@@ -5,7 +5,7 @@ import { aid } from '@core/dialgame';
 import { fmt } from '@core/judge';
 import { shuffle } from '@core/quiz';
 
-export type Kind = 'power' | 'exp' | 'log' | 'base' | 'circle' | 'hyper' | 'param' | 'second';
+export type Kind = 'power' | 'exp' | 'log' | 'base' | 'circle' | 'hyper' | 'param' | 'second' | 'trig';
 export interface Round {
   kind: Kind;
   /** The machine in words: the function and the instant. */
@@ -25,6 +25,10 @@ export interface Round {
   fn: (x: number) => number;
   x0: number;
   unitVal: number;
+  /** Trigonometric rounds only: how the chain rule peels the layers, with the special angle put in. */
+  chain?: string;
+  /** Trigonometric rounds only: x0 written in π form, such as π/9. */
+  x0Text?: string;
 }
 
 export const DIAL = { min: 1, max: 12 };
@@ -35,7 +39,7 @@ const eText = (g: number) => (g === 1 ? 'e' : `e${sup(g)}`);
 
 export const output = (r: Round, w: number) => (r.mn * w ** r.order) / r.md;
 
-type Spec = Pick<Round, 'kind' | 'machine' | 'mn' | 'order' | 'unit' | 'fn' | 'x0' | 'unitVal'> & { md?: number };
+type Spec = Pick<Round, 'kind' | 'machine' | 'mn' | 'order' | 'unit' | 'fn' | 'x0' | 'unitVal'> & { md?: number; chain?: string; x0Text?: string };
 /** Choose a crank speed whose target has at most two decimals, then fix the round. */
 function make(s: Spec, k: number, random: () => number): Round {
   const md = s.md ?? 1;
@@ -44,7 +48,43 @@ function make(s: Spec, k: number, random: () => number): Round {
   return { ...s, md, ans, target: (s.mn * ans ** s.order) / md, assist: aid(k) };
 }
 
+/** Level 5: trigonometric chains at special angles. Each row is the function as written, x0 in π form and as a number, its derivative mn/md there, and the chain-rule working. */
+export interface TrigRow {
+  f: string;
+  fn: (x: number) => number;
+  x0Text: string;
+  x0: number;
+  mn: number;
+  md: number;
+  chain: string;
+}
+const PI = Math.PI;
+const T = (f: string, fn: (x: number) => number, x0Text: string, x0: number, mn: number, md: number, chain: string): TrigRow => ({ f, fn, x0Text, x0, mn, md, chain });
+export const TRIG_ROWS: TrigRow[][] = [
+  [
+    T('sin 3x', (x) => Math.sin(3 * x), 'π/9', PI / 9, 3, 2, 'dy/dx = 3 cos 3x, and 3 cos(π/3) = 3/2'),
+    T('−cos 2x', (x) => -Math.cos(2 * x), 'π/12', PI / 12, 1, 1, 'dy/dx = 2 sin 2x, and 2 sin(π/6) = 1'),
+    T('cos 4x', (x) => Math.cos(4 * x), '−π/24', -PI / 24, 2, 1, 'dy/dx = −4 sin 4x, and −4 sin(−π/6) = 2'),
+  ],
+  [
+    T('sin² x', (x) => Math.sin(x) ** 2, 'π/4', PI / 4, 1, 1, 'dy/dx = 2 sin x cos x, and 2·(1/√2)·(1/√2) = 1'),
+    T('2 sin(2x + π/6)', (x) => 2 * Math.sin(2 * x + PI / 6), 'π/12', PI / 12, 2, 1, 'dy/dx = 4 cos(2x + π/6), and 4 cos(π/3) = 2'),
+    T('sin(x/2)', (x) => Math.sin(x / 2), '2π/3', (2 * PI) / 3, 1, 4, 'dy/dx = (1/2) cos(x/2), and (1/2) cos(π/3) = 1/4'),
+  ],
+  [
+    T('tan 2x', (x) => Math.tan(2 * x), 'π/8', PI / 8, 4, 1, 'dy/dx = 2 sec² 2x, and 2 sec²(π/4) = 4'),
+    T('tan² x', (x) => Math.tan(x) ** 2, 'π/4', PI / 4, 4, 1, 'dy/dx = 2 tan x sec² x, and 2·1·2 = 4'),
+    T('−cos²(3x)', (x) => -(Math.cos(3 * x) ** 2), 'π/12', PI / 12, 3, 1, 'dy/dx = 6 cos 3x sin 3x, and 6·(1/√2)·(1/√2) = 3'),
+  ],
+];
+
 export function buildRounds(level: number, random: () => number): Round[] {
+  if (level === 5) {
+    return TRIG_ROWS.map((rows, k) => {
+      const t = pick(rows, random)[0];
+      return make({ kind: 'trig', machine: `y = ${t.f} at x = ${t.x0Text}`, mn: t.mn, md: t.md, order: 1, unit: '', fn: t.fn, x0: t.x0, unitVal: 1, chain: t.chain, x0Text: t.x0Text }, k, random);
+    });
+  }
   if (level === 1) {
     const mk = ([n, a, b, x0]: number[], k: number): Round => {
       const u = a * x0 + b;
@@ -96,10 +136,14 @@ export const rateText = (r: Round, x: number) => `${fmt(x)}${unitSuffix(r)} per 
 
 /** After a miss: what the machine did at that crank speed, never the speed that works. */
 export function missText(r: Round, w: number): string {
-  const out = output(r, w);
-  const side = out < r.target ? 'too slowly to catch the dispatch window' : 'so fast that the dispatch window had already closed';
-  return `The machine ran, and the output gear turned at ${rateText(r, out)}: ${side}.`;
+  return output(r, w) < r.target
+    ? 'The machine ran, but the output gear turned too slowly to catch the dispatch window. Turn the crank faster.'
+    : 'The machine ran, but the output gear turned so fast that the dispatch window had already closed. Turn the crank slower.';
 }
+
+/** Where the output gear's speed ends during a shot, as a multiple of the target speed. A miss shows only the side, never how far: the same fixed value for any wrong setting. */
+export const FLOW = { short: 0.55, over: 1.45 };
+export const flowEnd = (r: Round, w: number) => (judge(r, w) ? 1 : output(r, w) < r.target ? FLOW.short : FLOW.over);
 export const spotText = (r: Round, w: number) => `Test run at w = ${w}: the output turns at ${rateText(r, output(r, w))}.`;
 
 /** The derivative as the working writes it. */
@@ -119,7 +163,9 @@ export function explain(r: Round): string {
     hyper: 'Implicit: y + x(dy/dx) = 0, so the fall rate is (y/x)w.',
     param: 'dy/dx = (dy/dt)/(dx/dt), so the y rate is that slope times w.',
     second: 'With x moving steadily, y″ = (d²y/dx²)w².',
+    trig: '',
   };
+  if (r.kind === 'trig') return `Chain rule: ${r.chain} at x = ${r.x0Text}. ${calc}; ${solve}.`; // the chain text already ends with the slope there
   return `${why[r.kind]} ${calc}; ${solve}.`;
 }
 

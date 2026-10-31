@@ -15,7 +15,8 @@
     "Onto functions",
     "Domain and co-domain matter",
     "Bijective functions",
-    "One-one and onto on a finite set"
+    "One-one and onto on a finite set",
+    "Inverse of a bijection; composition gof"
   ],
   "learningOutcome": "The student can find where a function is one-one, find the co-domain that makes it onto, and count the one-one maps of a finite set onto itself.",
   "mechanic": "tune-to-target",
@@ -52,6 +53,28 @@
         "The first traveller has n doors to choose from.",
         "Each next traveller has one fewer door left.",
         "Multiply: n × (n − 1) × … × 1."
+      ]
+    },
+    {
+      "title": "The return portal",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: a bijection has an inverse; build the return portal (y − p)/q that brings every traveller home from f(x) = qx + p (Section 1.4; Examples 15 to 17).",
+      "hints": [
+        "f multiplies by a and then adds b.",
+        "Undo the steps in reverse: subtract b, then divide by a.",
+        "Check with a traveller: f(1), then the return portal, must give 1."
+      ]
+    },
+    {
+      "title": "Two portals",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: through f, then g, the travellers meet g(f(x)); one return portal must undo that composite, and the order matters (Section 1.4; Examples 15, 16).",
+      "hints": [
+        "Work out g(f(x)) first: put f(x) into g.",
+        "g(f(x)) is again of the form qx + p.",
+        "f(g(x)) is usually different, so keep the order."
       ]
     }
   ],

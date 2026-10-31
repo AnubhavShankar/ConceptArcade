@@ -1,5 +1,6 @@
 // Inspirations: Minecraft (build in 3D, one block at a time) and drill-the-bolt installer games. Sol is a solar installer robot with a drill. The panel is the
 // parallelogram of two supports a and b, drawn in 3D; the mount bolt must go in along a × b, and the right-hand rule says which way that is.
+import { helperOn, paidFlash } from '@core/aidflash';
 import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
@@ -42,8 +43,12 @@ function sol(g: G, x: number, y: number, t: number, mood: Mood, drill: number) {
   if (drill > 0 && drill < 1) for (let i = 0; i < 4; i++) text(g, '✦', x + 54 + push + Math.random() * 8, y - 30 + (Math.random() - 0.5) * 14, PAL.yellow, 9);
 }
 
+/** What a paid test shows for a moment in round 2, level by level (used in the hint). */
+const SHOWN = ['the bolt and its readout', 'the area', 'the panel as it folds, and the area'];
+
 function level(n: number, random: () => number): DialLevel<Round> {
   const hero = HEROES[n - 1];
+  const flash = paidFlash();
   const rounds = buildRounds(n, random);
   const P = (v: V3): [number, number] => [O.x + O.s * (v[0] - 0.45 * v[2]), O.y - O.s * (v[1] - 0.3 * v[2])];
   const keys = n === 1 ? ['n1', 'n2', 'n3'] : ['c'];
@@ -55,20 +60,27 @@ function level(n: number, random: () => number): DialLevel<Round> {
     charges: [1, 1, 0],
     dials: keys.map((k, i) => ({ key: k, aria: n === 1 ? `Mount bolt component ${'xyz'[i]}` : 'Unknown component c', label: labels[i], unit: '', step: 1, min: (r: Round) => r.min, max: (r: Round) => r.max, start: (r: Round) => r.start[i], text: (v: number) => (n === 1 ? `${'xyz'[i]} = ${num(v)}` : `c = ${num(v)}`) })),
     handles: n === 1 ? [] : [trackHandle<Round>('c', (r) => r.min, (r) => r.max)],
-    test: { button: n === 1 ? '🔩 Bolt test' : '📐 Panel test', aria: 'Panel test: see how the panel sits for this setting', read: (r, v) => spotText(r, vals(v)) },
+    test: { button: n === 1 ? '🔩 Bolt test' : '📐 Panel test', aria: 'Panel test: see how the panel sits for this setting', read: (r, v) => (flash.paid(), spotText(r, vals(v))) },
     fire: { button: '🔧 Drive the bolt', aria: 'Drive the bolt' },
     judge: (r, v) => judge(r, vals(v)),
     miss: (r, v) => missText(r, vals(v)),
     win: (r) => `Panel locked! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The live readout is on.' : r.assist === 1 ? 'The readout is dim: a test costs a charge.' : 'Boss round: no readout, no test.'}`,
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The live readout is on.' : r.assist === 1 ? `Nothing is shown: a test shows ${SHOWN[n - 1]} for a moment and costs a charge.` : 'Boss round: no readout, no test.'}`,
     hit: () => [O.x, O.y - 40],
     delay: RUN,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
       backdrop(g);
+      // The helper (the player's bolt, the area, the folded-flat picture) is live in round 1, shows for 1.5 s after a paid test in round 2, and appears after a win;
+      // never before Fire in the boss round and never during a miss.
+      const since = flash.since(A.clock, k);
+      const helper = helperOn(r.assist, !!shot?.ok, shot ? Infinity : since);
+      A.canvas.dataset.helper = helper ? '1' : '0';
       const use = vals(shot ? shot.v : v);
-      const b = bWith(r, use);
+      // In level 3 the panel folds flat exactly at the answer, so with the helper off the panel is drawn with a fixed c of 0 (which is never parallel to a).
+      const hideFlat = n === 3 && !helper;
+      const b = bWith(r, hideFlat ? [0] : use);
       const nrm = normal(r, use);
-      const flat = r.kind === 'parallel' && size(cross(r.a, b)) === 0;
+      const flat = r.kind === 'parallel' && helper && size(cross(r.a, b)) === 0;
       // Axes for orientation
       for (const [d, c, nm] of [[[2.6, 0, 0], PAL.red, 'x'], [[0, 2.6, 0], PAL.green, 'y'], [[0, 0, 2.6], PAL.cyan, 'z']] as [V3, string, string][]) {
         line(g, ...P([0, 0, 0]), ...P(d), c, 1.5);
@@ -97,10 +109,7 @@ function level(n: number, random: () => number): DialLevel<Round> {
       // The mount bolt from the middle of the panel
       const mid: V3 = [(r.a[0] + b[0]) / 2, (r.a[1] + b[1]) / 2, (r.a[2] + b[2]) / 2];
       if (r.kind === 'mount') {
-        const live = r.assist === 0 || shot !== null;
-        const dimmed = r.assist === 1 && !shot;
-        if (live || dimmed) {
-          g.globalAlpha = dimmed ? 0.3 : 1;
+        if (helper) {
           const tip: V3 = [mid[0] + nrm[0] * 0.22, mid[1] + nrm[1] * 0.22, mid[2] + nrm[2] * 0.22];
           line(g, ...P(mid), ...P(tip), PAL.orange, 4);
           g.fillStyle = PAL.orange;
@@ -108,15 +117,19 @@ function level(n: number, random: () => number): DialLevel<Round> {
           g.arc(...P(tip), 5, 0, Math.PI * 2);
           g.fill();
           text(g, `bolt ${num(use[0])}, ${num(use[1])}, ${num(use[2])}`, 500, 40, PAL.orange, 12);
-          g.globalAlpha = 1;
+        } else if (shot) {
+          // A miss drives a bolt of fixed size and direction: the picture never shows how far off the setting was or where the true bolt points.
+          const [mx, my] = P(mid);
+          line(g, mx, my, mx, my - 34, PAL.orange, 4);
+          text(g, 'bolt driven', 500, 40, PAL.dim, 12);
         } else text(g, 'bolt hidden', 500, 40, PAL.dim, 12);
-        if (shot && rt > 0.9) {
-          // Show where the true normal points, once the bolt is in
+        if (shot && shot.ok && rt > 0.9) {
+          // On a win, the true normal is marked once the bolt is in
           const tn = cross(r.a, r.b);
           const tip: V3 = [mid[0] + tn[0] * 0.22, mid[1] + tn[1] * 0.22, mid[2] + tn[2] * 0.22];
           line(g, ...P(mid), ...P(tip), PAL.green, 2, [4, 4]);
         }
-      } else if (r.assist === 0 || shot) text(g, `area ${num(Math.round(size(nrm) * 10) / 10)}`, 500, 40, PAL.yellow, 12);
+      } else if (helper) text(g, `area ${num(Math.round(size(nrm) * 10) / 10)}`, 500, 40, PAL.yellow, 12);
       else text(g, 'area hidden', 500, 40, PAL.dim, 12);
       if (r.kind === 'area') text(g, `wanted ${num(r.T)}`, 500, 58, PAL.green, 12);
       const mood: Mood = shot ? (rt > RUN - 0.4 ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';

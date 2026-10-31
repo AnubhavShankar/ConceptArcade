@@ -1,384 +1,315 @@
+// "Pebble in Orbit" (Section 5.2.3, 5.2.4; Examples 5.1(b), 5.2). Inspirations (code comment only): real CubeSat magnetorquers (student satellites steer with magnet rods and coils against
+// Earth's field), real magnetic detumbling, and the docking games of space simulators (line up, ease in, hold). Level 3 borrows the golf power-meter loop: one kick, coast to rest on the spot.
+// Core verb: steer a satellite by its magnet: set the rod's strength (levels 1 and 3), rotate the satellite to a heading (level 2), set the coil current and the station-keeping thruster
+// (level 4), place the twin satellite at a port and turn it (level 5); then command the burn and watch Pebble turn, hold, tip or drift.
+// Never leak the answer: every miss effect is a fixed size (FIXED), never proportional to the error; the telemetry box is the only helper (live in round 1, for 1.5 s after a paid check
+// in round 2, never in round 3); the level 5 hatches look the same until the take; the win-only insets (τ = mB sin θ, U = −mB cos θ, W = ΔU, the forces, Pebble's field lines) come
+// only on a win; `hit` is a fixed point; every take ends by 2.3 s. The art is in art.ts, the poses in take.ts.
+import { PAL } from '@core/arcade';
+import { helperOn, paidFlash } from '@core/aidflash';
 import { defineGame } from '@core/define';
-import { disc, label, themeColors } from '@core/draw';
-import { h } from '@core/dom';
-import { parseNumber } from '@core/quiz';
-import { fitCanvas, startLoop } from '@core/sim';
-import { buildLevel, energy, explainSolution, fmt, judgeConfigs, judgeEnergy, judgeSolenoid, judgeTorque, judgeWork, starsFor, type Config } from './logic';
+import { mountDialLevel, type DialLevel, type DialSpec, type HandleSpec, type SceneInput } from '@core/dialgame';
+import { text } from '@core/neon';
+import {
+  FADER, GRIT, HIT, KNOB_R, PEB, PLATE4, PORT_D, THR, TLM, compass, compassAt, dele, dipoleLines, eclipse, fieldArrows, fieldBend, faderStrip, goalLine, handleRing, hatch, iX, inset,
+  knobAt, mX, pebble, portAt, puffs, ring, slotBox, speck, star, starAt, station, tag, tether, thrusterSwitch, burnAngle, GRIT_WINGS, space, type InsetKind,
+} from './art';
+import {
+  ARROW, DIAL, TLM_OFF, buildRounds, checkText, fieldDeg, goalText, hintText, judge, missText, outcomeOf, startHeading, starDeg, tlmText, verdictAt, winText,
+  type Round, type Values,
+} from './logic';
+import { floaters, takeAt } from './take';
 
-const W = 640;
-const H = 340;
-const NORTH = '#c0392b';
-const SOUTH = '#3156d3';
-const REVEAL = 0.9;
-const RUN = 3.4;
-const ease = (t: number) => 1 - Math.pow(1 - t, 3);
-const CX = 320;
-const CY = 175;
-const rad = (deg: number) => (deg * Math.PI) / 180;
+const ARIA = 'Low Earth orbit: a shoebox-sized student satellite floats above the planet in Earth’s magnetic field, a mission-control window at the top left, and its twin satellite waits to dock.';
+const ROLE = 'a shoebox-sized student satellite that steers with a magnet rod against Earth’s magnetic field';
+const HEROES = [
+  {
+    story: 'Pebble has just been thrown out of the rocket and is tumbling. It has no fuel: it steers with a magnet rod whose moment m it can set. In Earth’s field the rod feels a torque τ = mB sin θ, largest at right angles to the field and zero along it. One short burn at a known angle must give exactly the torque that stops the spin.',
+    objective: 'Set the rod’s moment so the burn stops the spin dead, in three passes.',
+  },
+  {
+    story: 'Night is coming: in Earth’s shadow Pebble switches everything off, and only the field holds it. The torque is zero along the field and against it, but the energy U = −mB cos θ is lowest along it (stable) and highest against it (unstable). The moment points from the rod’s S end to its N end. Some passes need a heading that rides out a bump, others one that flips on command.',
+    objective: 'Turn Pebble to the heading the plan needs, so it holds or flips as planned, in three passes.',
+  },
+  {
+    story: 'To turn without fuel Pebble kicks its reaction wheel once and coasts. Turning from along the field takes energy: mB to reach 90° and 2mB to reach 180°, the rise in U. The kick’s energy is fixed, so Pebble sets its rod’s strength to come to rest exactly on the guide star. At 90° the field still pulls back with a torque; at 180° the torque is zero.',
+    objective: 'Set the rod’s moment so Pebble coasts to rest on the guide star, in three passes.',
+  },
+  {
+    story: 'Pebble’s second steering tool is a flat coil, a magnet with m = NIA, its area in cm² (1 cm² = 10⁻⁴ m²). In a uniform field the forces on the coil cancel: a torque, but no net force. Near the space station’s big docking magnet the field is far from uniform, and the coil is pulled too, so Pebble must fire its station-keeping thruster to stay in its slot.',
+    objective: 'Set the coil current and the thruster so Pebble turns onto the guide star and keeps its slot, in three passes.',
+  },
+  {
+    story: 'Pebble’s twin, Grit, docks beside it, two small magnets together. On Pebble’s axis (the nose port) Pebble’s field is 2k and points the same way as Pebble; on the line through its middle (the side port) it is k and points the opposite way. Grit has U = −m·B: torque-free along or against that field, stable along it.',
+    objective: 'Dock Grit at the right port, pointing the right way, for each docking plan, in three passes.',
+  },
+];
+
+const PEEK_SECONDS = 1.5;
+const FIRE_ARIA = 'Command the burn: send the command to Pebble';
+const INSET_KIND: InsetKind[] = ['tau', 'well', 'work', 'forces', 'lines'];
+const mod = (x: number, n: number) => ((x % n) + n) % n;
+const one = (x: number) => String(Math.round(x * 10) / 10);
+type DockRound = Extract<Round, { kind: 'dock' }>;
+
+function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
+  const rounds = buildRounds(n, random);
+  const flash = paidFlash();
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
+  const dragAt: Record<string, number> = {};
+  const dragged = new Set<string>();
+  let now = 0;
+  const fx = { shot: null as unknown, done: new Set<string>() };
+  /** Every drag remembers the clock (for the 0.15 s highlight) and clears the first-time cue. */
+  const touch = (key: string) => {
+    dragAt[key] = now;
+    dragged.add(key);
+  };
+  const hot = (key: string) => now - (dragAt[key] ?? -10) < 0.15;
+  const primary = ['m', 'h', 'm', 'i', 'port'][n - 1];
+
+  function draw(s: SceneInput<Round>) {
+    const { g, r, k, t, rt, shot, A } = s;
+    const v = s.v as Values;
+    now = t;
+    if (fx.shot !== shot) {
+      fx.shot = shot;
+      fx.done.clear();
+    }
+    const once = (key: string, fn: () => void) => {
+      if (!fx.done.has(key)) {
+        fx.done.add(key);
+        fn();
+      }
+    };
+    const since = flash.since(t, k);
+    const live = r.assist === 0 || (!shot && helperOn(r.assist, false, since) && since < PEEK_SECONDS);
+    A.canvas.dataset.tlm = live ? '1' : '0';
+    const out = shot ? outcomeOf(r, shot.v as Values) : null;
+    if (out) A.canvas.dataset.take = out;
+    else delete A.canvas.dataset.take;
+    const fv = shot ? (shot.v as Values) : v;
+    const T = takeAt(r, k, fv, shot ? rt : -1, t, shot ? t - rt : 0);
+    const P = T.pebble;
+    const f = fieldDeg(r, k);
+
+    // the floaters and one-off effects of the take
+    if (shot && out) {
+      floaters(r, out, shot.v as Values).forEach((fl, i) => {
+        if (rt >= fl.at) once(`f${i}`, () => A.float(fl.text, fl.x, fl.y, fl.color));
+      });
+      if (out === 'pulled' && rt >= 0.9) {
+        once('spark', () => {
+          A.burst(418, 170, PAL.orange, 10, 100);
+          if (!reduce) A.shake(4);
+        });
+      }
+      if (r.kind === 'dock' && out === 'closed' && rt >= 0.9) {
+        const [px, py] = portAt(r.pDir, fv.port!);
+        once('clang', () => A.burst(px, py, PAL.orange, 10, 100));
+      }
+    }
+
+    // ---- the frame ----
+    space(g, t, k, reduce);
+    if (n <= 3 || (r.kind === 'coil' && r.uniform)) fieldArrows(g, f, t);
+    if (r.kind === 'coil' && !r.uniform) {
+      fieldBend(g, t);
+      station(g, t);
+    }
+    if (r.kind === 'spin') burnAngle(g, f, startHeading(r, k, fv), r.th);
+    if (r.kind === 'swing' || r.kind === 'coil') {
+      const [sx, sy] = starAt(starDeg(r, k));
+      star(g, sx, sy, t, T.gold);
+    }
+    if (r.kind === 'coil') slotBox(g);
+    if (r.kind === 'park') compass(g, fv.h!);
+    if (r.kind === 'dock') {
+      const sel = fv.port!;
+      for (const port of [0, 1]) {
+        const [px, py] = portAt(r.pDir, port);
+        hatch(g, px, py, port === sel ? T.iris : 0, port === sel && T.shut, !shot && port === sel);
+      }
+    }
+    eclipse(g, T.darken);
+
+    // Pebble, Grit and the effects around them
+    pebble(g, { x: P.x, y: P.y, deg: P.deg, rod: n === 4 ? 'coil' : 'rod', nOpposite: r.kind === 'park' && r.rod === 180, glow: P.glow, folded: n === 5, mood: P.mood, flap: P.flap, alpha: P.alpha, look: P.look, wink: P.wink, t });
+    if (T.puffs >= 0) {
+      if (r.kind === 'park') for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) puffs(g, P.x + sx * 30, P.y + sy * 30, sx, sy, T.puffs, 1);
+      else if (r.kind === 'coil') {
+        if (r.uniform) puffs(g, P.x, P.y + 34, 0, 1, T.puffs);
+        else puffs(g, P.x - 34, P.y, -1, 0, T.puffs);
+      }
+    }
+    if (T.kick >= 0) ring(g, P.x, P.y, T.kick, 44);
+    if (r.kind === 'park') {
+      if (T.speck >= 0) speck(g, 640, 60, P.x, P.y, T.speck);
+      if (T.cmd >= 0) ring(g, P.x, P.y, T.cmd, 60);
+    }
+    if (r.kind === 'dock' && T.grit) {
+      const G = T.grit;
+      pebble(g, { x: G.x, y: G.y, deg: G.deg, scale: 0.8, wings: GRIT_WINGS, rod: 'rod', folded: true, mood: G.mood, alpha: G.alpha, wink: G.wink, t: t + 1.3 });
+      if (shot && rt < 0.9 && rt >= 0) puffs(g, G.x + 14, G.y, 1, 0, (rt * 3) % 1, 2);
+      if (T.speck >= 0) speck(g, 640, 60, G.x, G.y, T.speck);
+      if (T.cmd >= 0) ring(g, G.x, G.y, T.cmd, 40);
+      if (T.tether >= 0) {
+        const [px, py] = portAt(r.pDir, fv.port!);
+        const ox = (px - PEB.x) / PORT_D;
+        const oy = (py - PEB.y) / PORT_D;
+        tether(g, G.x, G.y, G.x + ox * (14 + 40 * T.tether), G.y + oy * (14 + 40 * T.tether));
+      }
+    }
+    dele(g, t, T.dele, shot ? Math.max(0, rt - T.tv) : 0);
+
+    // the win-only teaching pictures
+    if (T.inset > 0) {
+      if (r.kind === 'dock') dipoleLines(g, PEB.x, PEB.y, r.pDir * 90, T.inset);
+      inset(g, INSET_KIND[n - 1], r, T.inset);
+    }
+
+    // ---- the controls, the given facts and the player's own setting ----
+    if (n === 1 || n === 3 || n === 4) faderStrip(g, n === 4 ? 'i' : 'm');
+    if (n <= 3) {
+      const b = (r as Extract<Round, { b: number }>).b;
+      tag(g, `B ${b} µT`, 560, 296, PAL.cyan, 12);
+    }
+    if (r.kind === 'park') tag(g, `m ${one(r.m)} J/T`, 560, 316, PAL.white, 12);
+    if (r.kind === 'coil') tag(g, `${r.n} turns · ${r.a} cm²`, PLATE4.x, PLATE4.y, PAL.white, 12);
+    if (n === 4) thrusterSwitch(g, fv.thr!);
+    if (n === 5) {
+      // Grit's turn ring
+      g.beginPath();
+      g.arc(GRIT.x, GRIT.y, KNOB_R, 0, Math.PI * 2);
+      g.strokeStyle = 'rgba(244,246,255,0.3)';
+      g.lineWidth = 1.5;
+      g.stroke();
+    }
+
+    if (!shot) {
+      const cue = k === 0 && !dragged.has(primary) ? t : -1;
+      const showCue = (x: number, y: number) => {
+        if (cue >= 0) text(g, 'drag', x - 38, y + 4 + 2 * Math.sin(t * 4), PAL.yellow, 11);
+      };
+      if (n === 1 || n === 3) {
+        const x = mX(v.m!);
+        handleRing(g, x, FADER.y, '⇔', hot('m'), primary === 'm' ? cue : -1);
+        tag(g, `${one(v.m!)} J/T`, Math.max(150, Math.min(470, x)), 284, PAL.yellow, 13);
+        showCue(x, FADER.y);
+      } else if (n === 2) {
+        const [hx, hy] = compassAt(v.h!);
+        handleRing(g, hx, hy, '↻', hot('h'), cue);
+        const right = hx >= PEB.x;
+        tag(g, `${v.h}°`, right ? hx + 28 : hx - 28, hy + 5, PAL.yellow, 13, right ? 'left' : 'right');
+        showCue(hx, hy);
+      } else if (n === 4) {
+        const x = iX(v.i!);
+        handleRing(g, x, FADER.y, '⇔', hot('i'), cue);
+        tag(g, `${v.i} mA`, Math.max(150, Math.min(470, x)), 284, PAL.yellow, 13);
+        handleRing(g, v.thr ? THR.x1 : THR.x0, THR.y, '⇔', hot('thr'), -1);
+        text(g, `THRUSTER ${v.thr ? 'ON' : 'OFF'}`, 566, 278, PAL.white, 11);
+        showCue(x, FADER.y);
+      } else {
+        const dr = r as DockRound;
+        const [px, py] = portAt(dr.pDir, v.port!);
+        handleRing(g, px, py, '⇔', hot('port'), cue);
+        const right = px >= 380;
+        tag(g, `${v.port ? 'side' : 'nose'} port`, right ? px + 30 : px - 30, py + 4, PAL.yellow, 12, right ? 'left' : 'right');
+        const [qx, qy] = knobAt(v.q!);
+        handleRing(g, qx, qy, '↻', hot('q'), -1);
+        tag(g, `points ${ARROW[v.q!]}`, GRIT.x, 302, PAL.yellow, 12);
+        showCue(px, py);
+      }
+    }
+
+    // the telemetry box, the only helper: live in round 1, for 1.5 s after a paid check in round 2, never in round 3
+    g.fillStyle = '#04070f';
+    g.fillRect(TLM.x, TLM.y, TLM.w, TLM.h);
+    g.strokeStyle = '#4a5280';
+    g.lineWidth = 1;
+    g.strokeRect(TLM.x, TLM.y, TLM.w, TLM.h);
+    text(g, live ? tlmText(r, fv) : TLM_OFF, TLM.x + TLM.w / 2, TLM.y + 14, r.assist === 0 ? PAL.green : PAL.yellow, 12);
+
+    if (!shot) goalLine(g, goalText(r));
+  }
+
+  const wrap = (key: string, fn: HandleSpec<Round>['drag']): HandleSpec<Round>['drag'] => (r, px, py, v) => {
+    touch(key);
+    return fn(r, px, py, v);
+  };
+  const dials: DialSpec<Round>[] = [];
+  const handles: HandleSpec<Round>[] = [];
+  const mDial: DialSpec<Round> = { key: 'm', aria: 'Magnet rod moment in joules per tesla', label: 'Rod moment', unit: 'J/T', step: DIAL.m.step, min: DIAL.m.min, max: DIAL.m.max, start: DIAL.m.start };
+  const mHandle: HandleSpec<Round> = { dial: 'm', at: (_r, v) => [mX(v.m), FADER.y], drag: wrap('m', (_r, px) => 0.2 + ((px - FADER.x0) / (FADER.x1 - FADER.x0)) * 3.8), radius: 20 };
+  if (n === 1 || n === 3) {
+    dials.push(mDial);
+    handles.push(mHandle);
+  } else if (n === 2) {
+    dials.push({ key: 'h', aria: 'Pebble’s heading in degrees, the direction its camera faces', label: 'Heading', unit: '', step: DIAL.h.step, min: DIAL.h.min, max: DIAL.h.max, start: DIAL.h.start, text: (x) => `${x}°` });
+    handles.push({
+      dial: 'h',
+      at: (_r, v) => compassAt(v.h),
+      drag: wrap('h', (_r, px, py) => mod(Math.round(((Math.atan2(PEB.y - py, px - PEB.x) * 180) / Math.PI) / 15) * 15, 360)),
+      radius: 20,
+    });
+  } else if (n === 4) {
+    dials.push(
+      { key: 'i', aria: 'Coil current in milliamperes', label: 'Coil current', unit: 'mA', step: DIAL.i.step, min: DIAL.i.min, max: DIAL.i.max, start: DIAL.i.start },
+      { key: 'thr', aria: 'Station-keeping thruster: 0 off, 1 on', label: 'Thruster', unit: '', step: 1, min: DIAL.thr.min, max: DIAL.thr.max, start: DIAL.thr.start, text: (x) => (x ? 'ON' : 'OFF') },
+    );
+    handles.push(
+      { dial: 'i', at: (_r, v) => [iX(v.i), FADER.y], drag: wrap('i', (_r, px) => 20 + ((px - FADER.x0) / (FADER.x1 - FADER.x0)) * 580), radius: 20 },
+      { dial: 'thr', at: (_r, v) => [v.thr ? THR.x1 : THR.x0, THR.y], drag: wrap('thr', (_r, px) => (px > (THR.x0 + THR.x1) / 2 ? 1 : 0)), radius: 20 },
+    );
+  } else {
+    dials.push(
+      { key: 'port', aria: 'Docking port: 0 the nose port, 1 the side port', label: 'Port', unit: '', step: 1, min: DIAL.port.min, max: DIAL.port.max, start: DIAL.port.start, text: (x) => (x ? 'side port' : 'nose port') },
+      { key: 'q', aria: 'Which way Grit points: 0 right, 1 up, 2 left, 3 down', label: 'Grit points', unit: '', step: 1, min: DIAL.q.min, max: DIAL.q.max, start: (r) => ((r as DockRound).pDir + 1) % 4, text: (x) => ARROW[x] },
+    );
+    handles.push(
+      {
+        dial: 'port',
+        at: (r, v) => portAt((r as DockRound).pDir, v.port),
+        drag: wrap('port', (r, px, py) => {
+          const d = (r as DockRound).pDir;
+          const [nx, ny] = portAt(d, 0);
+          const [sx, sy] = portAt(d, 1);
+          return Math.hypot(px - nx, py - ny) <= Math.hypot(px - sx, py - sy) ? 0 : 1;
+        }),
+        radius: 20,
+      },
+      { dial: 'q', at: (_r, v) => knobAt(v.q), drag: wrap('q', (_r, px, py) => mod(Math.round(Math.atan2(GRIT.y - py, px - GRIT.x) / (Math.PI / 2)), 4)), radius: 20 },
+    );
+  }
+
+  return {
+    hero: { name: 'Pebble', role: ROLE, ...HEROES[n - 1] },
+    rounds,
+    charges: [1, 1, 0],
+    dials,
+    handles,
+    test: {
+      button: '📡 Check telemetry',
+      aria: 'Check telemetry: read what this setting would do before the burn',
+      read: (r, v) => {
+        flash.paid();
+        return checkText(r, v as Values);
+      },
+    },
+    fire: { button: n === 5 ? '🛰 Dock Grit' : '🚀 Command the burn', aria: FIRE_ARIA },
+    judge: (r, v) => judge(r, v as Values),
+    miss: (r, v) => missText(r, v as Values),
+    win: (r) => winText(r),
+    hint: (r) => hintText(r),
+    hit: () => HIT,
+    delay: (r, v) => verdictAt(r, v as Values),
+    draw,
+  };
+}
 
 export default defineGame({
   mount(ctx) {
-    const lvl = buildLevel(ctx.level, ctx.random);
-    const col = themeColors();
-
-    let misses = 0;
-    let finished = false;
-    let pendingWin: 1 | 2 | 3 | null = null;
-    let wonAt: number | null = null;
-    let clock = 0;
-    let verdictAt: number | null = null;
-    let verdictOk = false;
-    let runT: number | null = null;
-    const picks: Record<'lowest' | 'highest' | 'noEq', string | null> = { lowest: null, highest: null, noEq: null };
-
-    // ---- DOM --------------------------------------------------------------------------------
-    const canvas = h('canvas', { role: 'img', 'aria-label': 'A bar magnet or solenoid in a uniform magnetic field, seen from above, turning under the torque of the field.' });
-    const g = fitCanvas(canvas, W, H);
-    const feedback = h('p', { class: 'feedback', hidden: true, 'aria-live': 'polite' });
-    const solution = h('section', { class: 'panel solution', hidden: true });
-    const hint = h('p', { class: 'muted note' });
-    const controls = h('div', { class: 'lab-controls' });
-    const free = lvl.freeTests;
-    const say = (text: string, good = false) => {
-      feedback.hidden = false;
-      feedback.className = `feedback ${good ? 'good' : 'bad'}`;
-      feedback.textContent = text;
-    };
-    const costNote = () => (misses > free ? ' That cost a star.' : free > 0 ? ` ${free - misses} free test${free - misses === 1 ? '' : 's'} left.` : '');
-    const freeNote = (m: string) => say(`${m} That does not cost you anything.`);
-    const miss = (text: string) => {
-      misses++;
-      say(text + costNote());
-    };
-    const succeed = (text: string) => {
-      finished = true;
-      say(text, true);
-      solution.replaceChildren(h('h3', null, 'Why that works'), ...explainSolution(lvl).map((t) => h('p', null, t)));
-      solution.hidden = false;
-      controls.querySelectorAll('button, input').forEach((b) => b.setAttribute('disabled', ''));
-      pendingWin = starsFor(misses, free);
-    };
-    const verdict = (ok: boolean) => {
-      verdictAt = clock;
-      verdictOk = ok;
-      runT = 0;
-    };
-    const busy = () => runT !== null && runT < RUN;
-    const field = (aria: string, placeholder: string) => h('input', { class: 'field', type: 'text', inputmode: 'decimal', autocomplete: 'off', 'aria-label': aria, placeholder }) as HTMLInputElement;
-    const num = (el: HTMLInputElement) => parseNumber(el.value);
-    const actionBtn = (text: string, aria: string, fn: () => void) => h('button', { class: 'btn', type: 'button', 'aria-label': aria, onclick: fn }, text);
-    const row = (name: string, input: HTMLElement, unit: string) => h('div', { class: 'control' }, h('span', { class: 'control-label' }, name), input, h('span', { class: 'unit' }, unit));
-
-    // ---- the levels -------------------------------------------------------------------------------------------
-    if (lvl.kind === 'torque') {
-      const moment = lvl.mode === 'moment';
-      const aIn = field(moment ? 'Magnetic moment in J/T' : 'Torque in N m', moment ? 'm = ? J/T' : 'τ = ? N m');
-      const run = () => {
-        if (finished || busy()) return;
-        const a = num(aIn);
-        if (a === null || a <= 0) return freeNote('Enter a positive number.');
-        const ok = judgeTorque(lvl, a).ok;
-        verdict(ok);
-        if (ok) return succeed(moment ? `m = ${fmt(lvl.answer)} J/T.` : `τ = ${fmt(lvl.answer)} N m.`);
-        miss(moment ? 'That is not the magnetic moment: the torque is mB sin θ, so divide by B sin θ.' : 'That is not the torque: it depends on the moment, the field, and the sine of the angle between them.');
-      };
-      controls.append(moment ? row('Moment', aIn, 'J/T') : row('Torque', aIn, 'N m'), actionBtn('Release the magnet', 'Release the magnet', run));
-      hint.textContent = moment ? `Field ${lvl.b} T, the axis of the magnet at ${lvl.theta}° to it, torque ${lvl.tauShown} N m.` : `Magnetic moment ${lvl.m} J/T, field ${lvl.b} T, the axis at ${lvl.theta}° to the field.`;
-    }
-    if (lvl.kind === 'energy') {
-      const sIn = field('Energy in the stable orientation in J', 'U stable = ? J');
-      const uIn = field('Energy in the unstable orientation in J', 'U unstable = ? J');
-      const run = () => {
-        if (finished || busy()) return;
-        const s = num(sIn);
-        const u = num(uIn);
-        if (s === null || u === null || s === 0 || u === 0) return freeNote('Enter both energies as non-zero numbers, with their signs.');
-        const res = judgeEnergy(lvl, s, u);
-        verdict(res.ok);
-        if (res.ok) return succeed(`Stable ${fmt(lvl.stable)} J, unstable ${fmt(lvl.unstable)} J.`);
-        const parts: string[] = [];
-        if (!res.sOk) parts.push('The stable energy is not right: the energy is lowest where the magnet lies along the field. U = −mB cos θ.');
-        if (!res.uOk) parts.push('The unstable energy is not right: check its sign. Where is the energy highest?');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Stable', sIn, 'J'), row('Unstable', uIn, 'J'), actionBtn('Check the energies', 'Check the energies', run));
-      hint.textContent = `Magnetic moment ${lvl.m} J/T in a field of ${lvl.b} T. The magnet can rotate in the plane of the field.`;
-    }
-    if (lvl.kind === 'work') {
-      const aIn = field('Work to turn it to 90° in J', 'W 90° = ? J');
-      const bIn = field('Work to turn it to 180° in J', 'W 180° = ? J');
-      const tIn = field('Torque when opposite to the field in N m', 'τ 180° = ? N m');
-      const run = () => {
-        if (finished || busy()) return;
-        const a = num(aIn);
-        const b = num(bIn);
-        const t = num(tIn);
-        if (a === null || b === null || t === null || a <= 0 || b <= 0) return freeNote('Enter the two works as positive numbers, and the torque as a number (zero is allowed).');
-        const res = judgeWork(lvl, a, b, t);
-        verdict(res.ok);
-        if (res.ok) return succeed(`W(90°) = ${fmt(lvl.w90)} J, W(180°) = ${fmt(lvl.w180)} J, and no torque at 180°.`);
-        const parts: string[] = [];
-        if (!res.aOk) parts.push('The work to reach 90° is not right: it is the rise in potential energy from the aligned position.');
-        if (!res.bOk) parts.push('The work to reach 180° is not right: compare the energies at 0° and 180°.');
-        if (!res.tOk) parts.push('The torque opposite to the field is not right: it is mB sin θ.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('To 90°', aIn, 'J'), row('To 180°', bIn, 'J'), row('Torque at 180°', tIn, 'N m'), actionBtn('Turn the magnet', 'Turn the magnet', run));
-      hint.textContent = `Magnetic moment ${lvl.m} J/T, field ${lvl.b} T. The magnet starts aligned with the field.`;
-    }
-    if (lvl.kind === 'solenoid') {
-      const mIn = field('Magnetic moment in J/T', 'm = ? J/T');
-      const tIn = field('Torque in N m', 'τ = ? N m');
-      const fIn = field('Net force in N', 'F = ? N');
-      const run = () => {
-        if (finished || busy()) return;
-        const m = num(mIn);
-        const t = num(tIn);
-        const f = num(fIn);
-        if (m === null || t === null || f === null || m <= 0 || t <= 0) return freeNote('Enter the moment and torque as positive numbers, and the force as a number (zero is allowed).');
-        const res = judgeSolenoid(lvl, m, t, f);
-        verdict(res.ok);
-        if (res.ok) return succeed(`m = ${fmt(lvl.m)} J/T, τ = ${fmt(lvl.torque)} N m, F = 0.`);
-        const parts: string[] = [];
-        if (!res.mOk) parts.push('The magnetic moment is not right: N I A, with the area in m².');
-        if (!res.tOk) parts.push('The torque is not right: τ = mB sin θ.');
-        if (!res.fOk) parts.push('The net force is not right: think about the forces on the two ends of the solenoid in a uniform field.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Moment', mIn, 'J/T'), row('Torque', tIn, 'N m'), row('Net force', fIn, 'N'), actionBtn('Check the solenoid', 'Check the solenoid', run));
-      hint.textContent = `${lvl.n} turns, area ${lvl.aCm2} cm² each, ${lvl.i} A. Uniform field ${lvl.b} T at ${lvl.theta}° to the axis.`;
-    }
-    if (lvl.kind === 'configs') {
-      const letters = lvl.configs.map((c) => c.letter);
-      const group = (key: 'lowest' | 'highest' | 'noEq', name: string, ariaPrefix: string) => {
-        const btns: HTMLElement[] = letters.map((letter) => {
-          const b = h('button', { class: 'btn btn-ghost', type: 'button', 'aria-label': `${ariaPrefix} ${letter}`, 'aria-pressed': 'false', onclick: () => {
-            picks[key] = letter;
-            btns.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
-          } }, letter);
-          return b;
-        });
-        return h('div', { class: 'control' }, h('span', { class: 'control-label' }, name), ...btns);
-      };
-      const run = () => {
-        if (finished || busy()) return;
-        if (!picks.lowest || !picks.highest || !picks.noEq) return freeNote('Make all three choices first.');
-        const res = judgeConfigs(lvl, picks.lowest, picks.highest, picks.noEq);
-        verdict(res.ok);
-        if (res.ok) return succeed(`Lowest ${lvl.lowest}, highest ${lvl.highest}.`);
-        const parts: string[] = [];
-        if (!res.lOk) parts.push('The lowest potential energy is not right: it is where m_Q is along the field of P, and the field of P is strongest on its axis.');
-        if (!res.hOk) parts.push('The highest potential energy is not right: it is where m_Q is directly against the strongest field.');
-        if (!res.eOk) parts.push('That arrangement is in equilibrium: look for one where the torque on Q is not zero.');
-        miss(parts.join(' '));
-      };
-      controls.append(group('lowest', 'Lowest energy', 'Lowest energy is'), group('highest', 'Highest energy', 'Highest energy is'), group('noEq', 'Not in equilibrium', 'Not in equilibrium:'), actionBtn('Check the arrangements', 'Check the arrangements', run));
-      hint.textContent = 'In every picture P is at the centre with its moment pointing right. Q sits on the axis of P (to the right) or on the line perpendicular to P (above it).';
-    }
-
-    // ---- drawing helpers -------------------------------------------------------------------------------------------------
-    const arrow = (x: number, y: number, dx: number, dy: number, color: string, text = '', width = 3) => {
-      const len = Math.hypot(dx, dy);
-      if (len < 1) return;
-      const ux = dx / len;
-      const uy = dy / len;
-      g.strokeStyle = color;
-      g.fillStyle = color;
-      g.lineWidth = width;
-      g.beginPath();
-      g.moveTo(x, y);
-      g.lineTo(x + dx, y + dy);
-      g.stroke();
-      g.beginPath();
-      g.moveTo(x + dx + ux * 8, y + dy + uy * 8);
-      g.lineTo(x + dx - uy * 5, y + dy + ux * 5);
-      g.lineTo(x + dx + uy * 5, y + dy - ux * 5);
-      g.fill();
-      if (text) label(g, text, x + dx + ux * 20, y + dy + uy * 12, { size: 12, color });
-    };
-    /** A short bar magnet at (x, y) whose axis, south to north, points at angle a (radians, anticlockwise from the right). */
-    const bar = (x: number, y: number, a: number, len = 46, thick = 14) => {
-      const ux = Math.cos(a);
-      const uy = -Math.sin(a);
-      g.save?.();
-      g.lineWidth = thick;
-      g.lineCap = 'butt';
-      g.strokeStyle = SOUTH;
-      g.beginPath();
-      g.moveTo(x - ux * len, y - uy * len);
-      g.lineTo(x, y);
-      g.stroke();
-      g.strokeStyle = NORTH;
-      g.beginPath();
-      g.moveTo(x, y);
-      g.lineTo(x + ux * len, y + uy * len);
-      g.stroke();
-      g.restore?.();
-    };
-    const fieldArrows = () => {
-      for (let k = 0; k < 5; k++) {
-        const y = 60 + k * 55;
-        const t = (((clock * 0.2 + k * 0.13) % 1) + 1) % 1;
-        g.globalAlpha = 0.45;
-        arrow(40 + t * 70, y, 44, 0, col.muted, '', 2);
-        g.globalAlpha = 1;
-      }
-      label(g, 'B', 40, 34, { size: 13, color: col.muted });
-    };
-    const verdictLabel = (text: string, x: number, y: number) => {
-      if (verdictAt !== null && verdictOk) label(g, text, x, y, { size: 14, color: col.good });
-    };
-    const swing = (theta0: number) => {
-      const t = runT === null ? 0 : Math.min(runT, RUN + 0.2);
-      return theta0 * Math.cos(t * 3.2) * Math.exp(-t * 0.55);
-    };
-    const runF = () => (runT === null ? 0 : ease(Math.min(1, runT / RUN)));
-
-    function drawTorque() {
-      if (lvl.kind !== 'torque') return;
-      fieldArrows();
-      const t0 = rad(lvl.theta);
-      bar(CX, CY, runT === null ? t0 : swing(t0));
-      label(g, `θ = ${lvl.theta}°`, CX + 70, CY - 60, { size: 13, color: col.muted });
-      verdictLabel(lvl.mode === 'moment' ? `m = ${fmt(lvl.answer)} J/T` : `τ = ${fmt(lvl.answer)} N m`, CX, 30);
-    }
-    function drawEnergy() {
-      if (lvl.kind !== 'energy') return;
-      const gx = 120;
-      const gy = 280;
-      const wid = 400;
-      g.strokeStyle = col.muted;
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.moveTo(gx, gy);
-      g.lineTo(gx + wid, gy);
-      g.moveTo(gx, gy);
-      g.lineTo(gx, 70);
-      g.stroke();
-      label(g, 'θ', gx + wid + 10, gy + 4, { size: 12, color: col.muted });
-      label(g, 'U', gx - 12, 70, { size: 12, color: col.muted });
-      g.beginPath();
-      g.moveTo(gx - 4, 175);
-      g.lineTo(gx + wid, 175);
-      g.setLineDash([3, 4]);
-      g.stroke();
-      g.setLineDash([]);
-      g.strokeStyle = col.accent;
-      g.lineWidth = 2.5;
-      g.beginPath();
-      for (let k = 0; k <= 80; k++) {
-        const a = (k / 80) * Math.PI;
-        const x = gx + (a / Math.PI) * wid;
-        const y = 175 + Math.cos(a) * 85;
-        if (k) g.lineTo(x, y);
-        else g.moveTo(x, y);
-      }
-      g.stroke();
-      const f = runF();
-      const mark = (a: number, text: string, u: number) => {
-        const x = gx + (a / Math.PI) * wid;
-        const y = 175 + Math.cos(a) * 85;
-        disc(g, x, y, 6, col.accent);
-        bar(x, y + (a === 0 ? -34 : 34), a === 0 ? 0 : Math.PI, 20, 8);
-        label(g, f > 0 ? `${fmt(u * f)} J` : text, x, y + (a === 0 ? 20 : -20), { size: 12, color: col.text });
-      };
-      mark(0, '?', lvl.stable);
-      mark(Math.PI, '?', lvl.unstable);
-      label(g, '0° stable', gx, gy + 18, { size: 11, color: col.muted });
-      label(g, '180° unstable', gx + wid, gy + 18, { size: 11, color: col.muted });
-      verdictLabel(`U = ∓mB = ∓${fmt(Math.abs(lvl.stable))} J`, CX, 30);
-    }
-    function drawWork() {
-      if (lvl.kind !== 'work') return;
-      fieldArrows();
-      const f = runF();
-      // 0° to 90° in the first half, 90° to 180° in the second
-      const ang = f < 0.5 ? (f / 0.5) * 90 : 90 + ((f - 0.5) / 0.5) * 90;
-      bar(CX, CY, rad(ang));
-      label(g, `θ = ${fmt(ang)}°`, CX + 70, CY - 60, { size: 13, color: col.muted });
-      // energy bar
-      const u = energy(lvl.m, lvl.b, ang) / (lvl.m * lvl.b);
-      g.strokeStyle = col.muted;
-      g.lineWidth = 1.5;
-      g.strokeRect(540, 80, 40, 190);
-      g.fillStyle = col.accent;
-      g.globalAlpha = 0.8;
-      g.fillRect(540, 175, 40, -u * 90);
-      g.globalAlpha = 1;
-      label(g, 'U', 560, 66, { size: 12, color: col.muted });
-      verdictLabel(`W = ${fmt(lvl.w90)} J to 90°, ${fmt(lvl.w180)} J to 180°`, CX, 30);
-    }
-    function drawSolenoid() {
-      if (lvl.kind !== 'solenoid') return;
-      fieldArrows();
-      const t0 = rad(lvl.theta);
-      const th = runT === null ? t0 : swing(t0);
-      const ux = Math.cos(th);
-      const uy = -Math.sin(th);
-      // the solenoid as a row of loops along the axis
-      for (let k = -4; k <= 4; k++) {
-        const x = CX + ux * k * 14;
-        const y = CY + uy * k * 14;
-        g.strokeStyle = '#b87333';
-        g.lineWidth = 3;
-        g.beginPath();
-        g.ellipse(x, y, 5, 26, -th + 0, 0, Math.PI * 2);
-        g.stroke();
-      }
-      arrow(CX - ux * 8, CY - uy * 8, ux * 90, uy * 90, col.text, 'm', 2.5);
-      label(g, `θ = ${lvl.theta}°`, CX + 80, CY - 60, { size: 13, color: col.muted });
-      verdictLabel(`m = ${fmt(lvl.m)} J/T, τ = ${fmt(lvl.torque)} N m, F = 0`, CX, 30);
-    }
-    function drawConfigs() {
-      if (lvl.kind !== 'configs') return;
-      lvl.configs.forEach((c: Config, idx) => {
-        const col0 = idx % 3;
-        const row0 = Math.floor(idx / 3);
-        const px = 110 + col0 * 210;
-        const py = 100 + row0 * 130;
-        g.strokeStyle = col.line;
-        g.lineWidth = 1;
-        g.strokeRect(px - 98, py - 56, 196, 112);
-        label(g, c.letter, px - 84, py - 42, { size: 15, color: col.text });
-        bar(px - 12, py, 0, 14, 7);
-        const qx = c.where === 'axis' ? px + 54 : px - 12;
-        const qy = c.where === 'axis' ? py : py - 38;
-        const qa = c.orient === 'parallel' ? 0 : c.orient === 'antiparallel' ? Math.PI : Math.PI / 2;
-        bar(qx, qy, qa, 11, 6);
-        if (verdictAt !== null && verdictOk && (c.letter === lvl.lowest || c.letter === lvl.highest)) {
-          label(g, c.letter === lvl.lowest ? 'lowest' : 'highest', px + 56, py + 38, { size: 11, color: col.good });
-        }
-      });
-      verdictLabel('lowest: axis, parallel; highest: axis, antiparallel', CX, 326);
-    }
-
-    ctx.root.append(h('p', null, lvl.story), canvas, hint, controls, feedback, solution);
-    return startLoop((dt) => {
-      clock += dt;
-      if (runT !== null && runT < RUN + 0.2) runT += dt;
-      g.clearRect(0, 0, W, H);
-      drawTorque();
-      drawEnergy();
-      drawWork();
-      drawSolenoid();
-      drawConfigs();
-      if (verdictAt !== null && clock - verdictAt < REVEAL) {
-        g.strokeStyle = verdictOk ? col.good : col.bad;
-        g.lineWidth = 6;
-        g.globalAlpha = 1 - (clock - verdictAt) / REVEAL;
-        g.strokeRect(3, 3, W - 6, H - 6);
-        g.globalAlpha = 1;
-      }
-      const phase = verdictAt === null ? 'idle' : busy() || clock - verdictAt < REVEAL ? 'testing' : 'done';
-      canvas.dataset.phase = phase;
-      if (pendingWin !== null && phase !== 'testing') {
-        wonAt ??= clock;
-        if (clock - wonAt > 0.3) {
-          const s = pendingWin;
-          pendingWin = null;
-          ctx.win({ stars: s });
-        }
-      }
-    });
+    const n = Math.max(1, Math.min(5, ctx.level)) as 1 | 2 | 3 | 4 | 5;
+    return mountDialLevel(ctx as never, level(n, ctx.random) as never, ARIA);
   },
 });

@@ -16,7 +16,8 @@
     "Chain rule in related rates",
     "Pythagoras in a related rate",
     "Similar triangles in a related rate",
-    "Rates of area and volume"
+    "Rates of area and volume",
+    "Marginal cost and marginal revenue"
   ],
   "learningOutcome": "The student can write the quantity as a function of the one that is being driven, differentiate with respect to time and find the missing rate at a given instant.",
   "mechanic": "tune-to-target",
@@ -53,6 +54,17 @@
         "Use similar triangles to relate the radius to the depth, or the shadow to the distance.",
         "Then write the volume (or the shadow) with one variable only.",
         "Differentiate with respect to time and put in the instant’s values."
+      ]
+    },
+    {
+      "title": "Running costs",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: marginal cost C′(x), marginal revenue R′(x) and marginal profit R′ − C′; money flows at C′(x) times the rate w (Ex 6.1 Q15, Q16, Q18).",
+      "hints": [
+        "Marginal cost is the derivative C′(x), worked out at the given x.",
+        "If x grows at w per hour, C changes at C′(x)·w per hour.",
+        "Marginal profit is R′(x) − C′(x)."
       ]
     }
   ],

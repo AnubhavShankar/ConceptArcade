@@ -58,7 +58,7 @@ const RANGE: Record<Shape, (r: Pick<Round, 'a' | 'b'>) => [number, number]> = {
   cone: (r) => [1, 2 * r.a - 1],
   cylVol: (r) => [1, r.a - 1],
   cylSurf: (r) => [1, r.a - 1],
-  cable: () => [-5, 7],
+  cable: () => [-6, 8],
 };
 
 /** The setting where the derivative is zero, worked out by calculus (the tests check it against a scan of every dial position). */
@@ -91,8 +91,42 @@ function make(shape: Shape, over: Partial<Round>, k: number): Round {
   return r;
 }
 
-/** A cable round with the climber placed so that the nearest point is x*: D² = (x − p)² + k²x⁴ is smallest where p = x + 2k²x³. */
-const cableRound = (k: number, xStar: number, round: number) => make('cable', { a: k, b: xStar + 2 * k * k * xStar ** 3, best: xStar }, round);
+/** Where the climber must wait so that the nearest point of y = kx² is x*: D² = (x − p)² + k²x⁴ is smallest where p = x + 2k²x³ (rounded to the cent, which is exact for the k used). */
+export const climberAt = (k: number, xStar: number) => Number((xStar + 2 * k * k * xStar ** 3).toFixed(2));
+const cableRound = (k: number, xStar: number, round: number) => make('cable', { a: k, b: climberAt(k, xStar), best: xStar }, round);
+
+/** How the curvature is written on screen: y = ½x², y = 0.3x², y = x². */
+export const kText = (k: number) => (k === 1 ? '' : k === 0.5 ? '½' : String(k));
+
+/**
+ * Every (k, x*) a cable round may use. The climber's x must be a number with at most two decimals, on the screen (−6 to 8), and at least 1 away from x*, so that putting Fold
+ * straight under the climber never wins. The ratio of the climber's x to x* is 1 + 2(kx*)², so it takes six different values: no fixed fraction of the climber's x wins either.
+ */
+export const CABLE_ROWS: { k: number; x: number; b: number }[] = (() => {
+  const rows: { k: number; x: number; b: number }[] = [];
+  for (const k of [1, 1.5, 0.5, 0.3, 0.2, 0.6, 0.1]) {
+    for (let x = -5; x <= 5; x++) {
+      if (x === 0) continue;
+      const exact = x + 2 * k * k * x ** 3;
+      const b = climberAt(k, x);
+      if (Math.abs(b - exact) > 1e-9 || b < -6 || b > 8 || Math.abs(b - x) < 1 || k * x * x > 20) continue;
+      rows.push({ k, x, b });
+    }
+  }
+  return rows;
+})();
+
+/** Three cable rows with different curvatures and different answers in size (|x*|), so no round is the mirror image of another. */
+function cableRows(random: () => number): { k: number; x: number }[] {
+  for (;;) {
+    const out: { k: number; x: number }[] = [];
+    for (const row of shuffle(CABLE_ROWS, random)) {
+      if (out.some((o) => o.k === row.k || Math.abs(o.x) === Math.abs(row.x))) continue;
+      out.push(row);
+      if (out.length === 3) return out;
+    }
+  }
+}
 
 export function buildRounds(level: number, random: () => number): Round[] {
   if (level === 1) {
@@ -113,9 +147,7 @@ export function buildRounds(level: number, random: () => number): Round[] {
     const [h1, h2] = pick([6, 12, 18], random, 2);
     return [make('cone', { a: R }, 0), make('cylVol', { a: h1 }, 1), make('cylSurf', { a: h2 }, 2)];
   }
-  const sign = () => (random() < 0.5 ? 1 : -1);
-  const s1 = sign();
-  return [cableRound(1, s1, 0), cableRound(1, -s1, 1), cableRound(0.5, 2 * sign(), 2)];
+  return cableRows(random).map((row, i) => cableRound(row.k, row.x, i));
 }
 
 export const judge = (r: Round, s: number) => s === r.best;
@@ -140,26 +172,35 @@ export function show(r: Round, s: number): string {
   }
 }
 
-/** After a miss: what the build did, never the setting that would have won. */
+/**
+ * After a miss: what the build did, in words and never in numbers. It gives the direction of the setting (which side of the best one it was) and nothing else: no volume,
+ * metal, cost or length, because from the value at a setting you can work towards the best one. Only a paid test build prints readings.
+ */
 export function missText(r: Round, s: number): string {
-  const o = show(r, s);
+  const low = s < r.best;
   switch (r.shape) {
     case 'square':
     case 'rect':
-      return `${s < r.best ? 'A wide, shallow tray' : 'A tall, narrow box'}: it holds ${o}, and the crate would not go in.`;
+      return `${low ? 'A wide, shallow tray' : 'A tall, narrow box'}: it held less than the biggest box this sheet can make, and the crate would not go in.`;
     case 'can':
-      return `That can needs ${o} of metal, and the order’s metal ran out before the last seam was welded.`;
+      return `${low ? 'A tall, thin can' : 'A short, wide can'}: it needed more metal than the leanest can for this volume, and the order’s metal ran out before the last seam was welded.`;
     case 'tank':
-      return `That tank costs ${o}, and the order’s budget ran out before it was finished.`;
+      return `${low ? 'A long, narrow base' : 'A wide base with a short side'}: the tank cost more than the cheapest one that holds this volume, and the order’s budget ran out before it was finished.`;
     case 'cone':
     case 'cylVol':
-      return `${s < r.best ? 'A squat' : 'A tall, thin'} solid holding ${o}: a bigger one still fits, so the buyer sent it back.`;
+      return `${low ? 'A squat' : 'A tall, thin'} solid: a bigger one still fits, so the buyer sent it back.`;
     case 'cylSurf':
-      return `${s < r.best ? 'A squat' : 'A tall, thin'} cylinder with ${o} of curved surface: the client wanted more paint area and sent it back.`;
+      return `${low ? 'A squat' : 'A tall, thin'} cylinder: more curved surface was possible, so the client wanted more paint area and sent it back.`;
     case 'cable':
-      return `The winch line from there is ${o} long, and the rope ran out before the hook reached the climber.`;
+      return `Fold hung too far ${low ? 'left' : 'right'} along the cable: a shorter line to the climber existed, so the rope ran out before the hook reached the climber.`;
   }
 }
+
+/**
+ * How full the bar for a build is, as a fraction of the target: exactly 1 on a win, and a fixed 0.55 (a maximum that fell short) or 1.45 (a minimum that ran over) on a
+ * miss, whatever the player's setting. So the bar never measures how far off the setting was.
+ */
+export const barRatio = (r: Round, ok: boolean) => (ok ? 1 : r.goal === 'min' ? 1.45 : 0.55);
 
 /** A test build (costs a charge): the reading at the current setting, nothing about where the best one is. */
 export const spotText = (r: Round, s: number) => `Test build at ${s}: ${show(r, s)}.`;
@@ -188,7 +229,7 @@ export function explain(r: Round): string {
     case 'cylSurf':
       return `Curved surface S = 2πrh = π(${r.a} − h)h. S′ = π(${r.a} − 2h) = 0 gives h = H/2 = ${r.best} cm. S″ = −2π < 0: S = ${fmt(o(r.best))}π cm². (The volume was largest at H/3, the surface at H/2.)`;
     case 'cable':
-      return `D² = (x − ${r.b})² + (${r.a === 1 ? '' : '½'}x²)². (D²)′ = 2(x − ${r.b}) + ${4 * r.a * r.a}x³ = 0 gives x = ${r.best}. (D²)″ > 0, so it is the nearest point: D² = ${fmt(o(r.best))}, D = √${fmt(o(r.best))} m.`;
+      return `D² = (x ${r.b < 0 ? '+' : '−'} ${fmt(Math.abs(r.b))})² + (${kText(r.a)}x²)². (D²)′ = 2(x ${r.b < 0 ? '+' : '−'} ${fmt(Math.abs(r.b))}) + ${fmt(Number((4 * r.a * r.a).toFixed(4)))}x³ = 0 gives x = ${r.best}. (D²)″ > 0, so it is the nearest point: D² = ${fmt(o(r.best))}, D = √${fmt(o(r.best))} m.`;
   }
 }
 const otherRoot = (r: Round) => (r.a + r.b + Math.sqrt(r.a * r.a - r.a * r.b + r.b * r.b)) / 6;
@@ -211,6 +252,6 @@ export function intel(r: Round): string {
     case 'cylSurf':
       return `A cylinder stands on the base of a cone ${r.a} cm tall with base radius ${r.a / 2} cm. Dial the cylinder’s height h. Most curved surface wins.`;
     case 'cable':
-      return `The cable runs along y = ${r.a === 1 ? '' : '½'}x² (heights from its lowest point). The climber waits at (${r.b}, 0). Dial where Fold sits on the cable; the shortest winch line wins.`;
+      return `The cable runs along y = ${kText(r.a)}x² (heights from its lowest point). The climber waits at (${r.b}, 0). Dial where Fold sits on the cable; the shortest winch line wins.`;
   }
 }

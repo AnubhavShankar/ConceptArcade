@@ -5,7 +5,8 @@ import { PAL, createArcade } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { backdrop, face, num, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
-import { CHECK, DIAL, bad, beamText, buildRounds, explain, intel, judge, missText, original, probeText, recombined } from './logic';
+import { helperOn, paidFlash } from '@core/aidflash';
+import { CHECK, DIAL, beamText, buildRounds, explain, intel, judge, missText, original, probeText, recombined } from './logic';
 
 type G = CanvasRenderingContext2D;
 type Mood = 'happy' | 'worried' | 'cheer';
@@ -18,7 +19,7 @@ const YR = 8;
 const HEROES = [
   { story: 'A beam g(x) = (px + q)/((x − a)(x − b)) can be split into two simple beams A/(x − a) + B/(x − b). Cover one factor and put its zero into the rest: that gives the strength of the other beam. Put the pieces back over a common bottom and you must get the original top.', objective: 'Drag the crystal to the strengths A and B whose beams, put back together, make the original beam, in three rounds. The recombined beam shows live in round 1; a test beam costs a charge.' },
   { story: 'A repeated factor needs two pieces: A/(x − a) + B/(x − a)². Multiply through by (x − a)² and the top becomes A(x − a) + B: matching the x terms gives A, and putting x = a gives B.', objective: 'Set A and B so the two pieces make the original beam, in three rounds. The recombined beam shows live in round 1; a test beam costs a charge.' },
-  { story: 'Three factors, three pieces: A/(x − a) + B/(x − b) + C/(x − c). Each strength comes from covering its own factor and putting its zero into the others, and the three always add up to the coefficient of the top power.', objective: 'Set A, B and C so the three pieces make the original beam, in three rounds. The boss round does not draw your beam until the scanner runs.' },
+  { story: 'Three factors, three pieces: A/(x − a) + B/(x − b) + C/(x − c). Each strength comes from covering its own factor and putting its zero into the others, and the three always add up to the coefficient of the top power.', objective: 'Set A, B and C so the three pieces make the original beam, in three rounds. The boss round draws your beam only if the split is right.' },
 ];
 
 /** Prism: a glass prism on a stand, with a face, that splits the beam and shimmers. */
@@ -57,6 +58,7 @@ export default defineGame({
     const count = rounds[0].ans.length;
     const vals = [0, 0, 0];
     let fired: number[] | null = null;
+    const flash = paidFlash();
     const A = createArcade(
       ctx,
       { name: 'Prism', role: 'a glass prism on a stand that splits one beam of light into simple beams', story: hero.story, objective: hero.objective },
@@ -71,7 +73,7 @@ export default defineGame({
           sliders.forEach((s) => s.set(0));
           A.feedback.hidden = true;
           const r = rounds[k];
-          A.hint.textContent = `${intel(r)} ${r.assist === 0 ? 'Your beam is drawn live.' : r.assist === 1 ? 'Your beam is dim: a test beam costs a charge.' : 'Boss round: your beam appears only when the scanner runs.'}`;
+          A.hint.textContent = `${intel(r)} ${r.assist === 0 ? 'Your beam is drawn live.' : r.assist === 1 ? 'Your beam is hidden: a test beam shows it for a moment and costs a charge.' : 'Boss round: your beam appears only if the split is right.'}`;
         },
       },
     );
@@ -81,7 +83,7 @@ export default defineGame({
     A.handle({
       x: () => PL.cx + vals[0] * PL.u,
       y: () => PL.cy - vals[1] * PL.u,
-      r: 14,
+      r: 18,
       drag: (px, py) => {
         sliders[0].set(Math.round((px - PL.cx) / PL.u));
         sliders[1].set(Math.round((PL.cy - py) / PL.u));
@@ -92,6 +94,7 @@ export default defineGame({
     A.controls.append(
       A.button('🔦 Test beam', 'Test beam: compare the beams at one point', () => {
         if (!A.spend()) return;
+        flash.paid();
         A.say(probeText(cur(), vals.slice(0, count)), true);
       }, 'secondary'),
       A.button('🔷 Split the beam', 'Split the beam', () => {
@@ -115,7 +118,7 @@ export default defineGame({
       line(g, X(0), CP.top, X(0), CP.bottom, PAL.dim, 1);
       r.poles.forEach((p) => {
         line(g, X(p), CP.top, X(p), CP.bottom, PAL.pink, 1.5, [4, 4]);
-        text(g, `x = ${num(p)}`, X(p), CP.bottom + 14, PAL.pink, 10);
+        text(g, `x=${num(p)}`, X(p), CP.bottom + 14, PAL.pink, 11);
       });
       const plot = (fn: (x: number) => number, color: string, alpha: number, w: number) => {
         g.globalAlpha = alpha;
@@ -138,22 +141,27 @@ export default defineGame({
         g.globalAlpha = 1;
       };
       plot((x) => original(r, x), PAL.cyan, 1, 3);
-      const show = fired !== null || r.assist <= 1;
-      if (show) plot((x) => recombined(r, use, x), PAL.yellow, fired === null && r.assist === 1 ? 0.3 : 0.95, 2);
-      else text(g, 'your beam is hidden until the scanner runs', X(0), CP.top + 10, PAL.dim, 11);
+      // Your recombined beam is the helper: live in round 1, a moment after a test beam in round 2, never in round 3 (and never after a miss there).
+      const show = helperOn(r.assist, fired !== null && judge(r, fired), flash.since(t, Math.min(A.round, 2)));
+      A.canvas.dataset.beam = show ? '1' : '0';
+      if (show) plot((x) => recombined(r, use, x), PAL.yellow, 0.95, 2);
+      else text(g, 'your beam is hidden (a test beam shows it for a moment)', X(0), CP.top + 10, PAL.dim, 11);
+      if (!(A.phase === 'resolve' && A.rt > RUN - 0.1)) text(g, 'Split the beam: set the strengths so the pieces make the original', 320, 12, PAL.yellow, 11);
       text(g, `g(x) = ${beamText(r)}`, (CP.x0 + CP.x1) / 2, 30, PAL.cyan, 12);
       // The scanner sweeps along x and marks each checkpoint where the beams agree or part.
       let ok: boolean | null = null;
       if (fired !== null) {
         const sx = -6 + 12 * Math.min(1, A.rt / (RUN - 0.2));
         line(g, X(sx), CP.top, X(sx), CP.bottom, PAL.white, 2);
-        const off = bad(r, fired);
+        // Every dot is red on a miss and green on a win: the count of matching checkpoints is never shown.
+        const win = judge(r, fired);
         for (const c of CHECK) {
           if (c > sx) continue;
-          g.fillStyle = off.includes(c) ? PAL.red : PAL.green;
+          g.fillStyle = win ? PAL.green : PAL.red;
           g.beginPath();
-          g.arc(X(c), CP.bottom + 30, 5, 0, Math.PI * 2);
+          g.arc(X(c), CP.bottom + 30, 6, 0, Math.PI * 2);
           g.fill();
+          text(g, win ? '✓' : '✗', X(c), CP.bottom + 34, '#060a24', 11);
         }
         if (A.rt > RUN - 0.1) ok = judge(r, fired);
       }
@@ -172,10 +180,15 @@ export default defineGame({
       line(g, PL.cx, PL.cy - 9 * u, PL.cx, PL.cy + 9 * u, PAL.dim, 1);
       text(g, 'A', PL.cx + 9 * u + 8, PL.cy + 4, PAL.pink, 12);
       text(g, 'B', PL.cx, PL.cy - 9 * u - 8, PAL.green, 12);
+      const dx = PL.cx + use[0] * u;
+      const dy = PL.cy - use[1] * u;
       g.fillStyle = PAL.yellow;
       g.beginPath();
-      g.arc(PL.cx + use[0] * u, PL.cy - use[1] * u, 6, 0, Math.PI * 2);
+      g.arc(dx, dy, 10, 0, Math.PI * 2);
       g.fill();
+      line(g, dx - 6, dy, dx + 6, dy, '#060a24', 2);
+      line(g, dx, dy - 6, dx, dy + 6, '#060a24', 2);
+      text(g, `A = ${num(use[0])}, B = ${num(use[1])}`, dx + (dx > PL.cx ? -22 : 22), dy + 4, PAL.yellow, 11, dx > PL.cx ? 'right' : 'left');
       if (count === 3) text(g, `C = ${num(use[2])}`, PL.cx, PL.cy + 9 * u + 16, PAL.orange, 12);
       const mood: Mood = ok === null ? 'happy' : ok ? 'cheer' : 'worried';
       prism(g, 70, 306, t, mood, use);

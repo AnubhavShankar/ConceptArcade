@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import game from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/mirror-bench/index';
-import { buildGame, type Game } from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/mirror-bench/logic';
+import { GEOM, START_BAR, buildGame, driveMiss, wallMiss, type Game } from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/mirror-bench/logic';
+import { canvasRecorder, texts, type CanvasRec } from './helpers/canvas-rec';
 import { createRng } from '../src/core/random';
 import type { GameContext } from '../src/core/types';
 import { manifest } from './fixtures';
@@ -223,7 +224,7 @@ describe('level 3: the selfie ring', () => {
     solveRound(3, g, 0);
     advance(1);
     expect(slider().max).toBe(String(3 * g.rounds[1].F));
-    expect($('.note')?.textContent).toMatch(/dimmed/);
+    expect($('.note')?.textContent).toMatch(/for a moment after a peek/);
     solveRound(3, g, 1);
     advance(1);
     expect($('.note')?.textContent).toMatch(/no live view/i);
@@ -280,6 +281,114 @@ describe('direct manipulation on the canvas', () => {
     pointer('pointerdown', 110 + 50 * Math.sin((4 * Math.PI) / 180), 190 - 50 * Math.cos((4 * Math.PI) / 180));
     pointer('pointermove', 110 + 50 * Math.sin((4 * 3.4 * Math.PI) / 180), 190 - 50 * Math.cos((4 * 3.4 * Math.PI) / 180));
     expect(slider().value).toBe('3.5');
+  });
+});
+
+/** One drawn frame after the clock has run `dt` seconds. */
+const frameAfter = (rc: CanvasRec, dt: number) => {
+  if (dt > 0.05) advance(dt - 0.05);
+  rc.clear();
+  advance(0.05);
+  return rc.rec;
+};
+
+describe('no leaks: the start, the helper and what a miss draws', () => {
+  it('the start never wins: the catch-bar starts at its fixed value, and firing at once is a miss in every level', () => {
+    for (const level of [1, 2, 3]) {
+      start(level, 5);
+      if (level === 2) expect(slider().value).toBe(String(START_BAR));
+      commit(level);
+      advance(2.6);
+      expect(hearts()).toBe(2);
+    }
+  });
+  it('level 1: a miss draws no image marker and no true value; the words give the side of the wall', () => {
+    const rc = canvasRecorder();
+    const g = start(1, 5) as Extract<Game, { kind: 'wall' }>;
+    const R = g.rounds[0];
+    const us = Array.from({ length: 96 }, (_, i) => i + 5);
+    const ends: Record<string, string[][]> = { before: [], behind: [] };
+    for (const side of ['before', 'behind'] as const) {
+      start(1, 5);
+      for (const u of us.filter((x) => wallMiss(R, x) === side).slice(0, 2)) {
+        setSlider(u);
+        commit(1);
+        advance(2.0);
+        const t = texts(frameAfter(rc, 0.05));
+        expect(t.some((s) => /image forms here|^image:/.test(s))).toBe(false);
+        expect(t.some((s) => s.includes(side === 'before' ? 'in front of the wall' : 'behind the wall'))).toBe(true);
+        ends[side].push(t);
+        advance(1);
+      }
+      expect(ends[side][0]).toEqual(ends[side][1]);
+    }
+  });
+  it('level 2: a miss ends on a marker of fixed length at a fixed gap from the bar, and says which side', () => {
+    const rc = canvasRecorder();
+    const g = start(2, 5) as Extract<Game, { kind: 'drive' }>;
+    const R = g.rounds[0];
+    for (const side of ['beyond', 'short'] as const) {
+      start(2, 5);
+      const bars = Array.from({ length: 20 }, (_, i) => i + 1).filter((b) => b !== R.behind && driveMiss(R, b) === side).slice(0, 2);
+      const offsets: number[] = [];
+      for (const b of bars) {
+        setSlider(b);
+        commit(2);
+        advance(2.0);
+        const rec = frameAfter(rc, 0.05);
+        const mk = rec.at.find((a) => /image (beyond|short of) the bar/.test(a.s))!;
+        expect(mk.s).toBe(side === 'beyond' ? 'image beyond the bar' : 'image short of the bar');
+        offsets.push(mk.x - (GEOM.drive.x0 - b * GEOM.drive.sc));
+        expect(texts(rec).some((s) => /^gap$/.test(s))).toBe(false);
+        advance(1);
+      }
+      expect(offsets[0]).toBeCloseTo(offsets[1], 6);
+      expect(Math.abs(offsets[0])).toBe(20);
+    }
+  });
+  it('level 3: round 1 shows the live view, round 2 only for a moment after the peek, round 3 never; a miss draws no true size', () => {
+    const rc = canvasRecorder();
+    const g = start(3, 4);
+    const hidden = (rec: CanvasRec['rec']) => texts(rec).includes('?');
+    expect(hidden(frameAfter(rc, 0.1))).toBe(false);
+    solveRound(3, g, 0);
+    advance(1);
+    expect(hud()).toMatch(/Round 2 of 3/);
+    expect(hidden(frameAfter(rc, 0.1))).toBe(true);
+    click('Peek: show the live view for a moment');
+    expect(hidden(frameAfter(rc, 0.3))).toBe(false);
+    expect(hidden(frameAfter(rc, 1.6))).toBe(true);
+    // a second peek is refused for free
+    click('Peek: show the live view for a moment');
+    expect(feedback()).toMatch(/No charges left/);
+    expect(hidden(frameAfter(rc, 0.3))).toBe(true);
+    solveRound(3, g, 1);
+    advance(1);
+    expect(hud()).toMatch(/Round 3 of 3/);
+    click('Peek: show the live view for a moment');
+    expect(feedback()).toMatch(/No charges left/);
+    expect(hidden(frameAfter(rc, 0.3))).toBe(true);
+    expect($('.note')?.textContent).toMatch(/no live view/i);
+  });
+  it('level 3: two wrong settings on the same side draw the same face size at the end and the same words', () => {
+    const rc = canvasRecorder();
+    const g = start(3, 4) as Extract<Game, { kind: 'selfie' }>;
+    const R = g.rounds[0];
+    const radii: number[][] = [];
+    const words: string[] = [];
+    for (const d of [R.d - 1, R.d - 3]) {
+      setSlider(d);
+      commit(3);
+      advance(1.0);
+      words.push(feedback());
+      advance(1.0);
+      const rec = frameAfter(rc, 0.05);
+      radii.push(rec.arcs.map((a) => a.r));
+      advance(1);
+    }
+    expect(words[0]).toBe(words[1]);
+    expect(words[0]).toMatch(/too small/);
+    expect(radii[0]).toEqual(radii[1]);
   });
 });
 

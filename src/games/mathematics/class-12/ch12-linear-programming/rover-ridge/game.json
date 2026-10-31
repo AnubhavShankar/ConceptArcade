@@ -13,14 +13,15 @@
   "ncertRef": "Section 12.2, Linear programming problem and its mathematical formulation",
   "concepts": [
     "Feasible region and its corner points",
-    "Objective function Z = ax + by",
+    "Unbounded and empty feasible regions",
     "Corner point method: the best Z is at a corner",
     "Maximum and minimum with mixed signs",
-    "Finding corners from the inequalities"
+    "Finding corners from the inequalities",
+    "Ties: the best Z along a whole edge"
   ],
-  "learningOutcome": "The student can find the corner points of a bounded feasible region, evaluate the objective function at each, and pick the largest or smallest value as the optimum.",
+  "learningOutcome": "The student can find the best Z at the corners of a feasible region, spot when there is no maximum or no feasible region, and see when a whole edge is optimal.",
   "mechanic": "tune-to-target",
-  "estimatedMinutes": 15,
+  "estimatedMinutes": 23,
   "levels": [
     {
       "title": "The richest corner",
@@ -53,6 +54,28 @@
         "Each corner is where two neighbouring boundary lines meet.",
         "Solve each pair of equations to get the corner.",
         "Compare Z at all the corners, not only the first few."
+      ]
+    },
+    {
+      "title": "Open plains",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: the plateau runs off the map. A minimum can still exist; a maximum may not, and some constraints have no common ground at all (Ex 12.1 Q4, Q9, Q10).",
+      "hints": [
+        "Find the corners, then ask whether the region is closed or runs on forever.",
+        "For a maximum on an open region with a, b positive, Z can grow without end.",
+        "If two constraints cannot both hold, there is no feasible region."
+      ]
+    },
+    {
+      "title": "Level ridge",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: when the ruler lies along an edge, every point of that edge is best; say so as well as the value (Ex 12.1 Q6 to Q8).",
+      "hints": [
+        "Work out Z at every corner.",
+        "If two neighbouring corners tie for the best, the whole edge between them is best.",
+        "The edge is parallel to the ruler: their slopes match."
       ]
     }
   ],

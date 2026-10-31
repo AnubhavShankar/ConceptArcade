@@ -44,10 +44,11 @@ function mount(random: () => number): Round {
     return { ...blank, kind: 'mount', a, b, free: -1, ans: n, min: -12, max: 12, start: [0, 0, 0] };
   }
 }
+/** The unknown component c of an area row can be any of 1 to 9 (drawn at random), not just the small values the other components take. */
 function area(random: () => number): Round {
   for (;;) {
     const a = rv(random);
-    const b = rv(random);
+    const b: V3 = [ri(-3, 3, random), ri(-3, 3, random), ri(1, 9, random)];
     const free = 2;
     const n = cross(a, b);
     const T2 = n[0] ** 2 + n[1] ** 2 + n[2] ** 2;
@@ -55,7 +56,7 @@ function area(random: () => number): Round {
     const T = Math.sqrt(T2);
     // exactly one dial value from 0 to 9 gives that area
     const wins = Array.from({ length: 10 }, (_, l) => l).filter((l) => Math.abs(size(cross(a, [b[0], b[1], l])) - T) < 1e-9);
-    if (wins.length !== 1 || wins[0] !== b[2] || b[2] < 1) continue;
+    if (wins.length !== 1 || wins[0] !== b[2]) continue;
     return { ...blank, kind: 'area', a, b, free, T, ans: [b[2]], min: 0, max: 9, start: [0] };
   }
 }
@@ -75,9 +76,10 @@ export function buildRounds(level: number, random: () => number): Round[] {
   const out: Round[] = [];
   for (let i = 0; i < 3; i++) {
     let r = make(random);
-    for (let t = 0; t < 80 && out.some((o) => o.a.join() === r.a.join() && o.b.join() === r.b.join()); t++) r = make(random);
-    // The start must not already win.
-    out.push({ ...r, start: r.ans.map((x) => (x === 0 ? 1 : 0)), assist: aid(i) });
+    // Rounds differ in their rows and in their answers; and the start (every dial at 0, the same for every row) must not win.
+    const bad = (x: Round) => out.some((o) => (o.a.join() === x.a.join() && o.b.join() === x.b.join()) || o.ans.join() === x.ans.join()) || judge(x, x.ans.map(() => 0));
+    for (let t = 0; t < 200 && bad(r); t++) r = make(random);
+    out.push({ ...r, start: r.ans.map(() => 0), assist: aid(i) });
   }
   return out;
 }
@@ -110,19 +112,19 @@ export function spotText(r: Round, v: number[]): string {
   const n = normal(r, v);
   return `Panel test with c = ${num(v[0])}: the panel area is ${one(size(n))}.`;
 }
-/** After a miss. */
+/** After a miss: the direction only, with no number from the player's setting (the paid test is the only place that prints one). */
 export function missText(r: Round, v: number[]): string {
   const n = normal(r, v);
   if (r.kind === 'mount') {
     const t = cross(r.a, r.b);
     const square = dot(n, r.a) === 0 && dot(n, r.b) === 0;
-    if (!square) return `The bolt is not square to the panel: n·a = ${num(dot(n, r.a))} and n·b = ${num(dot(n, r.b))}, so the panel tilts off the sun.`;
+    if (!square) return 'The bolt is not square to the panel, so the panel tilts off the sun.';
     if (n.every((x, i) => x === -t[i])) return 'The bolt is square to the panel but points the wrong way: the right-hand rule from a to b puts it the other side.';
-    return `The bolt is square to the panel but its length is ${one(size(n))}, not the area of the panel.`;
+    return `The bolt is square to the panel but ${size(n) > size(t) ? 'longer' : 'shorter'} than the area of the panel.`;
   }
-  if (r.kind === 'area') return `The panel has area ${one(size(n))}, ${size(n) > r.T ? 'bigger' : 'smaller'} than the ${num(r.T)} wanted.`;
-  const s = size(n);
-  return `The supports are not parallel: the panel still has area ${one(s)}, so it will not fold flat.`;
+  const side = v[0] < r.ans[0] ? 'low' : 'high';
+  if (r.kind === 'area') return `The unknown c is too ${side}: the panel does not have the area the roof allows.`;
+  return `The unknown c is too ${side}: the supports are not parallel, so the panel will not fold flat.`;
 }
 /** After a hit: the working. */
 export function explain(r: Round): string {

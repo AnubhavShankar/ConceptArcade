@@ -20,13 +20,17 @@ export interface Round {
   together: Pair[];
   apart: Pair[];
   ans: Record<string, number>;
+  /** count: the top of the count dial for this round (it grows with the round, and is wider than any answer). */
+  max: number;
   assist: 0 | 1 | 2;
 }
 
+/** The count dial runs 1 to the round's top: 24, 60 and 210 for rounds 1, 2 and 3 (the widest of the three is the dial's own max). */
+export const COUNT_MAX = [24, 60, 210];
 export const DIALS = {
   repair: [{ key: 'a', label: 'Row guest', min: 1, max: 6, start: 1 }, { key: 'b', label: 'Column guest', min: 1, max: 6, start: 1 }],
   modulus: [{ key: 'm', label: 'Modulus m', min: 1, max: 11, start: 1 }],
-  count: [{ key: 'c', label: 'Ways to seat', min: 1, max: 60, start: 1 }],
+  count: [{ key: 'c', label: 'Ways to seat', min: 1, max: COUNT_MAX[2], start: 1 }],
 };
 const pick = <T>(xs: readonly T[], random: () => number): T => shuffle(xs, random)[0];
 
@@ -60,7 +64,7 @@ function repairRound(sizes: number[], random: () => number): Round {
   const big = blocks.filter((b) => b.length >= 2);
   const blk = pick(big, random);
   const [a, b] = shuffle(blk, random).slice(0, 2);
-  return { kind: 'repair', n, pairs: pairs.filter(([x, y]) => !(x === a && y === b)), gone: [a, b], rooms: [], together: [], apart: [], ans: { a, b }, assist: 0 };
+  return { kind: 'repair', n, pairs: pairs.filter(([x, y]) => !(x === a && y === b)), gone: [a, b], rooms: [], together: [], apart: [], ans: { a, b }, max: 0, assist: 0 };
 }
 
 const classes = (N: number, m: number) => {
@@ -74,7 +78,7 @@ const classes = (N: number, m: number) => {
 export const roomsFor = classes;
 export const MOD_GUESTS = 12;
 function modulusRound(m: number): Round {
-  return { kind: 'modulus', n: MOD_GUESTS, pairs: [], gone: [0, 0], rooms: classes(MOD_GUESTS, m), together: [], apart: [], ans: { m }, assist: 0 };
+  return { kind: 'modulus', n: MOD_GUESTS, pairs: [], gone: [0, 0], rooms: classes(MOD_GUESTS, m), together: [], apart: [], ans: { m }, max: 0, assist: 0 };
 }
 
 /** Number of ways to split guests 1..n into rooms (set partitions) with the given guests together and apart. */
@@ -94,14 +98,33 @@ export function countSeatings(n: number, together: Pair[], apart: Pair[]): numbe
   rec(1, 0);
   return count;
 }
-const COUNTS: { n: number; together: Pair[]; apart: Pair[] }[][] = [
-  [{ n: 3, together: [[1, 2]], apart: [] }, { n: 3, together: [], apart: [[1, 2]] }],
-  [{ n: 4, together: [[1, 2]], apart: [] }, { n: 4, together: [], apart: [[1, 2]] }],
-  [{ n: 4, together: [[1, 2]], apart: [[3, 4]] }, { n: 5, together: [[1, 2]], apart: [] }, { n: 5, together: [[1, 2]], apart: [[3, 4]] }, { n: 4, together: [[1, 2], [2, 3]], apart: [] }],
+/** The pool of each round: guests, who must share a room and who must not. Every row of a round has its own count, and no count appears in two rounds
+ * (round 1: 2, 3, 5, 7, 10; round 2: 15, 20, 27, 37, 52; round 3: 87, 114, 151, 203), so no number is a good blind guess. The tests recount every row. */
+export const COUNTS: { n: number; together: Pair[]; apart: Pair[] }[][] = [
+  [
+    { n: 3, together: [[1, 2]], apart: [] },
+    { n: 3, together: [], apart: [[1, 2]] },
+    { n: 4, together: [[1, 2]], apart: [] },
+    { n: 4, together: [], apart: [[1, 2], [3, 4]] },
+    { n: 4, together: [], apart: [[1, 2]] },
+  ],
+  [
+    { n: 5, together: [[1, 2]], apart: [] },
+    { n: 5, together: [], apart: [[1, 2], [3, 4], [2, 3]] },
+    { n: 5, together: [], apart: [[1, 2], [3, 4]] },
+    { n: 5, together: [], apart: [[1, 2]] },
+    { n: 6, together: [[1, 2]], apart: [] },
+  ],
+  [
+    { n: 6, together: [], apart: [[1, 2], [3, 4], [5, 6]] },
+    { n: 6, together: [], apart: [[1, 2], [3, 4]] },
+    { n: 6, together: [], apart: [[1, 2]] },
+    { n: 7, together: [[1, 2]], apart: [] },
+  ],
 ];
 function countRound(k: number, random: () => number): Round {
   const c = pick(COUNTS[k], random);
-  return { kind: 'count', n: c.n, pairs: [], gone: [0, 0], rooms: [], together: c.together, apart: c.apart, ans: { c: countSeatings(c.n, c.together, c.apart) }, assist: 0 };
+  return { kind: 'count', n: c.n, pairs: [], gone: [0, 0], rooms: [], together: c.together, apart: c.apart, ans: { c: countSeatings(c.n, c.together, c.apart) }, max: COUNT_MAX[k], assist: 0 };
 }
 
 export function buildRounds(level: number, random: () => number): Round[] {
@@ -120,21 +143,23 @@ export function judge(r: Round, v: Record<string, number>): boolean {
   if (r.kind === 'modulus') return JSON.stringify(classes(MOD_GUESTS, v.m)) === JSON.stringify(r.rooms);
   return v.c === r.ans.c;
 }
-
 const fault = (p: { reflexive: boolean; symmetric: boolean; transitive: boolean }) => [!p.reflexive && 'reflexive', !p.symmetric && 'symmetric', !p.transitive && 'transitive'].filter(Boolean) as string[];
 
-/** After a miss: what went wrong in the mansion, never the answer. */
+/** After a miss: what went wrong in the mansion, never the answer. Round 1 (the property lamps are live) names the broken rules; in rounds 2 and 3 naming them
+ * would be the paid check for free, so the text says only that a rule is broken and what to do. */
 export function missText(r: Round, v: Record<string, number>): string {
   if (r.kind === 'repair') {
+    if (r.assist > 0) return `With that entry the chart still breaks at least one of the three rules, so the guests argued about the rooms. Test reflexive, symmetric and transitive on the chart${r.assist === 1 ? ' (a check shows the lamps)' : ''}, then write a different entry.`;
     const f = fault(properties(withPair(r, v.a, v.b), r.n));
     return `With that entry the chart still breaks the rule${f.length > 1 ? 's' : ''}: it is not ${f.join(' and not ')}, so the guests argued about the rooms.`;
   }
   if (r.kind === 'modulus') {
+    // Direction only: the player's own number of rooms against the plan's. (The first wrong planned room is not named: its first guest would be m itself.)
     const mine = classes(MOD_GUESTS, v.m);
-    const first = r.rooms.find((room) => !mine.some((g) => JSON.stringify(g) === JSON.stringify(room)))!;
-    return `Your rule put the guests into ${mine.length} room${mine.length === 1 ? '' : 's'}, and the guests ${first.slice(0, 3).join(', ')}… were not seated as the plan says.`;
+    const more = mine.length > r.rooms.length;
+    return `Your rule put the guests into ${mine.length} room${mine.length === 1 ? '' : 's'}, ${more ? 'more' : 'fewer'} than the plan has, so they are not seated as the plan says. Set ${more ? 'a smaller' : 'a larger'} modulus m.`;
   }
-  return 'The count did not match the plans: the Keeper tried every seating and found a different number of ways.';
+  return `The count did not match the plans: the Keeper tried every seating and found ${v.c < r.ans.c ? 'more' : 'fewer'} ways than that. Count again and set ${v.c < r.ans.c ? 'a higher' : 'a lower'} number.`;
 }
 export function spotText(r: Round, v: Record<string, number>): string {
   if (r.kind === 'repair') {

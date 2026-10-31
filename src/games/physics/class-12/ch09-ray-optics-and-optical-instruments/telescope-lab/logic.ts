@@ -70,7 +70,25 @@ export interface NearRound {
   LSol: number;
   assist: Assist;
 }
+export type Planet = 'Saturn' | 'Jupiter' | 'Neptune';
+/** A Cassegrain telescope (mm): a big concave mirror R1 and a small convex mirror R2 placed d in front of it. */
+export interface CassRound {
+  R1: number;
+  R2: number;
+  d: number;
+  planet: Planet;
+  /** The big mirror’s own focus, R1/2. */
+  f1: number;
+  /** The small mirror’s focal length, R2/2. */
+  f2: number;
+  /** The virtual object for the small mirror: f1 − d behind it. */
+  u: number;
+  /** Where the final image forms, measured from the small mirror: the sensor must go here. */
+  v: number;
+  assist: Assist;
+}
 export type Game =
+  | { kind: 'cass'; hero: Hero; rounds: CassRound[]; charges: number[] }
   | { kind: 'zoom'; hero: Hero; rounds: ZoomRound[]; charges: number[] }
   | { kind: 'plate'; hero: Hero; rounds: PlateRound[]; charges: number[] }
   | { kind: 'near'; hero: Hero; rounds: NearRound[]; charges: number[] };
@@ -81,7 +99,29 @@ const NEAR: [number, number][] = [[140, 5], [100, 4], [120, 6], [80, 4], [150, 5
 const TOWER_THETA = 100 / 3000;
 const PLATE: ['moon' | 'tower', number][] = [['moon', 500], ['moon', 1000], ['moon', 1500], ['tower', 140], ['tower', 210]];
 
+/** Level 4, [R₁, R₂, d] in mm: round 1 is Exercise 9.29 (v = 315), round 2 one of two (300, 400), the boss 150. */
+const CASS_1: [number, number, number][] = [[220, 140, 20]];
+const CASS_2: [number, number, number][] = [[200, 120, 25], [240, 160, 20]];
+const CASS_3: [number, number, number][] = [[180, 100, 15]];
+const PLANETS: Planet[] = ['Saturn', 'Jupiter', 'Neptune'];
+
+/** v from the small mirror: 1/v = 1/f₂ − 1/(f₁ − d), the big mirror’s image being a virtual object at u = f₁ − d behind it. */
+export function cassV(R1: number, R2: number, d: number): number {
+  const f1 = R1 / 2;
+  const f2 = R2 / 2;
+  const inv = 1 / f2 - 1 / (f1 - d);
+  return Math.abs(inv) < 1e-12 ? Infinity : 1 / inv;
+}
+/** The blur radius (screen px) of a planet when the sensor is at x and the image forms at v: 0 only when they agree. */
+export const blurPx = (x: number, v: number) => (Math.abs(x - v) < 1e-9 ? 0 : Math.min(22, 3 + Math.abs(x - v) * 0.1));
+/** The blur a MISSED exposure always develops with, whatever the error (a blur that grew with the error would give the answer away). */
+export const MISS_BLUR = 14;
+export type CassSide = 'short' | 'long' | 'right';
+/** short: the sensor sits in front of the focus (the light had not yet focused); long: behind it. */
+export const cassSide = (r: CassRound, x: number): CassSide => (Math.abs(x - r.v) <= 0.5 ? 'right' : x < r.v ? 'short' : 'long');
+
 export const SLIDERS = {
+  cass: { min: 0, max: 600, step: 5, start: 50 },
   fe: { min: 0.5, max: 30, step: 0.5, start: 10 },
   fo: { min: 50, max: 2000, step: 10, start: 800 },
 };
@@ -121,6 +161,23 @@ export function buildGame(level: number, random: () => number): Game {
       charges: [1, 1, 1],
     };
   }
+  if (level === 4) {
+    const [a] = CASS_1;
+    const [b] = shuffle(CASS_2, random);
+    const [c] = CASS_3;
+    const mk = ([R1, R2, d]: [number, number, number], i: number): CassRound => ({ R1, R2, d, planet: PLANETS[i], f1: R1 / 2, f2: R2 / 2, u: R1 / 2 - d, v: Math.round(cassV(R1, R2, d)), assist: assist(i) });
+    return {
+      kind: 'cass',
+      hero: {
+        name: 'Stella',
+        role: 'a young stargazer with a Cassegrain telescope on a rooftop observatory',
+        story: 'Stella wants to photograph a planet tonight. Her Cassegrain telescope folds the light: the big concave mirror sends it to a small convex mirror, which sends it back through a hole in the big mirror to the camera. The big mirror’s image is a virtual object for the small one.',
+        objective: 'Slide the camera sensor to where the planet comes into focus, and photograph all three planets.',
+      },
+      rounds: [mk(a, 0), mk(b, 1), mk(c, 2)],
+      charges: [1, 1, 0],
+    };
+  }
   const list: [number, number][] = [NEAR[0], ...shuffle(NEAR.slice(1), random).slice(0, 2)];
   return {
     kind: 'near',
@@ -151,6 +208,14 @@ export function judgeNear(r: NearRound, fe: number, L: number): { ok: boolean; f
   return { ok: feOk && lOk, feOk, lOk };
 }
 
+/** Level 4: the sensor must stand exactly where the final image forms (the dial moves in steps of 5 mm, every answer is a multiple of 5). */
+export function judgeCass(r: CassRound, x: number): { ok: boolean; side: CassSide } {
+  const side = cassSide(r, x);
+  return { ok: side === 'right', side };
+}
+/** What the shot says first, before any slider moves. */
+export const cassIntel = (r: CassRound) => `Tonight: ${r.planet}. Big mirror R₁ = ${r.R1} mm, small convex mirror R₂ = ${r.R2} mm, ${r.d} mm apart. Slide the camera sensor to where the planet’s image forms, measured from the small mirror.`;
+
 /** A test shot in words. */
 export function viewReading(fo: number, fe: number, L: number): string {
   const w = view(fo, fe, L);
@@ -159,6 +224,13 @@ export function viewReading(fo: number, fe: number, L: number): string {
 }
 
 export function explainRound(g: Game, k: number): string[] {
+  if (g.kind === 'cass') {
+    const r = g.rounds[k];
+    return [
+      `The big mirror would focus ${r.planet} at f₁ = ${r.f1} mm, which is ${r.f1} − ${r.d} = ${r.u} mm behind the small mirror: a virtual object. With f₂ = ${r.f2} mm, 1/v = 1/${r.f2} − 1/${r.u}, so v = ${r.v} mm from the small mirror.`,
+      'A Cassegrain folds the light twice, so a short tube acts like a long one: the big concave mirror’s image is a virtual object for the small convex mirror (Exercise 9.29).',
+    ];
+  }
   if (g.kind === 'zoom') {
     const r = g.rounds[k];
     return [
@@ -180,19 +252,45 @@ export function explainRound(g: Game, k: number): string[] {
   ];
 }
 export function resultLine(g: Game, k: number): string {
+  if (g.kind === 'cass') return `${g.rounds[k].planet} is pin-sharp: the image forms ${g.rounds[k].v} mm from the small mirror.`;
   if (g.kind === 'zoom') return `The target fills the reticle: ${g.rounds[k].M}× with the image at infinity (${g.rounds[k].exercise}).`;
   if (g.kind === 'plate') return `The image fills the plate: ${fmt(g.rounds[k].plate)} cm across (${g.rounds[k].exercise}).`;
   return `Sharp, and ${fmt(g.rounds[k].M)}× with the image at the near point.`;
 }
 /** After a miss: the effect of what the player chose, never the right answer. */
-export function missText(g: Game, k: number, tried: { fe?: number; L?: number; fo?: number }): string {
-  if (g.kind === 'plate') {
+export function missText(g: Game, k: number, tried: { fe?: number; L?: number; fo?: number; x?: number }): string {
+  if (g.kind === 'cass') {
+    // only the side (review fix): the image formed in front of or behind the sensor, never how far
     const r = g.rounds[k];
-    const size = plateSize(tried.fo ?? 0, r.theta);
-    return size > r.plate ? `The image is ${fmt(size)} cm across: it spills over the ${fmt(r.plate)} cm plate.` : `The image is only ${fmt(size)} cm across: it leaves the ${fmt(r.plate)} cm plate partly empty.`;
+    const x = tried.x ?? 0;
+    return `With the sensor at ${x} mm, ${r.planet} came out as a blurred disc: the light ${x < r.v ? 'had not yet come to a focus' : 'had already focused and spread out again'}.`;
+  }
+  if (g.kind === 'plate') {
+    // direction only: no size, no number
+    const r = g.rounds[k];
+    return plateSide(r, tried.fo ?? 0) === 'over' ? 'The image is too big: it spills over the plate.' : 'The image is too small: it leaves the plate partly empty.';
   }
   const r = g.rounds[k];
-  const w = view(r.fo, tried.fe ?? 1, tried.L ?? r.fo);
-  if (w.M === null) return 'No clear picture forms with those settings.';
-  return `With those settings the telescope gives ${fmt(w.M)}× and the final image is ${w.v === Infinity ? 'at infinity' : `${fmt(w.v!)} cm away`}${w.v !== null && !eyeSees(w.v) ? ', too near to focus' : ''}: not the view the ring asks for.`;
+  const s = scopeMiss(r, tried.fe ?? 1, tried.L ?? r.fo);
+  if (s.none) return 'No clear picture forms with those settings.';
+  const size = s.size === 'over' ? 'The target overfills the ring' : s.size === 'under' ? 'The target does not fill the ring' : 'The target nearly fills the ring';
+  return s.blurred ? `${size}, and the picture is blurred: the final image is too near for the eye to focus.` : `${size}: this is not the view the ring asks for.`;
 }
+
+/** Level 2: which side of the plate the image falls on for a focal length fo: too long spills over, too short leaves it empty. */
+export const plateSide = (r: PlateRound, fo: number): 'over' | 'under' => (fo > r.foSol ? 'over' : 'under');
+/** What a missed plate exposure always draws: the image ring at a fixed multiple of the plate, whatever the error. */
+export const PLATE_MISS = { over: 1.5, under: 0.55 };
+
+/** Levels 1 and 3: how a missed scope looks, by category only (never the player's own magnification or image distance). */
+export type ScopeMiss = { none: true } | { none: false; size: 'over' | 'under' | 'about'; blurred: boolean };
+export function scopeMiss(r: { fo: number; M: number }, fe: number, L: number): ScopeMiss {
+  const w = view(r.fo, fe, L);
+  if (w.M === null) return { none: true };
+  const ratio = w.M / r.M;
+  return { none: false, size: ratio > 1.03 ? 'over' : ratio < 0.97 ? 'under' : 'about', blurred: !eyeSees(w.v!) };
+}
+/** The radius (screen px) of the target in the scope view on a miss, by category: the ring is 56 px, the view 77 px. */
+export const SCOPE_MISS_RADIUS = { over: 72, under: 24, about: 56 };
+/** The blur a missed scope view always develops with when the final image is too near to focus. */
+export const SCOPE_MISS_BLUR = 14;

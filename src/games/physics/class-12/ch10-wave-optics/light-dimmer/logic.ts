@@ -43,8 +43,14 @@ export interface MiddleRound {
 
 /** [dark band n, wavelength nm, angle of the target]; the slit width comes out a multiple of 100 nm. */
 const SLIT: [number, number, number][] = [[1, 600, 30], [1, 500, 30], [2, 500, 30], [1, 700, 30], [2, 600, 30], [3, 500, 30]];
-const SHADE: number[] = [30, 45, 60];
-const MIDDLE: number[] = [45, 30, 15];
+/**
+ * The wanted fractions of the lamp's light for the second level. The first three have whole-degree angles (30°, 45°, 60°); the others come from
+ * cos θ = 0.8, 0.6 and 0.9, whose angles (36.87°, 53.13° and 25.84°) are met by the whole-degree dial within its tolerance. Three of the six are played.
+ */
+const SHADE: number[] = [0.375, 0.25, 0.125, 0.32, 0.18, 0.405];
+/** The wanted fractions of the light after the first polaroid for the third level: sin²2θ = 4 × the fraction (1, 3/4, 1/4, 0.64, 0.36). Three of the five are played. */
+const MIDDLE: number[] = [0.25, 0.1875, 0.0625, 0.16, 0.09];
+const deg2 = (x: number) => String(Number(x.toFixed(2)));
 
 export const SLIDERS = {
   a: { min: 300, max: 3200, step: 50 },
@@ -57,11 +63,22 @@ export function slitRounds(random: () => number): SlitRound[] {
     .sort((x, y) => x[0] - y[0])
     .map(([n, lam, theta], k) => ({ n, lam, theta, aSol: Math.round(((n * lam) / sinD(theta)) * 1e6) / 1e6, assist: aid(k) }));
 }
+/** The angle between the polaroids that lets the fraction `target` of the lamp's light through: ½cos²θ = target. */
+export const shadeAngle = (target: number) => Math.round(Math.acos(Math.sqrt(2 * target)) * 1e6 / RAD) / 1e6;
 export function shadeRounds(random: () => number): ShadeRound[] {
-  return shuffle(SHADE, random).map((thetaSol, k) => ({ target: Math.round(twoPolaroids(thetaSol) * 1e6) / 1e6, thetaSol, assist: aid(k) }));
+  return shuffle(SHADE, random)
+    .slice(0, 3)
+    .map((target, k) => ({ target, thetaSol: shadeAngle(target), assist: aid(k) }));
 }
+/** The middle polaroid angles that let the fraction `target` through: sin²2θ = 4 × target, so θ and 90° − θ. */
+export const middleAngles = (target: number) => {
+  const t = Math.round((asinD(Math.min(1, 2 * Math.sqrt(target))) / 2) * 1e6) / 1e6;
+  return t === 45 ? [45] : [t, Math.round((90 - t) * 1e6) / 1e6];
+};
 export function middleRounds(random: () => number): MiddleRound[] {
-  return shuffle(MIDDLE, random).map((t, k) => ({ target: Math.round(middlePolaroid(t) * 1e6) / 1e6, solutions: t === 45 ? [45] : [t, 90 - t], assist: aid(k) }));
+  return shuffle(MIDDLE, random)
+    .slice(0, 3)
+    .map((target, k) => ({ target, solutions: middleAngles(target), assist: aid(k) }));
 }
 
 // ---- judging --------------------------------------------------------------------------------------------------------------
@@ -94,12 +111,12 @@ export function slitExplain(r: SlitRound): string[] {
 export function shadeExplain(r: ShadeRound): string[] {
   return [
     `The first polaroid passes ½ of unpolarised light. The second passes cos²θ of that (Malus’ law): ½cos²θ = ${fmt(r.target)}.`,
-    `So cos²θ = ${fmt(2 * r.target)}, cos θ = ${fmt(Math.sqrt(2 * r.target))} and θ = ${r.thetaSol}°.`,
+    `So cos²θ = ${fmt(2 * r.target)}, cos θ = ${fmt(Math.sqrt(2 * r.target))} and θ = ${deg2(r.thetaSol)}°${Number.isInteger(r.thetaSol) ? '' : ' (set the dial to the nearest whole degree)'}.`,
   ];
 }
 export function middleExplain(r: MiddleRound): string[] {
   return [
     `With I₀ after the first polaroid, the middle one passes I₀cos²θ and the last (crossed with the first) passes cos²(90° − θ) of that: I = I₀cos²θ sin²θ = (I₀/4) sin²2θ.`,
-    `For I/I₀ = ${fmt(r.target)}: sin²2θ = ${fmt(4 * r.target)}, so θ = ${r.solutions.map((s) => `${s}°`).join(' or ')}. The most light, I₀/4, gets through at 45° (Example 10.2).`,
+    `For I/I₀ = ${fmt(r.target)}: sin²2θ = ${fmt(4 * r.target)}, so θ = ${r.solutions.map((s) => `${deg2(s)}°`).join(' or ')}. The most light, I₀/4, gets through at 45° (Example 10.2).`,
   ];
 }

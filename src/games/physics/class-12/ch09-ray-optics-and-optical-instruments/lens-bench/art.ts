@@ -67,6 +67,129 @@ export function sensor(g: G, x: number, ax: number, t: number, mood: Mood = 'hap
   g.stroke();
 }
 
+/**
+ * Ember, a camping lantern on a post: a glass chimney with a flickering flame, a cap and a ring handle, a face on the glass.
+ * Idle: the flame flickers and the eyes blink. While `firing` the flame flares and rays shoot from the glass.
+ */
+export function lantern(g: G, x: number, y: number, t: number, mood: Mood = 'happy', firing = false) {
+  const flick = 1 + Math.sin(t * 9) * 0.1 + Math.sin(t * 23) * 0.05;
+  const flare = firing ? 1.5 : 1;
+  // post and base
+  line(g, x, y + 20, x, y + 64, '#6b5040', 5);
+  g.fillStyle = '#3a2d4a';
+  g.fillRect(x - 16, y + 62, 32, 6);
+  // ring handle and cap
+  g.strokeStyle = PAL.dim;
+  g.lineWidth = 2.5;
+  g.beginPath();
+  g.arc(x, y - 30, 8, Math.PI, Math.PI * 2);
+  g.stroke();
+  g.fillStyle = '#4a3b66';
+  g.beginPath();
+  g.moveTo(x - 14, y - 22);
+  g.lineTo(x - 8, y - 30);
+  g.lineTo(x + 8, y - 30);
+  g.lineTo(x + 14, y - 22);
+  g.closePath();
+  g.fill();
+  // glass chimney
+  glow(g, PAL.yellow, 14 * flare, () => {
+    g.fillStyle = 'rgba(255,210,63,0.22)';
+    g.strokeStyle = PAL.yellow;
+    g.lineWidth = 2.5;
+    g.fillRect(x - 13, y - 22, 26, 42);
+    g.strokeRect(x - 13, y - 22, 26, 42);
+  });
+  // flame
+  glow(g, PAL.orange, 12 * flare, () => {
+    g.fillStyle = PAL.orange;
+    g.beginPath();
+    g.ellipse(x, y + 12, 5 * flick * flare, 7 * flick * flare, 0, 0, Math.PI * 2);
+    g.fill();
+  });
+  g.fillStyle = PAL.yellow;
+  g.beginPath();
+  g.ellipse(x, y + 14, 2.5 * flick, 4 * flick, 0, 0, Math.PI * 2);
+  g.fill();
+  // face: blinks every few seconds
+  const blink = t % 4 < 0.12;
+  g.fillStyle = '#fff';
+  if (blink) {
+    line(g, x - 7, y - 8, x - 3, y - 8, '#1b1030', 1.6);
+    line(g, x + 3, y - 8, x + 7, y - 8, '#1b1030', 1.6);
+  } else {
+    g.beginPath();
+    g.arc(x - 5, y - 8, 3.2, 0, Math.PI * 2);
+    g.arc(x + 5, y - 8, 3.2, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#1b1030';
+    g.beginPath();
+    g.arc(x - 4.5, y - 7.6, 1.4, 0, Math.PI * 2);
+    g.arc(x + 5.5, y - 7.6, 1.4, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.strokeStyle = '#1b1030';
+  g.lineWidth = 1.5;
+  g.beginPath();
+  if (mood === 'worried' || mood === 'dizzy') g.arc(x, y + 1, 4, Math.PI * 1.1, Math.PI * 1.9);
+  else if (mood === 'cheer') g.arc(x, y - 3, 5, 0.05 * Math.PI, 0.95 * Math.PI);
+  else g.arc(x, y - 3.5, 4, 0.15 * Math.PI, 0.85 * Math.PI);
+  g.stroke();
+  if (mood === 'worried') {
+    g.fillStyle = PAL.cyan;
+    g.beginPath();
+    g.arc(x + 15, y - 14 + ((t * 18) % 7), 2.2, 0, Math.PI * 2);
+    g.fill();
+  }
+}
+
+/** The glass rod: a body from the curved face at fx to the flat end at x1, around the axis ax. sag > 0 bulges toward the lamp (R > 0), sag < 0 is concave. */
+export function glassRod(g: G, fx: number, x1: number, ax: number, half: number, sag: number, color: string = PAL.cyan) {
+  glow(g, color, 12, () => {
+    g.fillStyle = 'rgba(77,225,255,0.12)';
+    g.strokeStyle = color;
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(fx, ax - half);
+    g.quadraticCurveTo(fx - sag * 2, ax, fx, ax + half);
+    g.lineTo(x1, ax + half);
+    g.lineTo(x1, ax - half);
+    g.closePath();
+    g.fill();
+    g.stroke();
+  });
+  line(g, fx + 10, ax - half + 7, x1 - 12, ax - half + 7, 'rgba(255,255,255,0.35)', 2);
+  line(g, fx + 30, ax + half - 8, x1 - 40, ax + half - 8, 'rgba(255,255,255,0.18)', 2);
+}
+
+/** A grinding wheel that spins and throws sparks while the face is being ground (`on`); the sparks fly in a fixed pattern. */
+export function grinder(g: G, x: number, y: number, t: number, on: boolean, since: number) {
+  g.fillStyle = '#3a2d4a';
+  g.beginPath();
+  g.arc(x, y, 12, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = PAL.dim;
+  g.lineWidth = 2;
+  const spin = t * (on ? 30 : 1.5);
+  for (let k = 0; k < 3; k++) {
+    const a = spin + (k * Math.PI * 2) / 3;
+    line(g, x, y, x + Math.cos(a) * 10, y + Math.sin(a) * 10, PAL.dim, 2);
+  }
+  g.beginPath();
+  g.arc(x, y, 12, 0, Math.PI * 2);
+  g.stroke();
+  if (!on) return;
+  for (let k = 0; k < 7; k++) {
+    const life = (since * 3 + k * 0.14) % 1;
+    const a = Math.PI * (0.85 + k * 0.045);
+    const d = 10 + life * 34;
+    g.globalAlpha = 1 - life;
+    g.fillStyle = PAL.yellow;
+    g.fillRect(x + 12 + Math.cos(a) * d, y + 8 - Math.sin(a) * d * 0.7 + life * life * 18, 2.5, 2.5);
+  }
+  g.globalAlpha = 1;
+}
+
 /** A slide in a frame with a little face on the picture. `h` is its height in px; `flip` draws the inverted image. */
 export function slide(g: G, x: number, ax: number, h: number, t: number, mood: Mood = 'happy', flip = false, alpha = 1) {
   g.save();

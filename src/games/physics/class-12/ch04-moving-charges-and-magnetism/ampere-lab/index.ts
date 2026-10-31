@@ -1,518 +1,317 @@
+// "First Plasma". Inspirations (code comment only): remote-handling robot games (drive the arm into a hot zone, set the tool, back out), "find the sweet spot"
+// probe puzzles, and the shot countdown of rocket-launch games. Spanner, a robot inside a small tokamak, places a field probe with its arm, then the control
+// room fires a test shot and the plasma holds or breaks up. Level 1 the busbar probe (side and distance), 2 the plasma column (inner and outer probe),
+// 3 the X-point (null of two currents), 4 the central solenoid (its length), 5 the toroidal coil (probe radius; beyond Section 4.7 by owner decision).
+// Never leak the answer: the probe readout is the only place where the field at the player's setting (or its direction in level 1) appears before a shot;
+// it is live in round 1, on for 1.5 s after a probe check in round 2, never in round 3. `hit` is a fixed point; every miss takes a fixed look (ERR, the two
+// fixed scorch points, frost or a dim glow, ZERO); everything ends by 2.3 s and the verdict lands at 0.9 s. The art is in art.ts.
+import { PAL, type Arcade } from '@core/arcade';
 import { defineGame } from '@core/define';
-import { disc, label, themeColors } from '@core/draw';
-import { h } from '@core/dom';
-import { parseNumber } from '@core/quiz';
-import { fitCanvas, startLoop } from '@core/sim';
-import { buildLevel, explainSolution, fmt, judgeNeutral, judgeSolenoid, judgeThick, judgeToroid, judgeWire, netOnLineUT, starsFor, thickWireUT, type Dir, type Hole } from './logic';
+import { helperOn, paidFlash } from '@core/aidflash';
+import { mountDialLevel, type DialLevel, type DialSpec, type HandleSpec, type SceneInput } from '@core/dialgame';
+import {
+  C, HIT, LINE, PAD, SIDE_V, SOLE, WALL_FAR, WALL_NEAR, arm, busbar, clamp01, column, controlWindow, exhaust, goalLine, hall, handleGrip, inPx, invTorPx, lenPx, outPx, plate, probe, rayPx,
+  readout, rod, scorch, sidePad, solenoid, spanner, tag, toroid, torPx, vesselCam, xPx, xpoint, type AnaMood, type SolState, type SpannerMood,
+} from './art';
+import {
+  LCD_OFF, buildRounds, fault, goal, hintText, judge as judgeRound, lcdText, meterText, missText, torRegion, winText, type ColRow, type Round, type Values,
+} from './logic';
 
-const W = 640;
-const H = 340;
-const POS = '#c0392b';
-const REVEAL = 0.9;
-const RUN = 3;
-const ease = (t: number) => 1 - Math.pow(1 - t, 3);
-const CX = 320;
-const CY = 175;
-const DIRS: Dir[] = ['up', 'down', 'left', 'right'];
+const ARIA = 'Inside a fusion reactor: a robot with a long arm sets field probes beside busbars, a plasma column and magnet coils, while a shift leader watches from the control room.';
+const ROLE = 'a remote-handling robot inside a fusion reactor, getting every system ready for first plasma';
+const HEROES = [
+  {
+    story: 'Tonight the reactor tries for its first plasma, and Spanner, its remote-handling robot, is setting up. Thick busbars feed the magnets, and each needs a field probe calibrated beside it. Ampère’s law round a circle of radius r gives B = μ₀I/2πr. The field circles the busbar: grip it with your right thumb along the current, and your fingers curl the way the field goes. The probe reads only a field along its arrow.',
+    objective: 'Put the probe on the right side of the busbar, at the distance where it reads the calibration field, in three shots.',
+  },
+  {
+    story: 'The plasma column itself carries a current, spread evenly over its cross-section. Outside it the whole current counts: B = μ₀I/2πr. Inside, a circle of radius r encloses only I r²/a² of it, so B = μ₀Ir/2πa², growing from zero at the centre. One probe goes inside the column and one outside, and both must read the same field.',
+    objective: 'Set the inner and outer probes so both read the target field, in three shots.',
+  },
+  {
+    story: 'The plasma’s exhaust must be steered onto a tough tungsten plate at the X-point, where the fields of the plasma current and the divertor coil’s current cancel. Two parallel currents the same way cancel between them; opposite ways, they cancel only outside, beyond the smaller current.',
+    objective: 'Slide the exhaust plate to the null point, in three shots.',
+  },
+  {
+    story: 'The central solenoid starts the plasma current. Spanner can slide its free end on a telescopic former, spreading the same turns over a different length. Inside a long solenoid B = μ₀nI, the same everywhere inside, where n counts the turns per metre in all the layers.',
+    objective: 'Stretch the solenoid to the length that gives the field it needs inside, in three shots.',
+  },
+  {
+    story: 'Last, the ring of toroidal coils that holds the plasma. A toroid is a solenoid bent into a ring. A circle inside the winding encloses N turns of current, so B = μ₀NI/2πr there; a circle in the hole encloses no current at all. The field probe slides out from the middle of the ring.',
+    objective: 'Slide the probe to the radius where the toroidal field is the target, in three shots.',
+  },
+];
+
+type Kind<K extends Round['kind']> = Extract<Round, { kind: K }>;
+const VERDICT = 0.9;
+const dist = (px: number, py: number) => Math.hypot(px - C.x, py - C.y);
+const rrange = (r: Round) => r as unknown as ColRow;
+
+// ---- the dials and handles of each level (section 7 of the brief) ----
+const SIDE_WORDS = ['right', 'above', 'left', 'below'];
+const sideDial: DialSpec<Round> = { key: 'side', aria: 'Side of the busbar for the probe: 0 right, 1 above, 2 left, 3 below', label: 'Side', unit: '', step: 1, min: 0, max: 3, start: 0, text: (x) => SIDE_WORDS[x] };
+const distDial: DialSpec<Round> = { key: 'r', aria: 'Probe distance from the busbar in centimetres', label: 'Distance', unit: 'cm', step: 5, min: 5, max: 100, start: 5 };
+const rinDial: DialSpec<Round> = { key: 'rin', aria: 'Inner probe radius in centimetres', label: 'Inner probe', unit: 'cm', step: 1, min: 1, max: (r) => rrange(r).a - 1, start: 1 };
+const routDial: DialSpec<Round> = { key: 'rout', aria: 'Outer probe radius in centimetres', label: 'Outer probe', unit: 'cm', step: 1, min: (r) => rrange(r).a + 1, max: (r) => 3 * rrange(r).a, start: (r) => rrange(r).a + 1 };
+const plateDial: DialSpec<Round> = { key: 'x', aria: 'Exhaust plate position in centimetres from the plasma current', label: 'Plate', unit: 'cm', step: 2, min: 2, max: 98, start: 2 };
+const lenDial: DialSpec<Round> = { key: 'L', aria: 'Solenoid length in centimetres', label: 'Length', unit: 'cm', step: 5, min: 20, max: 150, start: 20 };
+const probeDial: DialSpec<Round> = { key: 'r', aria: 'Probe radius from the middle of the ring in centimetres', label: 'Probe', unit: 'cm', step: 1, min: 2, max: 60, start: 2 };
+
+interface Mark {
+  /** Which handle was dragged last, for the highlight and (level 2) the arm. */
+  which: string;
+  at: number;
+  dragged: boolean;
+}
+/** Everything a level's picture needs this frame. */
+interface X {
+  g: CanvasRenderingContext2D;
+  t: number;
+  rt: number;
+  k: number;
+  v: Values;
+  shot: boolean;
+  ok: boolean;
+  f: ReturnType<typeof fault>;
+  hot: (which: string) => boolean;
+  mark: Mark;
+  A: Arcade;
+}
+type Scene = (r: Round, x: X) => { tool: [number, number]; post: () => void };
+
+// ---- level 1: the busbar probe ----
+const sceneBus: Scene = (round, x) => {
+  const r = round as Kind<'bus'>;
+  const { g, v, rt, shot, ok } = x;
+  const d = [SIDE_V[v.side!][0] * rayPx(v.r!), SIDE_V[v.side!][1] * rayPx(v.r!)];
+  const tool: [number, number] = [C.x + d[0], C.y + d[1]];
+  busbar(g, r.cur, r.I);
+  arm(g, tool, shot && rt < 0.2);
+  const shown = shot && rt >= 0.4 ? (ok ? 'CAL ✓' : 'ERR') : '—';
+  probe(g, tool[0], tool[1], r.arrow, shown, shown === 'CAL ✓' ? PAL.green : shown === 'ERR' ? PAL.red : PAL.dim, SIDE_V[v.side!]);
+  return {
+    tool,
+    post: () => {
+      sidePad(g, v.side!);
+      if (shot) return;
+      const sv = SIDE_V[v.side!];
+      handleGrip(g, tool[0], tool[1], '⇔', x.hot('r'));
+      handleGrip(g, PAD.x + 22 * sv[0], PAD.y + 22 * sv[1], '✥', x.hot('side'));
+      const beyond = 38;
+      tag(g, `${v.r} cm`, tool[0] + sv[0] * beyond, tool[1] + sv[1] * beyond + 4, 'center');
+      if (x.k === 0 && !x.mark.dragged) {
+        const bob = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 0 : Math.sin(x.t * 4) * 3;
+        tag(g, 'drag the probe ⇔', tool[0], tool[1] - 30 + bob, 'center');
+      }
+    },
+  };
+};
+
+// ---- level 2: inside the plasma ----
+const sceneCol: Scene = (round, x) => {
+  const r = round as Kind<'col'>;
+  const { g, v, rt, shot, ok, f } = x;
+  column(g, r);
+  const pin: [number, number] = [C.x - inPx(r, v.rin!), C.y];
+  const pout: [number, number] = [C.x + outPx(r, v.rout!), C.y];
+  arm(g, x.mark.which === 'rout' ? pout : pin, shot && rt < 0.2);
+  let din = '—';
+  let dout = '—';
+  if (shot && rt >= 0.4) {
+    if (ok) din = dout = '✓';
+    else if (f === 'inLow' || f === 'inHigh') din = 'ERR';
+    else dout = 'ERR';
+  }
+  rod(g, pin[0], pin[1], din, din === 'ERR' ? PAL.red : din === '✓' ? PAL.green : PAL.dim);
+  rod(g, pout[0], pout[1], dout, dout === 'ERR' ? PAL.red : dout === '✓' ? PAL.green : PAL.dim);
+  return {
+    tool: pin,
+    post: () => {
+      if (shot) return;
+      handleGrip(g, pin[0], pin[1], '⇔', x.hot('rin'));
+      handleGrip(g, pout[0], pout[1], '⇔', x.hot('rout'));
+      tag(g, `${v.rin} cm`, pin[0], pin[1] - 26, 'center');
+      tag(g, `${v.rout} cm`, pout[0], pout[1] - 26, 'center');
+    },
+  };
+};
+
+// ---- level 3: the X-point ----
+const sceneXpt: Scene = (round, x) => {
+  const r = round as Kind<'xpt'>;
+  const { g, v, rt, shot, ok, f } = x;
+  xpoint(g, r);
+  const tool: [number, number] = [xPx(v.x!), LINE.y];
+  if (shot && rt >= 0.2) {
+    const wall = f === 'near' ? WALL_NEAR : WALL_FAR;
+    const to: [number, number] = ok ? [tool[0], LINE.y - 22] : wall;
+    exhaust(g, to, clamp01((rt - 0.2) / 0.4));
+    if (!ok && rt >= 0.6) scorch(g, wall);
+  }
+  arm(g, tool, shot && rt < 0.2);
+  plate(g, v.x!, shot && ok && rt >= 0.6);
+  return {
+    tool,
+    post: () => {
+      if (shot) return;
+      handleGrip(g, tool[0], tool[1], '⇔', x.hot('x'));
+      tag(g, `${v.x} cm`, tool[0], tool[1] - 28, 'center');
+    },
+  };
+};
+
+// ---- level 4: the central solenoid ----
+const sceneSol: Scene = (round, x) => {
+  const r = round as Kind<'sol'>;
+  const { g, v, rt, shot, ok, f } = x;
+  const mode: SolState = !shot ? 'idle' : ok ? 'win' : f === 'quench' ? 'quench' : 'dim';
+  const tool: [number, number] = [SOLE.x0 + lenPx(v.L!), SOLE.y];
+  solenoid(g, r, v.L!, { mode, lit: shot ? clamp01((rt - 0.2) / 0.4) : 0, rt });
+  arm(g, tool, shot && rt < 0.2);
+  return {
+    tool,
+    post: () => {
+      if (shot) return;
+      handleGrip(g, tool[0], tool[1], '⇔', x.hot('L'));
+      tag(g, `${v.L} cm`, tool[0], SOLE.y - 44, 'center');
+    },
+  };
+};
+
+// ---- level 5: the toroidal field ----
+const sceneTor: Scene = (round, x) => {
+  const r = round as Kind<'tor'>;
+  const { g, v, rt, shot, ok, f, t } = x;
+  toroid(g, r, t, shot && rt >= 0.2);
+  const tool: [number, number] = [C.x + torPx(r, v.r!), C.y];
+  arm(g, tool, shot && rt < 0.2);
+  const shown = shot && rt >= 0.4 ? (ok ? '✓' : f === 'zero' ? 'ZERO' : 'ERR') : '—';
+  rod(g, tool[0], tool[1], shown, shown === '✓' ? PAL.green : shown === '—' ? PAL.dim : PAL.red);
+  return {
+    tool,
+    post: () => {
+      if (shot) return;
+      handleGrip(g, tool[0], tool[1], '⇔', x.hot('r'));
+      tag(g, `${v.r} cm`, tool[0], tool[1] - 26, 'center');
+      tag(g, torRegion(r, v.r!), tool[0], tool[1] + 46, 'center', PAL.white, 11);
+    },
+  };
+};
+
+const SCENES: Scene[] = [sceneBus, sceneCol, sceneXpt, sceneSol, sceneTor];
+
+function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
+  const rounds = buildRounds(n, random);
+  const flash = paidFlash();
+  const mark: Mark = { which: '', at: -10, dragged: false };
+  let seen: unknown = null;
+  const done = new Set<string>();
+  const stamp = (which: string, A: () => Arcade | null) => {
+    mark.which = which;
+    mark.at = A()?.clock ?? 0;
+    mark.dragged = true;
+  };
+  let arcade: Arcade | null = null;
+  const getA = () => arcade;
+  const dragging = (which: string, fn: (r: Round, px: number, py: number, v: Record<string, number>) => number) => (r: Round, px: number, py: number, v: Record<string, number>) => {
+    stamp(which, getA);
+    return fn(r, px, py, v);
+  };
+  const dials: DialSpec<Round>[][] = [[sideDial, distDial], [rinDial, routDial], [plateDial], [lenDial], [probeDial]];
+  const handles: HandleSpec<Round>[][] = [
+    [
+      { dial: 'r', at: (_r, v) => [C.x + SIDE_V[v.side][0] * rayPx(v.r), C.y + SIDE_V[v.side][1] * rayPx(v.r)], drag: dragging('r', (_r, px, py) => (dist(px, py) - 26) / 1.2), radius: 20 },
+      {
+        dial: 'side',
+        at: (_r, v) => [PAD.x + 22 * SIDE_V[v.side][0], PAD.y + 22 * SIDE_V[v.side][1]],
+        drag: dragging('side', (_r, px, py) => ((Math.round(Math.atan2(PAD.y - py, px - PAD.x) / (Math.PI / 2)) % 4) + 4) % 4),
+        radius: 20,
+      },
+    ],
+    [
+      { dial: 'rin', at: (r, v) => [C.x - inPx(rrange(r), v.rin), C.y], drag: dragging('rin', (r, px) => ((C.x - px) / 70) * rrange(r).a), radius: 20 },
+      { dial: 'rout', at: (r, v) => [C.x + outPx(rrange(r), v.rout), C.y], drag: dragging('rout', (r, px) => rrange(r).a + ((px - C.x - 70) / 80) * 2 * rrange(r).a), radius: 20 },
+    ],
+    [{ dial: 'x', at: (_r, v) => [xPx(v.x), LINE.y], drag: dragging('x', (_r, px) => ((px - LINE.x0) / LINE.span) * 100), radius: 20 }],
+    [{ dial: 'L', at: (_r, v) => [SOLE.x0 + lenPx(v.L), SOLE.y], drag: dragging('L', (_r, px) => 20 + (px - SOLE.x0 - 80) / 2.4), radius: 20 }],
+    [{ dial: 'r', at: (r, v) => [C.x + torPx(r as Kind<'tor'>, v.r), C.y], drag: dragging('r', (r, px) => invTorPx(r as Kind<'tor'>, px - C.x)), radius: 20 }],
+  ];
+
+  function draw(s: SceneInput<Round>) {
+    const { g, r, k, t, rt, shot, A } = s;
+    arcade = A;
+    const v = s.v as Values;
+    if (seen !== shot) {
+      seen = shot;
+      done.clear();
+    }
+    const once = (key: string, fn: () => void) => {
+      if (!done.has(key)) {
+        done.add(key);
+        fn();
+      }
+    };
+    // the probe readout, the only helper: live in round 1, for 1.5 s after a probe check in round 2, never in round 3
+    const since = flash.since(t, k);
+    const live = !shot && helperOn(r.assist, false, since);
+    A.canvas.dataset.lcd = live ? '1' : '0';
+    const f = shot ? fault(r, shot.v as Values) : null;
+    const ok = !!shot?.ok;
+    if (shot) A.canvas.dataset.take = ok ? 'win' : (f ?? 'wrong');
+    else delete A.canvas.dataset.take;
+    const age = shot ? rt - VERDICT : -1;
+    const x: X = { g, t, rt: shot ? rt : -1, k, v, shot: !!shot, ok, f, hot: (w) => mark.which === w && A.clock - mark.at < 0.15, mark, A };
+    if (shot) {
+      once('fire', () => {
+        A.float('CLUNK', 96, 224, PAL.white);
+        A.float('Shot away!', 86, 112, PAL.white);
+      });
+      if (rt >= VERDICT) {
+        once('verdict', () => {
+          if (ok) {
+            A.sound('win');
+            A.float('BEEP BOOP!', 96, 224, PAL.green);
+            A.float(k === 2 ? 'FIRST PLASMA!' : 'Nice!', 86, 112, PAL.yellow);
+            A.float('mmm', 552, 112, PAL.pink);
+          } else A.float('Disruption…', 86, 112, PAL.red);
+        });
+      }
+      if (n === 3 && !ok && rt >= 0.6) once('scorch', () => A.burst(...(f === 'near' ? WALL_NEAR : WALL_FAR), PAL.orange, 12, 120));
+    }
+
+    hall(g, t, k);
+    const { tool, post } = SCENES[n - 1](r, x);
+    const spMood: SpannerMood = age >= 0 ? (ok ? 'cheer' : 'worried') : 'happy';
+    spanner(g, t, { mood: spMood, rt: shot ? rt : -1, age, look: tool });
+    const ana: AnaMood = !shot ? 'idle' : age >= 0 ? (ok ? 'win' : 'miss') : 'lean';
+    controlWindow(g, t, ana, k);
+    vesselCam(g, t, k, { rt: shot ? rt : -1, ok });
+    readout(g, live ? lcdText(r, v) : LCD_OFF, r.assist === 0 ? PAL.green : PAL.yellow);
+    post();
+    if (!shot) goalLine(g, goal(r));
+  }
+
+  return {
+    hero: { name: 'Spanner', role: ROLE, ...HEROES[n - 1] },
+    rounds,
+    charges: [1, 1, 0],
+    dials: dials[n - 1],
+    handles: handles[n - 1],
+    test: { button: '🔎 Probe check', aria: 'Probe check: read the probe for this setting', read: (r, v) => { flash.paid(); return meterText(r, v as Values); } },
+    fire: { button: '⚡ Fire the shot', aria: 'Fire a test plasma shot with these settings' },
+    judge: (r, v) => judgeRound(r, v as Values),
+    miss: (r, v) => missText(r, v as Values),
+    win: (r) => winText(r),
+    hint: (r) => hintText(r),
+    hit: () => HIT,
+    delay: VERDICT,
+    draw,
+  };
+}
 
 export default defineGame({
   mount(ctx) {
-    const lvl = buildLevel(ctx.level, ctx.random);
-    const col = themeColors();
-
-    let misses = 0;
-    let finished = false;
-    let pendingWin: 1 | 2 | 3 | null = null;
-    let wonAt: number | null = null;
-    let clock = 0;
-    let verdictAt: number | null = null;
-    let verdictOk = false;
-    let runT: number | null = null;
-    let dirPick: Dir | null = null;
-    let holePick: Hole | null = null;
-    let probe = lvl.kind === 'neutral' ? lvl.dCm / 2 : 0;
-    let touched = false;
-
-    // ---- DOM --------------------------------------------------------------------------------
-    const canvas = h('canvas', { role: 'img', 'aria-label': 'Wires, a solenoid or a toroid with the circular field lines of Ampère\'s law drawn round them.' });
-    const g = fitCanvas(canvas, W, H);
-    const feedback = h('p', { class: 'feedback', hidden: true, 'aria-live': 'polite' });
-    const solution = h('section', { class: 'panel solution', hidden: true });
-    const hint = h('p', { class: 'muted note' });
-    const controls = h('div', { class: 'lab-controls' });
-    const free = lvl.freeTests;
-    const say = (text: string, good = false) => {
-      feedback.hidden = false;
-      feedback.className = `feedback ${good ? 'good' : 'bad'}`;
-      feedback.textContent = text;
-    };
-    const costNote = () => (misses > free ? ' That cost a star.' : free > 0 ? ` ${free - misses} free test${free - misses === 1 ? '' : 's'} left.` : '');
-    const freeNote = (m: string) => say(`${m} That does not cost you anything.`);
-    const miss = (text: string) => {
-      misses++;
-      say(text + costNote());
-    };
-    const succeed = (text: string) => {
-      finished = true;
-      say(text, true);
-      solution.replaceChildren(h('h3', null, 'Why that works'), ...explainSolution(lvl).map((t) => h('p', null, t)));
-      solution.hidden = false;
-      controls.querySelectorAll('button, input').forEach((b) => b.setAttribute('disabled', ''));
-      pendingWin = starsFor(misses, free);
-    };
-    const verdict = (ok: boolean) => {
-      verdictAt = clock;
-      verdictOk = ok;
-      runT = 0;
-    };
-    const busy = () => runT !== null && runT < RUN;
-    const field = (aria: string, placeholder: string) => h('input', { class: 'field', type: 'text', inputmode: 'decimal', autocomplete: 'off', 'aria-label': aria, placeholder }) as HTMLInputElement;
-    const num = (el: HTMLInputElement) => parseNumber(el.value);
-    const actionBtn = (text: string, aria: string, fn: () => void) => h('button', { class: 'btn', type: 'button', 'aria-label': aria, onclick: fn }, text);
-    const row = (name: string, input: HTMLElement, unit: string) => h('div', { class: 'control' }, h('span', { class: 'control-label' }, name), input, h('span', { class: 'unit' }, unit));
-    const choice = <T extends string>(name: string, opts: [T, string, string][], onPick: (v: T) => void) => {
-      const btns: HTMLElement[] = opts.map(([v, aria, text]) => {
-        const b = h('button', { class: 'btn btn-ghost', type: 'button', 'aria-label': aria, 'aria-pressed': 'false', onclick: () => {
-          onPick(v);
-          btns.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
-        } }, text);
-        return b;
-      });
-      return h('div', { class: 'control' }, h('span', { class: 'control-label' }, name), ...btns);
-    };
-
-    // ---- the levels -------------------------------------------------------------------------------------------
-    if (lvl.kind === 'wire') {
-      const bIn = field('Field in µT', 'B = ? µT');
-      const run = () => {
-        if (finished || busy()) return;
-        const b = num(bIn);
-        if (b === null || b <= 0) return freeNote('Enter the field as a positive number of µT.');
-        if (dirPick === null) return freeNote('Choose the direction of the field at the point.');
-        const res = judgeWire(lvl, b, dirPick);
-        verdict(res.ok);
-        if (res.ok) return succeed(`B = ${fmt(lvl.ut)} µT, pointing ${lvl.dir}.`);
-        const parts: string[] = [];
-        if (!res.bOk) parts.push('The size is not right: Ampère\'s law round a circle through the point gives the field. Give it in µT.');
-        if (!res.dirOk) parts.push('The direction is not right: the field circles the wire, so it is at right angles to the line from the wire to the point. Use the right-hand grip rule.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Field', bIn, 'µT'), choice<Dir>('Direction', DIRS.map((d) => [d, `Field points ${d}`, d] as [Dir, string, string]), (d) => (dirPick = d)), actionBtn('Measure the field', 'Measure the field', run));
-      hint.textContent = `A long wire carries ${lvl.i} A ${lvl.currentOut ? 'out of the page (dot)' : 'into the page (cross)'}. The point is ${lvl.rM} m to the ${lvl.pos === 'above' || lvl.pos === 'below' ? lvl.pos : lvl.pos} of the wire.`;
-    }
-    if (lvl.kind === 'thick') {
-      const inIn = field('Field inside the wire in µT', 'B inside = ? µT');
-      const outIn = field('Field outside the wire in µT', 'B outside = ? µT');
-      const run = () => {
-        if (finished || busy()) return;
-        const a = num(inIn);
-        const b = num(outIn);
-        if (a === null || b === null || a <= 0 || b <= 0) return freeNote('Enter both answers as positive numbers.');
-        const res = judgeThick(lvl, a, b);
-        verdict(res.ok);
-        if (res.ok) return succeed(`Inside ${fmt(lvl.inUt)} µT, outside ${fmt(lvl.outUt)} µT.`);
-        const parts: string[] = [];
-        if (!res.inOk) parts.push('The field inside is not right: a circle inside the wire encloses only part of the current.');
-        if (!res.outOk) parts.push('The field outside is not right: a circle outside encloses all of the current.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Inside the wire', inIn, 'µT'), row('Outside the wire', outIn, 'µT'), actionBtn('Measure the field', 'Measure the field', run));
-      hint.textContent = `Wire radius ${lvl.aMm} mm carrying ${lvl.i} A. The inside point is ${fmt(lvl.rInMm)} mm from the axis and the outside point ${fmt(lvl.rOutMm)} mm.`;
-    }
-    if (lvl.kind === 'neutral') {
-      const slider = h('input', { type: 'range', min: String(-Math.round(lvl.dCm)), max: String(Math.ceil(lvl.dCm * 2.6)), step: '0.5', value: String(lvl.dCm / 2), 'aria-label': 'Probe position in cm' }) as HTMLInputElement;
-      const sync = () => {
-        probe = Number(slider.value);
-        touched = true;
-      };
-      slider.addEventListener('input', sync);
-      slider.addEventListener('change', sync);
-      const xIn = field('Distance from wire 1 in cm', 'x = ? cm');
-      const run = () => {
-        if (finished || busy()) return;
-        if (!touched) return freeNote('Move the probe along the line first and watch the meter.');
-        const x = num(xIn);
-        if (x === null || x <= 0) return freeNote('Enter the distance as a positive number of cm.');
-        const ok = judgeNeutral(lvl, x).ok;
-        verdict(ok);
-        if (ok) return succeed(`The fields cancel ${fmt(lvl.xCm)} cm from wire 1.`);
-        miss('That is not the point where the fields cancel. At the neutral point the two fields are equal in size and opposite in direction: where does the meter read zero?');
-      };
-      controls.append(h('div', { class: 'control' }, h('span', { class: 'control-label' }, 'Probe'), slider), row('Neutral point', xIn, 'cm'), actionBtn('Check the null point', 'Check the null point', run));
-      hint.textContent = `Wire 1 carries ${lvl.i1} A and wire 2 carries ${lvl.i2} A, ${lvl.same ? 'in the same direction' : 'in opposite directions'}, ${lvl.dCm} cm apart. Distances are measured from wire 1.`;
-    }
-    if (lvl.kind === 'solenoid') {
-      const nIn = field('Turns per metre', 'n = ? per m');
-      const bIn = field('Field in mT', 'B = ? mT');
-      const run = () => {
-        if (finished || busy()) return;
-        const n = num(nIn);
-        const b = num(bIn);
-        if (n === null || b === null || n <= 0 || b <= 0) return freeNote('Enter both answers as positive numbers.');
-        const res = judgeSolenoid(lvl, n, b);
-        verdict(res.ok);
-        if (res.ok) return succeed(`n = ${fmt(lvl.n)} per metre and B = ${fmt(lvl.mt)} mT.`);
-        const parts: string[] = [];
-        if (!res.nOk) parts.push('The turns per metre are not right: count all the turns in all the layers, then divide by the length in metres.');
-        if (!res.bOk) parts.push('The field is not right: inside a long solenoid it depends on the turns per unit length and the current. Give it in mT.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Turns per metre', nIn, '/m'), row('Field', bIn, 'mT'), actionBtn('Measure the field', 'Measure the field', run));
-      hint.textContent = `${lvl.layers} layer${lvl.layers > 1 ? 's' : ''} of ${lvl.perLayer} turns on a length of ${lvl.lCm} cm, carrying ${lvl.i} A.`;
-    }
-    if (lvl.kind === 'toroid') {
-      const bIn = field('Field in the winding in mT', 'B = ? mT');
-      const run = () => {
-        if (finished || busy()) return;
-        const b = num(bIn);
-        if (b === null || b <= 0) return freeNote('Enter the field as a positive number of mT.');
-        if (holePick === null) return freeNote('Choose what the field is in the hole of the ring.');
-        const res = judgeToroid(lvl, b, holePick);
-        verdict(res.ok);
-        if (res.ok) return succeed(`B = ${fmt(lvl.mt)} mT in the winding, and zero in the hole.`);
-        const parts: string[] = [];
-        if (!res.bOk) parts.push('The field in the winding is not right: use Ampère\'s law round a circle at the mean radius. Give it in mT.');
-        if (!res.holeOk) parts.push('Think about a circle in the hole: how much current does it enclose?');
-        miss(parts.join(' '));
-      };
-      controls.append(
-        row('Field in winding', bIn, 'mT'),
-        choice<Hole>('In the hole', [['zero', 'Field in the hole is zero', 'Zero'], ['same', 'Field in the hole is the same as in the winding', 'Same as winding'], ['half', 'Field in the hole is half that in the winding', 'Half']], (v) => (holePick = v)),
-        actionBtn('Measure the field', 'Measure the field', run),
-      );
-      hint.textContent = `A toroid of ${lvl.turns} turns carrying ${lvl.i} A, mean radius ${lvl.rCm} cm.`;
-    }
-
-    // ---- drawing helpers -------------------------------------------------------------------------------------------------
-    const symbol = (x: number, y: number, out: boolean, size: number, color: string) => {
-      g.strokeStyle = color;
-      g.fillStyle = color;
-      g.lineWidth = 2.5;
-      g.beginPath();
-      g.arc(x, y, size, 0, Math.PI * 2);
-      g.stroke();
-      if (out) disc(g, x, y, size * 0.28, color);
-      else {
-        g.beginPath();
-        g.moveTo(x - size * 0.6, y - size * 0.6);
-        g.lineTo(x + size * 0.6, y + size * 0.6);
-        g.moveTo(x + size * 0.6, y - size * 0.6);
-        g.lineTo(x - size * 0.6, y + size * 0.6);
-        g.stroke();
-      }
-    };
-    const arrowHead = (x: number, y: number, ux: number, uy: number, color: string, size = 7) => {
-      g.fillStyle = color;
-      g.beginPath();
-      g.moveTo(x + ux * size, y + uy * size);
-      g.lineTo(x - uy * size * 0.7 - ux * size * 0.4, y + ux * size * 0.7 - uy * size * 0.4);
-      g.lineTo(x + uy * size * 0.7 - ux * size * 0.4, y - ux * size * 0.7 - uy * size * 0.4);
-      g.fill();
-    };
-    /** Circular field lines round a wire at (cx, cy), anticlockwise on screen when ccw is true, with arrowheads drifting round. */
-    const circles = (cx: number, cy: number, radii: number[], ccw: boolean, color: string) => {
-      radii.forEach((r, k) => {
-        g.strokeStyle = color;
-        g.lineWidth = 1.5;
-        g.globalAlpha = 0.55;
-        g.beginPath();
-        g.arc(cx, cy, r, 0, Math.PI * 2);
-        g.stroke();
-        g.globalAlpha = 1;
-        for (let a = 0; a < 3; a++) {
-          const ang = ((clock * 0.35 * (ccw ? -1 : 1)) / (1 + k * 0.3)) + (a * Math.PI * 2) / 3;
-          const x = cx + Math.cos(ang) * r;
-          const y = cy + Math.sin(ang) * r;
-          // tangent in the direction of travel: derivative of the angle
-          const s = ccw ? -1 : 1;
-          arrowHead(x, y, -Math.sin(ang) * s, Math.cos(ang) * s, color, 6);
-        }
-      });
-    };
-    const verdictLabel = (text: string, x: number, y: number) => {
-      if (verdictAt !== null && verdictOk) label(g, text, x, y, { size: 14, color: col.good });
-    };
-    const runF = () => (runT === null ? 0 : ease(Math.min(1, runT / RUN)));
-
-    function drawWire() {
-      if (lvl.kind !== 'wire') return;
-      const wx = CX - 60;
-      const wy = CY;
-      const rp = Math.min(130, 40 + lvl.rM * 38);
-      circles(wx, wy, [rp * 0.45, rp, rp * 1.5], lvl.currentOut, col.accent);
-      symbol(wx, wy, lvl.currentOut, 16, POS);
-      label(g, `${lvl.i} A`, wx, wy + 32, { size: 12, color: col.text });
-      const off: Record<string, [number, number]> = { right: [rp, 0], left: [-rp, 0], above: [0, -rp], below: [0, rp] };
-      const [dx, dy] = off[lvl.pos];
-      const px = wx + dx;
-      const py = wy + dy;
-      g.strokeStyle = col.muted;
-      g.setLineDash([5, 5]);
-      g.beginPath();
-      g.moveTo(wx, wy);
-      g.lineTo(px, py);
-      g.stroke();
-      g.setLineDash([]);
-      label(g, `r = ${lvl.rM} m`, wx + dx / 2, wy + dy / 2 - 12, { size: 12, color: col.muted });
-      disc(g, px, py, 5, col.text);
-      const f = runF();
-      if (f > 0) {
-        const vec: Record<Dir, [number, number]> = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
-        const [vx, vy] = vec[lvl.dir];
-        g.strokeStyle = col.good;
-        g.lineWidth = 4;
-        g.beginPath();
-        g.moveTo(px, py);
-        g.lineTo(px + vx * 46 * f, py + vy * 46 * f);
-        g.stroke();
-        arrowHead(px + vx * 46 * f, py + vy * 46 * f, vx, vy, col.good, 9);
-        label(g, 'B', px + vx * 66 * f, py + vy * 66 * f, { size: 14, color: col.good });
-      } else label(g, '?', px + 18, py - 14, { size: 18, color: col.accent });
-      verdictLabel(`B = ${fmt(lvl.ut)} µT, ${lvl.dir}`, CX + 130, 32);
-    }
-    function drawThick() {
-      if (lvl.kind !== 'thick') return;
-      const cx = 170;
-      const R = 70;
-      g.fillStyle = '#b87333';
-      g.globalAlpha = 0.45;
-      disc(g, cx, CY, R, '#b87333');
-      g.globalAlpha = 1;
-      g.strokeStyle = '#b87333';
-      g.lineWidth = 3;
-      g.beginPath();
-      g.arc(cx, CY, R, 0, Math.PI * 2);
-      g.stroke();
-      // current dots spread uniformly over the section
-      for (let k = 0; k < 28; k++) {
-        const a = k * 2.399963;
-        const rr = Math.sqrt((k + 0.5) / 28) * (R - 6);
-        symbol(cx + Math.cos(a) * rr, CY + Math.sin(a) * rr, true, 5, POS);
-      }
-      const rin = (lvl.rInMm / lvl.aMm) * R;
-      const rout = Math.min(125, (lvl.rOutMm / lvl.aMm) * R);
-      g.strokeStyle = col.accent;
-      g.setLineDash([4, 4]);
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.arc(cx, CY, rin, 0, Math.PI * 2);
-      g.stroke();
-      g.beginPath();
-      g.arc(cx, CY, rout, 0, Math.PI * 2);
-      g.stroke();
-      g.setLineDash([]);
-      disc(g, cx + rin, CY, 4, col.accent);
-      disc(g, cx + rout, CY, 4, col.accent);
-      label(g, 'inside', cx + rin, CY - 12, { size: 11, color: col.accent });
-      label(g, 'outside', cx + rout, CY - 12, { size: 11, color: col.accent });
-      // B against r
-      const gx = 370;
-      const gy = 290;
-      g.strokeStyle = col.muted;
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.moveTo(gx, gy);
-      g.lineTo(600, gy);
-      g.moveTo(gx, gy);
-      g.lineTo(gx, 90);
-      g.stroke();
-      label(g, 'B', gx - 10, 90, { size: 11, color: col.muted });
-      label(g, 'r', 600, gy + 12, { size: 11, color: col.muted });
-      const rMax = Math.max(lvl.rOutMm, lvl.aMm * 3) * 1.05;
-      const bMax = thickWireUT(lvl.i, lvl.aMm, lvl.aMm - 1e-9) * 1.1;
-      g.strokeStyle = col.accent;
-      g.lineWidth = 2.5;
-      g.beginPath();
-      const f = runT === null ? 0.35 : Math.max(0.35, runF());
-      for (let k = 0; k <= 80 * f; k++) {
-        const r = (k / 80) * rMax;
-        const b = Math.min(bMax * 1.1, thickWireUT(lvl.i, lvl.aMm, Math.max(r, 1e-6)));
-        const x = gx + (r / rMax) * 220;
-        const y = gy - (b / bMax) * 180;
-        if (k) g.lineTo(x, y);
-        else g.moveTo(x, y);
-      }
-      g.stroke();
-      const mark = (r: number, b: number) => disc(g, gx + (r / rMax) * 220, gy - (b / bMax) * 180, 5, col.accent);
-      mark(lvl.rInMm, lvl.inUt);
-      mark(lvl.rOutMm, lvl.outUt);
-      g.strokeStyle = col.muted;
-      g.setLineDash([3, 4]);
-      g.beginPath();
-      g.moveTo(gx + (lvl.aMm / rMax) * 220, gy);
-      g.lineTo(gx + (lvl.aMm / rMax) * 220, 100);
-      g.stroke();
-      g.setLineDash([]);
-      label(g, 'surface', gx + (lvl.aMm / rMax) * 220, 90, { size: 11, color: col.muted });
-      verdictLabel(`inside ${fmt(lvl.inUt)} µT, outside ${fmt(lvl.outUt)} µT`, CX, 32);
-    }
-    function drawNeutral() {
-      if (lvl.kind !== 'neutral') return;
-      const lo = -Math.round(lvl.dCm);
-      const hi = Math.ceil(lvl.dCm * 2.6);
-      const sx = (x: number) => 60 + ((x - lo) / (hi - lo)) * 520;
-      const ly = 170;
-      g.strokeStyle = col.muted;
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.moveTo(60, ly);
-      g.lineTo(580, ly);
-      g.stroke();
-      symbol(sx(0), ly, true, 14, POS);
-      symbol(sx(lvl.dCm), ly, lvl.same, 14, POS);
-      label(g, `wire 1: ${lvl.i1} A`, sx(0), ly + 36, { size: 12, color: col.text });
-      label(g, `wire 2: ${lvl.i2} A`, sx(lvl.dCm), ly + 36, { size: 12, color: col.text });
-      // the probe and the meter
-      const i2 = lvl.same ? lvl.i2 : -lvl.i2;
-      const near = Math.abs(probe) < 0.4 || Math.abs(probe - lvl.dCm) < 0.4;
-      const b = near ? 0 : netOnLineUT(probe, lvl.i1, i2, lvl.dCm);
-      const px = sx(probe);
-      g.strokeStyle = col.accent;
-      g.lineWidth = 2;
-      g.beginPath();
-      g.moveTo(px, ly - 22);
-      g.lineTo(px, ly + 12);
-      g.stroke();
-      disc(g, px, ly - 24, 4, col.accent);
-      // the meter: a bar that swings either side of zero
-      const mx = 320;
-      const my = 70;
-      g.strokeStyle = col.text;
-      g.lineWidth = 2;
-      g.strokeRect(mx - 120, my - 16, 240, 32);
-      g.beginPath();
-      g.moveTo(mx, my - 16);
-      g.lineTo(mx, my + 16);
-      g.stroke();
-      const swing = near ? 0 : Math.tanh(b / 40) * 118;
-      g.fillStyle = Math.abs(b) < 0.5 && !near ? col.good : POS;
-      g.globalAlpha = 0.8;
-      g.fillRect(swing >= 0 ? mx : mx + swing, my - 12, Math.abs(swing), 24);
-      g.globalAlpha = 1;
-      label(g, near ? 'too close to a wire' : Math.abs(b) < 0.5 ? 'net field ≈ 0' : `net field ${fmt(b)} µT ${b > 0 ? 'up' : 'down'}`, mx, my + 36, { size: 12, color: col.text });
-      label(g, `${fmt(probe)} cm`, px, ly + 60, { size: 12, color: col.accent });
-      const f = runF();
-      if (f > 0 && verdictOk) {
-        const nx = sx(lvl.xCm);
-        g.strokeStyle = col.good;
-        g.lineWidth = 3;
-        g.beginPath();
-        g.moveTo(nx, ly - 30 * f);
-        g.lineTo(nx, ly + 30 * f);
-        g.stroke();
-        label(g, 'neutral point', nx, ly - 44, { size: 12, color: col.good });
-      }
-      verdictLabel(`x = ${fmt(lvl.xCm)} cm from wire 1`, CX, 318);
-    }
-    function drawSolenoid() {
-      if (lvl.kind !== 'solenoid') return;
-      const x0 = 130;
-      const x1 = 510;
-      const top = 110;
-      const bot = 240;
-      const turns = 14;
-      g.strokeStyle = '#b87333';
-      g.lineWidth = 3;
-      for (let k = 0; k < turns; k++) {
-        const x = x0 + ((k + 0.5) / turns) * (x1 - x0);
-        g.beginPath();
-        g.ellipse(x, (top + bot) / 2, 8, (bot - top) / 2, 0, 0, Math.PI * 2);
-        g.stroke();
-      }
-      // the uniform field inside, arrows drifting along the axis
-      const f = runF();
-      for (let k = 0; k < 5; k++) {
-        const y = top + 22 + k * ((bot - top - 44) / 4);
-        const t = (((clock * 0.3 + k * 0.17) % 1) + 1) % 1;
-        const x = x0 + 10 + t * (x1 - x0 - 20);
-        g.strokeStyle = col.accent;
-        g.lineWidth = 2;
-        g.beginPath();
-        g.moveTo(x - 14, y);
-        g.lineTo(x + 14, y);
-        g.stroke();
-        arrowHead(x + 14, y, 1, 0, col.accent, 6);
-      }
-      // the field is weak and spread out on the outside
-      g.strokeStyle = col.muted;
-      g.lineWidth = 1;
-      g.globalAlpha = 0.5;
-      g.beginPath();
-      g.moveTo(x1 + 10, top);
-      g.bezierCurveTo(x1 + 90, top - 50, x0 - 90, top - 50, x0 - 10, top);
-      g.stroke();
-      g.globalAlpha = 1;
-      label(g, 'weak outside', CX, top - 40, { size: 12, color: col.muted });
-      label(g, `n = ${f > 0 ? fmt(lvl.n) : '?'} per m`, CX, bot + 34, { size: 13, color: col.text });
-      label(g, `${lvl.i} A`, x0 - 36, (top + bot) / 2, { size: 12, color: col.text });
-      verdictLabel(`B = ${fmt(lvl.mt)} mT inside`, CX, 32);
-    }
-    function drawToroid() {
-      if (lvl.kind !== 'toroid') return;
-      const Ro = 105;
-      const Ri = 62;
-      const Rm = (Ro + Ri) / 2;
-      g.strokeStyle = col.line;
-      g.lineWidth = 2;
-      g.beginPath();
-      g.arc(CX, CY, Ro, 0, Math.PI * 2);
-      g.stroke();
-      g.beginPath();
-      g.arc(CX, CY, Ri, 0, Math.PI * 2);
-      g.stroke();
-      for (let k = 0; k < 36; k++) {
-        const a = (k / 36) * Math.PI * 2;
-        g.strokeStyle = '#b87333';
-        g.lineWidth = 2;
-        g.beginPath();
-        g.moveTo(CX + Math.cos(a) * Ri, CY + Math.sin(a) * Ri);
-        g.lineTo(CX + Math.cos(a) * Ro, CY + Math.sin(a) * Ro);
-        g.stroke();
-      }
-      // the field circulates inside the winding only
-      for (let k = 0; k < 8; k++) {
-        const a = clock * 0.5 + (k / 8) * Math.PI * 2;
-        arrowHead(CX + Math.cos(a) * Rm, CY + Math.sin(a) * Rm, -Math.sin(a), Math.cos(a), col.accent, 8);
-      }
-      g.strokeStyle = col.accent;
-      g.lineWidth = 2;
-      g.globalAlpha = 0.6;
-      g.beginPath();
-      g.arc(CX, CY, Rm, 0, Math.PI * 2);
-      g.stroke();
-      g.globalAlpha = 1;
-      label(g, runT === null ? 'hole: ?' : 'hole: B = 0', CX, CY, { size: 13, color: runT === null ? col.accent : col.good });
-      label(g, `${lvl.turns} turns, ${lvl.i} A`, CX, 28, { size: 13, color: col.muted });
-      verdictLabel(`B = ${fmt(lvl.mt)} mT in the winding`, CX, 318);
-    }
-
-    ctx.root.append(h('p', null, lvl.story), canvas, hint, controls, feedback, solution);
-    return startLoop((dt) => {
-      clock += dt;
-      if (runT !== null && runT < RUN + 0.2) runT += dt;
-      g.clearRect(0, 0, W, H);
-      drawWire();
-      drawThick();
-      drawNeutral();
-      drawSolenoid();
-      drawToroid();
-      if (verdictAt !== null && clock - verdictAt < REVEAL) {
-        g.strokeStyle = verdictOk ? col.good : col.bad;
-        g.lineWidth = 6;
-        g.globalAlpha = 1 - (clock - verdictAt) / REVEAL;
-        g.strokeRect(3, 3, W - 6, H - 6);
-        g.globalAlpha = 1;
-      }
-      const phase = verdictAt === null ? 'idle' : busy() || clock - verdictAt < REVEAL ? 'testing' : 'done';
-      canvas.dataset.phase = phase;
-      if (pendingWin !== null && phase !== 'testing') {
-        wonAt ??= clock;
-        if (clock - wonAt > 0.3) {
-          const s = pendingWin;
-          pendingWin = null;
-          ctx.win({ stars: s });
-        }
-      }
-    });
+    const n = Math.max(1, Math.min(5, ctx.level)) as 1 | 2 | 3 | 4 | 5;
+    return mountDialLevel(ctx as never, level(n, ctx.random) as never, ARIA);
   },
 });

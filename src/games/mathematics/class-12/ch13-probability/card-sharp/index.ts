@@ -2,9 +2,10 @@
 // cards that fit the condition B (the reduced sample space), then the ones that also fit A, and the chance is the green cards out of the marked ones. Levels 2
 // and 3 set a chance for independent events and for two cards drawn without replacement.
 import { PAL, createArcade } from '@core/arcade';
+import { FLASH, helperOn, paidFlash } from '@core/aidflash';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
-import { backdrop, face, num, track, trackHandle, verdict } from '@core/mathkit';
+import { TRACK, backdrop, face, num, trackHandle, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
 import { CARDS, RANKS, SUITS, buildRounds, counts, drawChance, explain, frac, intel, judge, judgeBoard, missText, pOf, spotText, type Round } from './logic';
 
@@ -17,6 +18,7 @@ const HEROES = [
   { story: 'When we are told that B has happened, the sample space shrinks to the outcomes of B. The chance of A given B is the number of outcomes in both A and B, out of the number in B. So mark the reduced sample space first, then count what also fits A. Do not count the cards outside B.', objective: 'Mark every card that fits B, then mark again the ones that also fit A, in three rounds. The count shows live in round 1; a peek costs a charge.' },
   { story: 'Two events are independent when P(A ∩ B) = P(A)·P(B). If the chance of A and the chance of both are known, the chance of B follows by dividing. Here P(B) is a whole number of twelfths.', objective: 'Set k so that P(B) = k/12 makes A and B independent, in three rounds. The rectangles show in round 1; a check costs a charge.' },
   { story: 'Drawing without replacement changes the deck after the first card: P(both red) = (r/N)·((r − 1)/(N − 1)). For at least one red, take 1 minus the chance that both are black. The number of red cards r is the unknown.', objective: 'Set the number of red cards so the chance of the draw is exactly the chance stated, in three rounds. The boss round asks for at least one red.' },
+  { story: 'The audience now names compound events on the reduced deck: not A, A or C, neither. The rules of probability still hold once B is given: P(not A | B) = 1 − P(A | B), and for a union add and take off the overlap.', objective: 'Mark the reduced deck and the cards of the compound event exactly, in three rounds.' },
 ];
 
 /** Ace: a stage magician in a top hat and cape with a card fan in one hand and a sparkling wand in the other. */
@@ -59,11 +61,30 @@ function ace(g: G, x: number, y: number, t: number, mood: Mood, spark: boolean) 
   if (spark) for (let i = 0; i < 5; i++) text(g, '✦', wx + 12 + Math.random() * 18 - 6, wy - 10 + Math.random() * 20 - 12, PAL.yellow, 10);
 }
 
-function mountBoard(ctx: Parameters<typeof mountDialLevel>[0]) {
-  const rounds = buildRounds(1, ctx.random);
-  const hero = HEROES[0];
+/** The dial of levels 2 and 3: a track with its end labels, the knob (a grip with arrows) and the player's own setting beside it. */
+function knob(g: G, lo: number, hi: number, v: number, label: string) {
+  const span = TRACK.x1 - TRACK.x0;
+  line(g, TRACK.x0, TRACK.y, TRACK.x1, TRACK.y, PAL.dim, 3);
+  text(g, String(lo), TRACK.x0, TRACK.y + 14, PAL.dim, 11);
+  text(g, String(hi), TRACK.x1, TRACK.y + 14, PAL.dim, 11);
+  const x = TRACK.x0 + ((v - lo) / (hi - lo)) * span;
+  g.fillStyle = '#2a2350';
+  g.beginPath();
+  g.arc(x, TRACK.y, 17, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = PAL.yellow;
+  g.lineWidth = 2;
+  g.stroke();
+  text(g, '⇔', x, TRACK.y + 5, PAL.yellow, 14);
+  const left = x > 400;
+  text(g, label, x + (left ? -28 : 28), TRACK.y + 4, PAL.yellow, 12, left ? 'right' : 'left');
+}
+
+function mountBoard(ctx: Parameters<typeof mountDialLevel>[0], lvl: 1 | 4) {
+  const rounds = buildRounds(lvl, ctx.random);
+  const hero = HEROES[lvl - 1];
   const state = Array.from({ length: CARDS }, () => 0);
-  let peek = -10;
+  const flash = paidFlash();
   let shown = false;
   const A = createArcade(
     ctx,
@@ -80,7 +101,7 @@ function mountBoard(ctx: Parameters<typeof mountDialLevel>[0]) {
         buttons.forEach(refresh);
         A.feedback.hidden = true;
         const r = rounds[k];
-        A.hint.textContent = `${intel(r)} ${r.assist === 0 ? 'The count is live.' : r.assist === 1 ? 'The count is dim: a peek costs a charge.' : 'Boss round: no count, no peek.'}`;
+        A.hint.textContent = `${intel(r)} ${r.assist === 0 ? 'The count is live.' : r.assist === 1 ? 'No count: a peek shows it for a moment, with the glow on the cards that fit B, and costs a charge.' : 'Boss round: no count, no peek.'}`;
       },
     },
   );
@@ -124,7 +145,7 @@ function mountBoard(ctx: Parameters<typeof mountDialLevel>[0]) {
   A.controls.append(
     A.button('👀 Peek', 'Peek: the cards that fit B glow for a moment', () => {
       if (!A.spend()) return;
-      peek = A.clock;
+      flash.paid();
       A.say('Peek: the cards that fit B glow for a moment.', true);
     }, 'secondary'),
     A.button('🃏 Show the cards', 'Show the cards', () => {
@@ -140,8 +161,11 @@ function mountBoard(ctx: Parameters<typeof mountDialLevel>[0]) {
     const r = cur();
     backdrop(g);
     text(g, `B: ${r.textB}`, 380, 40, PAL.yellow, 13);
-    text(g, `A: ${r.textA}`, 380, 56, PAL.green, 13);
-    const showPeek = t - peek < 1.8;
+    text(g, `${r.ev ? 'Event' : 'A'}: ${r.textA}`, 380, 56, PAL.green, r.ev ? 12 : 13);
+    // The peek (the glow on the cards of B, and the count) is the paid check: it shows for FLASH seconds after a peek, and the count is live in round 1.
+    const since = flash.since(t, Math.min(A.round, 2));
+    const showPeek = since < FLASH;
+    A.canvas.dataset.peek = showPeek ? '1' : '0';
     for (let i = 0; i < CARDS; i++) {
       const c = cell(i);
       const red = Math.floor(i / RANKS.length) === 1 || Math.floor(i / RANKS.length) === 2;
@@ -153,13 +177,12 @@ function mountBoard(ctx: Parameters<typeof mountDialLevel>[0]) {
       text(g, label(i), c.x + GRID.w / 2, c.y + GRID.h / 2 + 6, red ? '#d33' : '#111', 17);
     }
     const [p, f] = counts(state);
-    const live = r.assist === 0;
-    const dim = r.assist === 1;
-    g.globalAlpha = dim ? 0.3 : 1;
-    if (live || dim) text(g, p === 0 ? 'marked: 0' : `marked ${p}, green ${f}  →  ${frac(f, p)}`, 380, 310, PAL.yellow, 13);
-    else text(g, 'count hidden', 380, 310, PAL.dim, 12);
-    g.globalAlpha = 1;
     const ok = shown ? judgeBoard(r, state) : null;
+    const helper = helperOn(r.assist, ok === true, since);
+    A.canvas.dataset.live = helper ? '1' : '0';
+    if (helper) text(g, p === 0 ? 'marked: 0' : `marked ${p}, green ${f}  →  ${frac(f, p)}`, 380, 310, PAL.yellow, 13);
+    else text(g, 'count hidden', 380, 310, PAL.dim, 12);
+    if (!(ok !== null && A.rt > 1.1)) text(g, r.ev ? 'Tap once: fits B (yellow). Tap twice: fits B and the event (green).' : 'Tap once: fits B (yellow). Tap twice: fits B and A (green).', 380, 22, PAL.yellow, 12);
     const mood: Mood = ok === null ? 'happy' : A.rt > 0.9 ? (ok ? 'cheer' : 'worried') : 'happy';
     ace(g, 70, 270, t, mood, ok !== null && A.rt < 1.4);
     if (ok !== null && A.rt > 1.1) verdict(g, ok, 'THE TRICK WORKS', 'THE TRICK FAILS');
@@ -171,26 +194,36 @@ function mountBoard(ctx: Parameters<typeof mountDialLevel>[0]) {
 function level(n: number, random: () => number): DialLevel<Round> {
   const hero = HEROES[n - 1];
   const rounds = buildRounds(n, random);
+  const flash = paidFlash();
   return {
     hero: { name: 'Ace', role: 'a stage magician in a top hat whose tricks depend on the chances being right', story: hero.story, objective: hero.objective },
     rounds,
     charges: [1, 1, 0],
     dials: [{ key: 'v', aria: n === 2 ? 'The k in P(B) = k/12' : 'Number of red cards', label: n === 2 ? 'k in P(B) = k/12' : 'Red cards', unit: '', step: 1, min: (r: Round) => r.min, max: (r: Round) => r.max, start: (r: Round) => r.start, text: (v: number) => (n === 2 ? `P(B) = ${frac(v, 12)}` : `${v} red`) }],
     handles: [trackHandle<Round>('v', (r) => r.min, (r) => r.max)],
-    test: { button: '🔮 Check', aria: 'Check: see the chance this setting gives', read: (r, v) => spotText(r, v.v) },
+    test: {
+      button: '🔮 Check',
+      aria: 'Check: see the chance this setting gives',
+      read: (r, v) => {
+        flash.paid();
+        return spotText(r, v.v);
+      },
+    },
     fire: { button: n === 2 ? '✨ Test independence' : '🂡 Draw two cards', aria: 'Show the trick' },
     judge: (r, v) => judge(r, v.v),
     miss: (r, v) => missText(r, v.v),
     win: (r) => `Trick works! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The picture is live.' : r.assist === 1 ? 'The picture is dim: a check costs a charge.' : 'Boss round: no picture, no check.'}`,
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The picture is live.' : r.assist === 1 ? 'The result of your setting is hidden: a check shows it for a moment and costs a charge.' : 'Boss round: no picture, no check.'}`,
     hit: () => [380, 170],
     delay: 1.4,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
       backdrop(g);
       const val = shot ? shot.v.v : v.v;
-      const live = r.assist === 0 || shot !== null;
-      const dim = r.assist === 1 && !shot;
-      g.globalAlpha = dim ? 0.3 : 1;
+      // What your setting does (the band of B and the product, or the chance at your red count) is the paid check: live in round 1, for a moment after a check
+      // in round 2, on a win, and never in round 3. A miss in round 2 or 3 draws only a fixed cross, the same for every wrong setting.
+      const helper = helperOn(r.assist, shot !== null && shot.ok, flash.since(t, k));
+      A.canvas.dataset.live = helper ? '1' : '0';
+      if (!(shot && rt > 1.1)) text(g, n === 2 ? 'Set k so that A and B are independent' : 'Set the red cards so the draw has the chance wanted', 380, 26, PAL.yellow, 12);
       if (r.kind === 'indep') {
         // The unit square: A is a vertical band, B a horizontal band, and the overlap's area is their product.
         const S = { x: 330, y: 70, s: 180 };
@@ -200,14 +233,13 @@ function level(n: number, random: () => number): DialLevel<Round> {
         g.fillStyle = 'rgba(255,77,141,0.25)';
         g.fillRect(S.x, S.y, (S.s * r.a) / 12, S.s);
         text(g, `P(A) = ${frac(r.a, 12)}`, S.x + 70, S.y + S.s + 16, PAL.pink, 12);
-        if (live || dim) {
+        if (helper) {
           g.fillStyle = 'rgba(80,200,255,0.25)';
           g.fillRect(S.x, S.y + S.s - (S.s * val) / 12, S.s, (S.s * val) / 12);
           g.fillStyle = 'rgba(255,210,63,0.55)';
           g.fillRect(S.x, S.y + S.s - (S.s * val) / 12, (S.s * r.a) / 12, (S.s * val) / 12);
           text(g, `P(A)·P(B) = ${frac(r.a * val, 144)}`, S.x + S.s + 70, S.y + 30, PAL.yellow, 12);
-        }
-        g.globalAlpha = 1;
+        } else if (shot && !shot.ok && rt > 0.4) text(g, '✗', S.x + S.s / 2, S.y + S.s / 2 + 14, PAL.red, 44);
         text(g, `P(A ∩ B) = ${frac(r.a * r.ans, 144)}`, S.x + S.s + 70, S.y + 52, PAL.green, 12);
       } else {
         // A row of cards: red backs and black backs, then two drawn cards flip
@@ -221,15 +253,12 @@ function level(n: number, random: () => number): DialLevel<Round> {
           g.lineWidth = 1.5;
           g.strokeRect(x, 120, cw, 50);
         }
-        g.globalAlpha = 1;
         text(g, `${red} red, ${r.N - red} black`, 380, 105, PAL.white, 13);
         const [n2, d2] = drawChance(r, r.ans);
         text(g, `chance wanted: ${frac(n2, d2)}`, 380, 210, PAL.green, 13);
-        if (live || dim) {
-          g.globalAlpha = dim ? 0.3 : 1;
+        if (helper) {
           const [a, b] = drawChance(r, val);
           text(g, `with ${red} red: ${frac(a, b)}`, 380, 232, PAL.yellow, 12);
-          g.globalAlpha = 1;
         }
         if (shot && rt > 0.4) {
           for (let i = 0; i < 2; i++) {
@@ -243,10 +272,9 @@ function level(n: number, random: () => number): DialLevel<Round> {
           }
         }
       }
-      g.globalAlpha = 1;
       const mood: Mood = shot ? (rt > 1.0 ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
       ace(g, 70, 270, t, mood, shot !== null && rt < 1.4);
-      track(g, r.min, r.max);
+      knob(g, r.min, r.max, val, n === 2 ? `k = ${val} (P(B) = ${frac(val, 12)})` : `${val} red`);
       if (shot && rt > 1.1) verdict(g, shot.ok, 'THE TRICK WORKS', 'THE TRICK FAILS');
       void num;
       void pOf;
@@ -256,8 +284,8 @@ function level(n: number, random: () => number): DialLevel<Round> {
 
 export default defineGame({
   mount(ctx) {
-    const n = Math.max(1, Math.min(3, ctx.level));
-    if (n === 1) return mountBoard(ctx as never);
+    const n = Math.max(1, Math.min(4, ctx.level));
+    if (n === 1 || n === 4) return mountBoard(ctx as never, n);
     return mountDialLevel(ctx as never, level(n, ctx.random) as never, 'A stage magician beside two bands of probability or a row of red and black cards, with a number to set.');
   },
 });

@@ -1,15 +1,17 @@
 // Inspirations: Mars rover missions and Lunar Lander (a craft that can only work on a fenced patch of ground) and the sliding-ruler picture of linear
 // programming. Rover is a mining rover on a plateau fenced by cliffs. The player slides the ore ruler Z = a·x + b·y across the map and stops it where the
 // plateau only just touches it: that is the richest (or poorest) ground, and it is always at a corner.
+import { helperOn, paidFlash } from '@core/aidflash';
 import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel, type HandleSpec } from '@core/dialgame';
-import { backdrop, face, num, track, trackHandle, verdict } from '@core/mathkit';
+import { TRACK, backdrop, num, track, trackHandle, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
-import { buildRounds, explain, intel, judge, missText, ore, ruler, spotText, type Pt, type Round } from './logic';
+import { rover, type Mood } from './art';
+import { mountOpen } from './open';
+import { goalLine, grip, tint } from './ux';
+import { HIT_MAP, buildRounds, explain, intel, judge, missText, ore, ruler, spotText, type Pt, type Round } from './logic';
 
-type G = CanvasRenderingContext2D;
-type Mood = 'happy' | 'worried' | 'cheer';
 const M = { x: 200, y: 288, u: 22 };
 const RUN = 1.9;
 const X = (x: number) => M.x + x * M.u;
@@ -18,44 +20,10 @@ const Y = (y: number) => M.y - y * M.u;
 const HEROES = [
   { story: 'The plateau is the region where every inequality holds. The ore map is Z = ax + by. Slide the ruler line Z = z across the map: the last place the plateau touches it is a corner, and that corner has the largest Z. So the best Z is the biggest of the values at the corners.', objective: 'Park the ruler at the largest Z the plateau touches, in three rounds. The corners and the ruler show in round 1; a probe costs a charge.' },
   { story: 'The ore map can now have a minus sign, so the ground gets richer in a different direction, and sometimes the poorest ground is wanted. Still the answer is at a corner: work out the corners, find Z at each, and take the largest or smallest as asked.', objective: 'Park the ruler at the Z asked for (largest or smallest), in three rounds. The corners are dim in round 2; a probe costs a charge.' },
-  { story: 'A bigger plateau has more corners and a mixed-sign ore map, so the obvious corner is often wrong. The boss round hides the plateau: use the inequalities to find where pairs of edges meet, then compare Z at every corner.', objective: 'Park the ruler at the Z asked for. The boss round shows no plateau and no probe: the cliffs only appear when the rover drives.' },
+  { story: 'A bigger plateau has more corners and a mixed-sign ore map, so the obvious corner is often wrong. The boss round hides the plateau: use the inequalities to find where pairs of edges meet, then compare Z at every corner.', objective: 'Park the ruler at the Z asked for. The boss round shows no plateau and no probe: the cliffs only appear once Rover parks at the right Z.' },
+  { story: 'Out on the open plains the plateau runs off the edge of the map. The least ore can still be at a corner, but the most may never end. And sometimes the cliffs leave no ground at all.', objective: 'Park at the best Z, or declare no maximum or no plateau, in three rounds.' },
+  { story: 'Some ridges are level: the ore ruler lies flat along a whole edge of the plateau, so every point on that edge is just as rich.', objective: 'Park at the best Z and say whether it is one corner or a whole edge, in three rounds.' },
 ];
-
-/** Rover: a six-wheeled mining rover with a camera head on a mast, a dish and a drill that spins. */
-function rover(g: G, x: number, y: number, t: number, mood: Mood, driving: boolean) {
-  g.fillStyle = 'rgba(0,0,0,0.25)';
-  g.beginPath();
-  g.ellipse(x, y + 12, 18, 3.5, 0, 0, Math.PI * 2);
-  g.fill();
-  for (const wx of [-12, 0, 12]) {
-    g.strokeStyle = PAL.dim;
-    g.lineWidth = 3;
-    g.beginPath();
-    g.arc(x + wx, y + 7, 5, 0, Math.PI * 2);
-    g.stroke();
-    const a = driving ? t * 14 : 0;
-    line(g, x + wx, y + 7, x + wx + Math.cos(a) * 5, y + 7 + Math.sin(a) * 5, PAL.dim, 1.5);
-  }
-  g.fillStyle = PAL.orange;
-  g.fillRect(x - 17, y - 8, 34, 12);
-  g.fillStyle = PAL.cyan;
-  g.fillRect(x - 17, y - 11, 22, 3);
-  line(g, x + 8, y - 8, x + 8, y - 24, PAL.dim, 2.5);
-  g.fillStyle = '#d8e4ff';
-  g.beginPath();
-  g.arc(x + 8, y - 28, 8, 0, Math.PI * 2);
-  g.fill();
-  face(g, x + 8, y - 28, 6, mood, t, '#1b1030');
-  line(g, x - 12, y - 8, x - 12, y - 18, PAL.dim, 2);
-  g.strokeStyle = PAL.pink;
-  g.lineWidth = 2;
-  g.beginPath();
-  g.arc(x - 12, y - 18, 6, Math.PI, 2 * Math.PI);
-  g.stroke();
-  // The drill at the front
-  const d = Math.sin(t * (driving ? 40 : 6)) * 2;
-  line(g, x + 17, y - 2, x + 25, y - 2 + d, PAL.yellow, 3);
-}
 
 /** Where the ruler line is anchored: the middle of its visible stretch in the 0..10 map box. */
 function anchor(r: Round, z: number): Pt {
@@ -92,6 +60,7 @@ function chord(r: Round, z: number): [Pt, Pt] | null {
 function level(n: number, random: () => number): DialLevel<Round> {
   const hero = HEROES[n - 1];
   const rounds = buildRounds(n, random);
+  const flash = paidFlash();
   const handle: HandleSpec<Round> = {
     dial: 'z',
     at: (r, v) => {
@@ -107,17 +76,21 @@ function level(n: number, random: () => number): DialLevel<Round> {
     charges: [1, 1, 0],
     dials: [{ key: 'z', aria: 'Ruler setting Z', label: 'Ruler Z', unit: '', step: 1, min: (r: Round) => r.min, max: (r: Round) => r.max, start: (r: Round) => r.start, text: (v: number) => `Z = ${num(v)}` }],
     handles: [handle, trackHandle<Round>('z', (r) => r.min, (r) => r.max)],
-    test: { button: '📡 Probe', aria: 'Probe: see how the ruler sits at this Z', read: (r, v) => spotText(r, v.z) },
+    test: { button: '📡 Probe', aria: 'Probe: see how the ruler sits at this Z', read: (r, v) => (flash.paid(), spotText(r, v.z)) },
     fire: { button: '🚙 Send the rover', aria: 'Send the rover' },
     judge: (r, v) => judge(r, v.z),
     miss: (r, v) => missText(r, v.z),
     win: (r) => `Ore found! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The plateau and its corners are drawn.' : r.assist === 1 ? 'The plateau is dim and the corners are hidden: a probe costs a charge.' : 'Boss round: no plateau, no probe.'}`,
-    hit: (r) => [X(r.best[0]), Y(r.best[1])],
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The plateau and its corners are drawn.' : r.assist === 1 ? 'The plateau shows for a moment after a probe, and a probe costs a charge.' : 'Boss round: no plateau, no probe.'}`,
+    hit: () => [X(HIT_MAP[0]), Y(HIT_MAP[1])],
     delay: RUN,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, v, t, rt, shot, k, A }) => {
       backdrop(g);
+      tint(g, k, t);
       const z = shot ? shot.v.z : v.z;
+      // The plateau is the helper: live in round 1, a moment after a paid probe in round 2, never in round 3, and always after a win.
+      const helper = helperOn(r.assist, shot?.ok === true, shot ? Infinity : flash.since(t, k));
+      A.canvas.dataset.helper = helper ? '1' : '0';
       // The map
       line(g, X(0), Y(0), X(10), Y(0), PAL.dim, 1.5);
       line(g, X(0), Y(0), X(0), Y(10), PAL.dim, 1.5);
@@ -127,10 +100,9 @@ function level(n: number, random: () => number): DialLevel<Round> {
         text(g, String(i), X(i), Y(0) + 13, PAL.dim, 9);
         if (i > 0) text(g, String(i), X(0) - 10, Y(i) + 3, PAL.dim, 9);
       }
-      const showPlateau = r.assist <= 1 || shot !== null;
-      const dimP = r.assist === 1 && !shot;
-      if (showPlateau) {
-        g.globalAlpha = dimP ? 0.35 : 1;
+      // a missed drive in round 2 or 3 must not draw the hidden plateau before the replay
+      if (helper) {
+        g.globalAlpha = 1;
         g.fillStyle = 'rgba(160,110,60,0.55)';
         g.strokeStyle = PAL.orange;
         g.lineWidth = 3;
@@ -139,7 +111,7 @@ function level(n: number, random: () => number): DialLevel<Round> {
         g.closePath();
         g.fill();
         g.stroke();
-        if (r.assist === 0 || shot) for (const p of r.corners) {
+        if (r.assist === 0 || (shot && shot.ok)) for (const p of r.corners) {
           g.fillStyle = PAL.yellow;
           g.beginPath();
           g.arc(X(p[0]), Y(p[1]), 4, 0, Math.PI * 2);
@@ -176,6 +148,14 @@ function level(n: number, random: () => number): DialLevel<Round> {
       const mood: Mood = shot ? (rt > RUN - 0.5 ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
       rover(g, X(spot[0]), Y(spot[1]) - 6, t, mood, shot !== null && rt < RUN - 0.5);
       track(g, r.min, r.max);
+      if (!shot) {
+        // the two handles of the one dial: the ruler on the map and the knob on the track, with the player's own Z beside the knob
+        const [mx, my] = anchor(r, z);
+        const hx = TRACK.x0 + ((z - r.min) / (r.max - r.min)) * (TRACK.x1 - TRACK.x0);
+        grip(g, A.canvas, t, { x: X(mx), y: Y(my), r: 22, dir: 'both', read: '', side: 'right', cue: n === 1 && k === 0 });
+        grip(g, A.canvas, t, { x: hx, y: TRACK.y, r: 20, dir: 'h', read: `Z = ${num(z)} ore`, side: hx > 450 ? 'left' : 'right', cue: n === 1 && k === 0 });
+      }
+      goalLine(g, `Goal: park at the ${r.goal === 'max' ? 'LARGEST' : 'SMALLEST'} Z the plateau touches`, A.t, shot !== null);
       if (shot && rt > RUN - 0.4) verdict(g, shot.ok, 'RICHEST GROUND FOUND', st === 'misses' ? 'NO GROUND THERE' : 'BETTER GROUND LEFT');
     },
   };
@@ -183,6 +163,8 @@ function level(n: number, random: () => number): DialLevel<Round> {
 
 export default defineGame({
   mount(ctx) {
-    return mountDialLevel(ctx as never, level(Math.max(1, Math.min(3, ctx.level)), ctx.random) as never, 'A mining rover on a fenced plateau with an ore ruler that slides across the map to the best corner.');
+    const n = Math.max(1, Math.min(5, ctx.level));
+    if (n >= 4) return mountOpen(ctx, n as 4 | 5, HEROES[n - 1]);
+    return mountDialLevel(ctx as never, level(n, ctx.random) as never, 'A mining rover on a fenced plateau with an ore ruler that slides across the map to the best corner.');
   },
 });

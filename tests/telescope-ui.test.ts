@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import game from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/telescope-lab/index';
-import { buildGame, type Game } from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/telescope-lab/logic';
+import { PLATE_MISS, SCOPE_MISS_RADIUS, buildGame, judgeNear, judgeZoom, lRange, scopeMiss, type Game } from '../src/games/physics/class-12/ch09-ray-optics-and-optical-instruments/telescope-lab/logic';
+import { canvasRecorder, texts } from './helpers/canvas-rec';
 import { createRng } from '../src/core/random';
 import type { GameContext } from '../src/core/types';
 import { manifest } from './fixtures';
@@ -45,7 +46,7 @@ function start(level: number, seed: number) {
   document.body.innerHTML = '';
   root = document.createElement('div');
   document.body.append(root);
-  const ctx = { root, manifest: m, level, levelCount: 3, levelInfo: m.levels[Math.min(level, 3) - 1], random: createRng(seed), randomInt: (a: number) => a, win: ({ stars }: { stars: number }) => wins.push(stars), restart: () => restarts++ } as unknown as GameContext;
+  const ctx = { root, manifest: m, level, levelCount: 4, levelInfo: m.levels[Math.min(level, 3) - 1], random: createRng(seed), randomInt: (a: number) => a, win: ({ stars }: { stars: number }) => wins.push(stars), restart: () => restarts++ } as unknown as GameContext;
   stop?.();
   stop = game.mount(ctx);
   advance(0.1);
@@ -70,17 +71,19 @@ const hearts = () => ($('.hud-hearts')?.textContent ?? '').split('♥').length -
 const pointer = (type: string, x: number, y: number) => $('canvas')!.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
 const r1 = (x: number) => Math.round(x * 10) / 10;
 
-const FIRE = ['Fire the scope with these settings', 'Expose the plate at this focal length', 'Fire the scope with these settings'];
-const TEST = ['Test shot: measure the view with these settings', 'Test shot: measure the image size at this focal length', 'Test shot: measure the view with these settings'];
+const FIRE = ['Fire the scope with these settings', 'Expose the plate at this focal length', 'Fire the scope with these settings', 'Expose the photograph with the sensor here'];
+const TEST = ['Test shot: measure the view with these settings', 'Test shot: measure the image size at this focal length', 'Test shot: measure the view with these settings', 'Test exposure: show the camera screen for a moment with the sensor here'];
 const setRight = (g: Game, k: number) => {
-  if (g.kind === 'plate') setSlider(Math.round(g.rounds[k].foSol / 10) * 10);
+  if (g.kind === 'cass') setSlider(g.rounds[k].v);
+  else if (g.kind === 'plate') setSlider(Math.round(g.rounds[k].foSol / 10) * 10);
   else {
     setSlider(g.rounds[k].feSol, 0);
     setSlider(g.kind === 'near' ? r1(g.rounds[k].LSol) : g.rounds[k].LSol, 1);
   }
 };
 const setWrong = (g: Game, k: number) => {
-  if (g.kind === 'plate') setSlider(Math.max(50, Math.round(g.rounds[k].foSol / 20) * 10));
+  if (g.kind === 'cass') setSlider(g.rounds[k].v + 100 <= 600 ? g.rounds[k].v + 100 : g.rounds[k].v - 100);
+  else if (g.kind === 'plate') setSlider(Math.max(50, Math.round(g.rounds[k].foSol / 20) * 10));
   else if (g.kind === 'zoom') {
     setSlider(g.rounds[k].feSol * 2, 0);
     setSlider(g.rounds[k].LSol, 1);
@@ -97,7 +100,7 @@ const solveRound = (level: number, g: Game, k: number) => {
 
 describe('the arcade shell around every level', () => {
   it('opens with a hero banner, three hearts, round 1 of 3 and a score of 0', () => {
-    for (const level of [1, 2, 3]) {
+    for (const level of [1, 2, 3, 4]) {
       start(level, 4);
       expect($('.hero .hero-name')?.textContent?.length).toBeGreaterThan(3);
       expect($('.hero .objective')?.textContent).toMatch(/^Objective:/);
@@ -108,7 +111,7 @@ describe('the arcade shell around every level', () => {
     }
   });
   it('plays a whole level: three rounds, a growing score, a BOSS round, then 3 stars', () => {
-    for (const level of [1, 2, 3]) {
+    for (const level of [1, 2, 3, 4]) {
       const g = start(level, 6);
       let last = 0;
       for (let k = 0; k < 3; k++) {
@@ -130,7 +133,7 @@ describe('the arcade shell around every level', () => {
     }
   });
   it('a miss costs a heart, says what happened, keeps the round, and the next solve still works', () => {
-    for (const level of [1, 2, 3]) {
+    for (const level of [1, 2, 3, 4]) {
       const g = start(level, 8);
       setWrong(g, 0);
       click(FIRE[level - 1]);
@@ -165,7 +168,7 @@ describe('level 1: the scout’s scope', () => {
     solveRound(1, g, 0);
     advance(1);
     expect($('.note')?.textContent).toMatch(/f = 140 cm\. Make the target fill the ring: 28×/);
-    expect($('.note')?.textContent).toMatch(/dim/);
+    expect($('.note')?.textContent).toMatch(/for a moment after a test shot/);
     solveRound(1, g, 1);
     advance(1);
     expect($('.note')?.textContent).toMatch(/1500 cm\. Make the target fill the ring: 1500×/);
@@ -228,15 +231,112 @@ describe('level 3: Orion’s near-point view', () => {
     setSlider(g.rounds[0].fo + g.rounds[0].feSol, 1);
     click(FIRE[2]);
     advance(2.8);
-    expect(feedback()).toMatch(/× and the final image is at infinity/);
+    expect(feedback()).toMatch(/does not fill the ring: this is not the view the ring asks for/);
+    expect(feedback()).not.toMatch(/\d/);
     expect(hearts()).toBe(2);
+  });
+});
+
+describe('level 4: Planet night', () => {
+  const FIRE4 = FIRE[3];
+  const TEST4 = TEST[3];
+  it('opens with Stella, the brief’s story and the round 1 intel for Saturn (Exercise 9.29), with the live screen on', () => {
+    start(4, 5);
+    expect($('.hero .hero-name')?.textContent).toMatch(/^Stella/);
+    expect($('.hero')?.textContent).toContain('The big mirror’s image is a virtual object for the small one.');
+    expect($('.note')?.textContent).toContain('Tonight: Saturn. Big mirror R₁ = 220 mm, small convex mirror R₂ = 140 mm, 20 mm apart.');
+    expect($('.note')?.textContent).toMatch(/camera screen is live/);
+    expect(sliders()).toHaveLength(1);
+    expect(sliders()[0].min).toBe('0');
+    expect(sliders()[0].max).toBe('600');
+    expect(sliders()[0].step).toBe('5');
+    expect(sliders()[0].value).toBe('50');
+  });
+  it('the three planets come in order, and the aids fade: live, dark until a test exposure, dark until Expose', () => {
+    const g = start(4, 5) as Extract<Game, { kind: 'cass' }>;
+    solveRound(4, g, 0);
+    expect(feedback()).toContain('Saturn is pin-sharp: the image forms 315 mm from the small mirror.');
+    advance(1);
+    expect($('.note')?.textContent).toMatch(/Tonight: Jupiter\./);
+    expect($('.note')?.textContent).toMatch(/dark until a test exposure/);
+    solveRound(4, g, 1);
+    advance(1);
+    expect($('.note')?.textContent).toMatch(/Tonight: Neptune\. Big mirror R₁ = 180 mm, small convex mirror R₂ = 100 mm, 15 mm apart\./);
+    expect($('.note')?.textContent).toMatch(/stays dark until you expose/);
+  });
+  it('the start setting never wins: exposing at 50 mm is a miss that costs a heart', () => {
+    start(4, 5);
+    click(FIRE4);
+    advance(2.8);
+    expect(hearts()).toBe(2);
+  });
+  it('a miss says only which side the image formed, never how far, and never the answer', () => {
+    const g = start(4, 5) as Extract<Game, { kind: 'cass' }>;
+    const v = g.rounds[0].v;
+    setSlider(v - 100);
+    click(FIRE4);
+    advance(2.8);
+    const short = feedback();
+    expect(short).toContain('Saturn came out as a blurred disc: the light had not yet come to a focus.');
+    setSlider(v - 25);
+    click(FIRE4);
+    advance(2.8);
+    expect(feedback().replace(String(v - 25), 'X')).toBe(short.replace(String(v - 100), 'X'));
+    expect(hearts()).toBe(1);
+    expect(short).not.toContain(String(v));
+    setSlider(v + 100);
+    click(FIRE4);
+    advance(0.1);
+    advance(2.8);
+    expect(phase()).toBe('over');
+    expect(feedback()).toContain('had already focused and spread out again');
+    expect(feedback()).not.toContain(String(v));
+  });
+  it('a test exposure costs the charge and the screen lights up for a moment; the boss round has no charges', () => {
+    const g = start(4, 5) as Extract<Game, { kind: 'cass' }>;
+    expect(hud()).toMatch(/Charges ⚡/);
+    click(TEST4);
+    expect(feedback()).toMatch(/Test exposure with the sensor at 50 mm/);
+    expect(feedback()).not.toContain(String(g.rounds[0].v));
+    expect(hud()).toMatch(/Charges ·/);
+    click(TEST4);
+    expect(feedback()).toMatch(/No charges left/);
+    expect(feedback()).toMatch(/does not cost/);
+    expect(hearts()).toBe(3);
+    solveRound(4, g, 0);
+    advance(1);
+    solveRound(4, g, 1);
+    advance(1);
+    expect(hud()).toMatch(/BOSS/);
+    expect(hud()).not.toMatch(/Charges/);
+    click(TEST4);
+    expect(feedback()).toMatch(/No charges left/);
+  });
+  it('dragging the sensor along the rail in the inset sets the distance in steps of 5 mm', () => {
+    start(4, 5);
+    const sx = (mm: number) => 600 - mm * 0.483;
+    pointer('pointerdown', sx(50), 232);
+    pointer('pointermove', sx(317), 232);
+    expect(sliders()[0].value).toBe('315');
+    pointer('pointerup', 0, 0);
+  });
+  it('a win photographs the planet: the whole level ends with three stars, and the last answer is 150 mm for Neptune', () => {
+    const g = start(4, 6) as Extract<Game, { kind: 'cass' }>;
+    for (let k = 0; k < 3; k++) {
+      solveRound(4, g, k);
+      advance(1);
+    }
+    expect(g.rounds[2].v).toBe(150);
+    advance(2);
+    expect(wins).toEqual([3]);
+    wins = [];
   });
 });
 
 describe('robustness', () => {
   it('every level animates through a hit and a miss with no console error', () => {
     const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    for (const level of [1, 2, 3]) {
+    for (const level of [1, 2, 3, 4]) {
       const g = start(level, 9);
       advance(0.8);
       setWrong(g, 0);
@@ -246,5 +346,292 @@ describe('robustness', () => {
       advance(1);
     }
     expect(err).not.toHaveBeenCalled();
+  });
+});
+
+// ---- no leaks, levels 1 to 3: the helper fades, a miss draws a fixed effect and no number --------------------------------------
+
+type Rec = ReturnType<typeof canvasRecorder>;
+const SCOPE_HELPER = /^[\d.]+×( \(blurred\))?$/;
+const frameAfter = (rc: Rec, dt: number) => {
+  if (dt > 0.05) advance(dt - 0.05);
+  rc.clear();
+  advance(0.05);
+  return rc.rec;
+};
+const scopeHas = (rec: Rec['rec']) => texts(rec).some((s) => SCOPE_HELPER.test(s));
+/** Some valid view (the eyepiece inside its focal length), so that a live helper would draw its numbers. */
+const validView = (g: Game, k: number) => {
+  if (g.kind === 'zoom' || g.kind === 'near') {
+    setSlider(10, 0);
+    setSlider(g.rounds[k].fo + 5, 1);
+  }
+};
+const playTo = (level: number, g: Game, round: number) => {
+  for (let k = 0; k < round; k++) {
+    solveRound(level, g, k);
+    advance(1);
+  }
+};
+const bodyRadii = (rec: Rec['rec'], x: number, y: number) => rec.arcs.filter((a) => a.x === x && a.y === y).map((a) => a.r);
+
+describe('no leaks, levels 1 and 3: the scope view', () => {
+  it('round 1 has the live view; round 2 only for about 1.5 s after a test shot; round 3 never, even after a test shot', () => {
+    for (const level of [1, 3]) {
+      const rc = canvasRecorder();
+      const g = start(level, 5);
+      validView(g, 0);
+      expect(scopeHas(frameAfter(rc, 0.1))).toBe(true);
+      solveRound(level, g, 0);
+      advance(1);
+      validView(g, 1);
+      expect(scopeHas(frameAfter(rc, 0.1))).toBe(false);
+      click(TEST[level - 1]);
+      expect(scopeHas(frameAfter(rc, 0.3))).toBe(true);
+      expect(scopeHas(frameAfter(rc, 1.5))).toBe(false);
+      solveRound(level, g, 1);
+      advance(1);
+      expect(hud()).toMatch(/Round 3 of 3/);
+      validView(g, 2);
+      expect(scopeHas(frameAfter(rc, 0.1))).toBe(false);
+      click(TEST[level - 1]);
+      expect(scopeHas(frameAfter(rc, 0.3))).toBe(false);
+    }
+  });
+  it('a miss never draws the live view or its numbers, in any round; a win does', () => {
+    for (const level of [1, 3]) {
+      for (const round of [0, 1, 2]) {
+        const rc = canvasRecorder();
+        const g = start(level, 5);
+        playTo(level, g, round);
+        setWrong(g, round);
+        click(FIRE[level - 1]);
+        advance(2.0);
+        expect(scopeHas(frameAfter(rc, 0.05))).toBe(false);
+        advance(1);
+        setRight(g, round);
+        click(FIRE[level - 1]);
+        advance(2.0);
+        expect(scopeHas(frameAfter(rc, 0.05))).toBe(true);
+        advance(1);
+      }
+    }
+  });
+  it('two wrong settings in the same category end on the same words and the target at the same fixed size', () => {
+    let tested = 0;
+    for (const level of [1, 3]) {
+      for (const round of [0, 1, 2]) {
+        const g0 = start(level, 5) as Extract<Game, { kind: 'zoom' | 'near' }>;
+        const r = g0.rounds[round];
+        const lr = lRange(r.fo, level === 1 ? 1 : 0.1);
+        const groups = new Map<string, [number, number][]>();
+        for (const fe of [3, 5, 8, 10, 15, 30]) {
+          for (let L = lr.min; L <= lr.max + 1e-9; L = Math.round((L + lr.step * (level === 1 ? 1 : 20)) * 10) / 10) {
+            if (level === 1 ? judgeZoom(r as never, fe, L).ok : judgeNear(r as never, fe, L).ok) continue;
+            const s = scopeMiss(r, fe, L);
+            if (s.none || s.size === 'about') continue;
+            const key = `${s.size}/${s.blurred}`;
+            groups.set(key, [...(groups.get(key) ?? []), [fe, L]]);
+          }
+        }
+        for (const [key, list] of groups) {
+          const two = [list[0], list.find((p) => p[0] !== list[0][0] && p[1] !== list[0][1])].filter(Boolean) as [number, number][];
+          if (two.length < 2) continue;
+          const rc = canvasRecorder();
+          const g = start(level, 5);
+          playTo(level, g, round);
+          const ends: { words: string[]; radii: number[] }[] = [];
+          for (const [fe, L] of two) {
+            setSlider(fe, 0);
+            setSlider(L, 1);
+            click(FIRE[level - 1]);
+            advance(2.0);
+            const rec = frameAfter(rc, 0.05);
+            // apart from the player's own two settings, which are printed beside their handles
+            ends.push({ words: texts(rec).filter((s) => !/^tube L = [\d.]+ cm$/.test(s) && !/^[\d.]+ cm$/.test(s)), radii: bodyRadii(rec, 540, 95) });
+            advance(1);
+          }
+          expect(ends[0].words).toEqual(ends[1].words);
+          const want = SCOPE_MISS_RADIUS[key.split('/')[0] as 'over' | 'under'];
+          for (const e of ends) expect(e.radii.some((x) => x > want * 0.93 && x < want * 1.07 && x !== 77 && x !== 78)).toBe(true);
+          tested++;
+        }
+      }
+    }
+    expect(tested).toBeGreaterThan(3);
+  });
+});
+
+describe('no leaks, level 2: the plate', () => {
+  it('two wrong focal lengths on the same side end the same, the image drawn at a fixed multiple of the plate, with no readout', () => {
+    for (const round of [0, 1, 2]) {
+      for (const side of ['over', 'under'] as const) {
+        const rc = canvasRecorder();
+        const g = start(2, 5) as Extract<Game, { kind: 'plate' }>;
+        playTo(2, g, round);
+        const r = g.rounds[round];
+        const fos = (side === 'over' ? [1.2, 1.3] : [0.5, 0.7]).map((f) => Math.max(50, Math.min(2000, Math.round((r.foSol * f) / 10) * 10)));
+        const ends: { words: string[]; radii: number[] }[] = [];
+        for (const fo of fos) {
+          setSlider(fo);
+          click(FIRE[1]);
+          advance(2.0);
+          const rec = frameAfter(rc, 0.05);
+          const xp = 70 + fo * 0.2;
+          // apart from the player's own setting, which is printed on the bench
+          ends.push({ words: texts(rec).filter((s) => !/^focal length [\d.]+ cm$/.test(s)), radii: bodyRadii(rec, xp + 38, 180) });
+          expect(texts(rec).some((s) => /^image: /.test(s))).toBe(false);
+          advance(1);
+        }
+        expect(ends[0].words).toEqual(ends[1].words);
+        const want = Math.max(5, Math.min(60, ((r.plate * 8) / 2) * PLATE_MISS[side] * 0.9));
+        for (const e of ends) expect(e.radii.some((x) => x > want * 0.93 && x < want * 1.07)).toBe(true);
+      }
+    }
+  });
+  it('a miss text holds no number', () => {
+    const g = start(2, 5) as Extract<Game, { kind: 'plate' }>;
+    setSlider(Math.min(2000, Math.round((g.rounds[0].foSol * 2) / 10) * 10));
+    click(FIRE[1]);
+    advance(2.8);
+    expect(feedback()).not.toMatch(/\d/);
+  });
+});
+
+describe('no leaks, levels 1 to 3: the start never wins', () => {
+  it('firing at once is a miss in every round of every level', () => {
+    for (const level of [1, 2, 3]) {
+      for (const round of [0, 1, 2]) {
+        const g = start(level, 5);
+        playTo(level, g, round);
+        const before = hearts();
+        click(FIRE[level - 1]);
+        advance(2.8);
+        expect(hearts()).toBe(before - 1);
+      }
+    }
+  });
+});
+
+describe('no leaks, level 1: the zoom inset does not show the eyepiece focus against the objective focus without the helper', () => {
+  const TICK = 'eyepiece focus';
+  const MEETS = 'focus meets focus: image at infinity';
+  const has = (rec: Rec['rec'], s: string) => texts(rec).includes(s);
+  const inset = (rec: Rec['rec']) => texts(rec).includes('objective’s focus (first image)');
+
+  it('round 1 draws the eyepiece focus tick live, and the green note only at the right setting', () => {
+    const rc = canvasRecorder();
+    const g = start(1, 5);
+    validView(g, 0);
+    let rec = frameAfter(rc, 0.1);
+    expect(inset(rec)).toBe(true);
+    expect(has(rec, TICK)).toBe(true);
+    expect(has(rec, MEETS)).toBe(false);
+    setRight(g, 0);
+    rec = frameAfter(rc, 0.1);
+    expect(has(rec, TICK)).toBe(true);
+    expect(has(rec, MEETS)).toBe(true);
+  });
+
+  it('round 2 draws neither before a test shot, both for about 1.5 s after it, then neither', () => {
+    const rc = canvasRecorder();
+    const g = start(1, 5);
+    playTo(1, g, 1);
+    expect(hud()).toMatch(/Round 2 of 3/);
+    validView(g, 1);
+    let rec = frameAfter(rc, 0.1);
+    expect(inset(rec)).toBe(true);
+    expect(has(rec, TICK)).toBe(false);
+    setRight(g, 1);
+    rec = frameAfter(rc, 0.3);
+    expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+    click(TEST[0]);
+    rec = frameAfter(rc, 0.3);
+    expect(has(rec, TICK)).toBe(true);
+    expect(has(rec, MEETS)).toBe(true);
+    rec = frameAfter(rc, 1.5);
+    expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+  });
+
+  it('round 3 (the boss) never draws them, even at the right setting and even after a test shot', () => {
+    const rc = canvasRecorder();
+    const g = start(1, 5);
+    playTo(1, g, 2);
+    expect(hud()).toMatch(/Round 3 of 3/);
+    validView(g, 2);
+    expect(has(frameAfter(rc, 0.1), TICK)).toBe(false);
+    setRight(g, 2);
+    let rec = frameAfter(rc, 0.3);
+    expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+    click(TEST[0]);
+    rec = frameAfter(rc, 0.3);
+    expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+  });
+
+  it('a miss never draws them in any round; a win does', () => {
+    for (const round of [0, 1, 2]) {
+      const rc = canvasRecorder();
+      const g = start(1, 5);
+      playTo(1, g, round);
+      setWrong(g, round);
+      click(FIRE[0]);
+      advance(2.0);
+      let rec = frameAfter(rc, 0.05);
+      expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+      advance(1);
+      // the near-miss at the same eyepiece but the tube length one step off: still a miss, still nothing
+      setRight(g, round);
+      const r = (g as Extract<Game, { kind: 'zoom' }>).rounds[round];
+      setSlider(r.LSol + 3, 1);
+      click(FIRE[0]);
+      advance(2.0);
+      rec = frameAfter(rc, 0.05);
+      expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+      advance(1);
+      setRight(g, round);
+      click(FIRE[0]);
+      advance(2.0);
+      rec = frameAfter(rc, 0.05);
+      expect(has(rec, TICK)).toBe(true);
+      expect(has(rec, MEETS)).toBe(true);
+      advance(1);
+    }
+  });
+
+  it('level 3 never prints the level 1 note, and the hint text says the zoom marker is part of the helper', () => {
+    const rc = canvasRecorder();
+    const g = start(3, 5);
+    setRight(g, 0);
+    expect(has(frameAfter(rc, 0.1), MEETS)).toBe(false);
+    start(1, 5);
+    expect($('.note')?.textContent).toMatch(/zoom marks where the eyepiece focus is/);
+  });
+});
+
+describe('telescope-lab UX, levels 1 to 3', () => {
+  it('the goal is on the canvas at the start of every round and gone after 4 s', () => {
+    for (const level of [1, 2, 3]) {
+      const rc = canvasRecorder();
+      const g = start(level, 5);
+      const goal = (rec: Rec['rec']) => texts(rec).filter((s) => /^Goal: /.test(s));
+      expect(goal(frameAfter(rc, 0.1))).toHaveLength(1);
+      expect(goal(frameAfter(rc, 1.5))).toHaveLength(1);
+      expect(goal(frameAfter(rc, 3))).toHaveLength(0);
+      solveRound(level, g, 0);
+      advance(1);
+      expect(goal(frameAfter(rc, 0.3))).toHaveLength(1);
+      expect(goal(frameAfter(rc, 4))).toHaveLength(0);
+    }
+  });
+  it('the player’s own settings are printed beside their handles with their units (levels 1 and 3)', () => {
+    for (const level of [1, 3]) {
+      const rc = canvasRecorder();
+      const g = start(level, 5);
+      setSlider(7, 0);
+      setSlider((g as Extract<Game, { kind: 'zoom' | 'near' }>).rounds[0].fo + 6, 1);
+      const rec = frameAfter(rc, 0.1);
+      expect(texts(rec)).toContain('7 cm');
+      expect(texts(rec).some((s) => /^tube L = [\d.]+ cm$/.test(s))).toBe(true);
+    }
   });
 });

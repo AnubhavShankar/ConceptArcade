@@ -141,13 +141,18 @@ export function intel(r: Round): string {
 
 const one = (x: number) => num(Math.round(x * 10) / 10);
 
-/** After a miss: when the gate shut, what the tank holds and which way it is off, never the right moment. */
+/** Whether a gate shut at t left the tank short of what the town needs. This is the direction of the error and nothing more: the volume can pass the need
+ *  and come back (a rate that dips), so "short" does not always mean "shut later". */
+export const isShort = (r: Round, t: number) => volume(r, t) < r.V;
+/** The fixed fill of the tank after a miss, as a fraction of the need line's height: 0.55 of it when short, past the brim when over. Never the true volume. */
+export const MISS_FILL = { short: 0.55, over: 1.45 };
+
+/** After a miss: when the player shut the gate and which side of the need the tank is on, never the volume and never the right moment. */
 export function missText(r: Round, t: number): string {
-  const v = volume(r, t);
   const lim = r.sym ? `from −${one(t)} to ${one(t)}` : `at t = ${one(t)}`;
-  const side = v < r.V ? 'short of' : 'over';
-  if (r.kind === 'net' && r.F(t) < r.F(0) && v < r.V) return `The gate shut ${lim} and the tank holds ${num(Math.round(v * 10) / 10)}: the flow had run backwards and drained it, so the net volume is ${side} what the town needs.`;
-  return `The gate shut ${lim} and the tank holds ${num(Math.round(v * 10) / 10)}, which is ${side} what the town needs.`;
+  return isShort(r, t)
+    ? `The gate shut ${lim} and the tank is short of what the town needs. Read the rate again and work out when the area under it reaches the need.`
+    : `The gate shut ${lim} and the tank is over what the town needs. Read the rate again and work out when the area under it reaches the need.`;
 }
 
 /** After a hit: the working. */

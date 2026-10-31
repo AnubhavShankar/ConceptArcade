@@ -16,7 +16,8 @@
     "Angular magnification f_o/f_e",
     "Normal adjustment and tube length",
     "Image size from the focal length",
-    "Final image at the near point"
+    "Final image at the near point",
+    "The Cassegrain reflecting telescope"
   ],
   "learningOutcome": "The student can use M = f_o/f_e and L = f_o + f_e in normal adjustment, find the size of the real image from f_o × θ, and set a telescope for a final image at the near point.",
   "mechanic": "tune-to-target",
@@ -53,6 +54,17 @@
         "The eyepiece’s object must be at u_e = f_eD/(f_e + D) from it so its image falls at D = 25 cm.",
         "Then L = f_o + u_e, and M = f_o/u_e.",
         "Solve M = f_o/f_e + f_o/D for f_e, then find L."
+      ]
+    },
+    {
+      "title": "Planet night",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New: a Cassegrain telescope: the big mirror’s image is a virtual object for the small convex mirror; focus the planet’s final image (Ex 9.29).",
+      "hints": [
+        "The big mirror alone would focus at f₁ = R₁/2.",
+        "That point is f₁ − d behind the small mirror: a virtual object.",
+        "Use the mirror formula for the convex mirror with f₂ = R₂/2."
       ]
     }
   ],

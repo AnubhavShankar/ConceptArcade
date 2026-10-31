@@ -30,6 +30,8 @@ export const DIALS: Record<Kind, { key: string; label: string; min: number; max:
 };
 export const KINDS: Kind[] = ['gap', 'two', 'smooth'];
 export const X_END = 6;
+/** The y frame of each level: fixed, wide enough for every track the level can make (the finished tracks span −20 to 69), so it says nothing about the answer. */
+export const FRAME: Record<Kind, [number, number]> = { gap: [-16, 44], two: [-22, 30], smooth: [-6, 70] };
 
 const pick = <T>(xs: readonly T[], random: () => number): T => shuffle(xs, random)[0];
 const ri = (lo: number, hi: number, random: () => number) => lo + Math.floor(random() * (hi - lo + 1));
@@ -46,8 +48,10 @@ export function buildRounds(level: number, random: () => number): Round[] {
   const out: Round[] = [];
   for (let i = 0; i < 3; i++) {
     let r: Round;
+    // Every dial starts at its constant start value; a row whose answer is that very setting (smooth: k = 0 and m = 0) would be won by the start, so it is drawn again.
+    const start = Object.fromEntries(DIALS[kind].map((d) => [d.key, d.start]));
     do r = kind === 'gap' ? gapRound(random) : kind === 'two' ? twoRound(random) : smoothRound(random);
-    while (out.some((o) => JSON.stringify(o.ans) === JSON.stringify(r.ans) && JSON.stringify(o.joins) === JSON.stringify(r.joins)));
+    while (judge(r, start) || out.some((o) => JSON.stringify(o.ans) === JSON.stringify(r.ans) && JSON.stringify(o.joins) === JSON.stringify(r.joins)));
     out.push({ ...r, assist: aid(i) });
   }
   return out;
@@ -118,12 +122,12 @@ export function trackText(r: Round): string {
   return `f(x) = ${parts.join('; ')}`;
 }
 
-/** After a miss: where the cart came off the track, never the constants that fix it. */
+/** After a miss: the direction only, with no join, height or slope (the paid test ride is the only place that prints those). */
 export function missText(r: Round, v: Record<string, number>): string {
   const f = firstFault(r, v);
   if (!f) return 'The cart did not make it.';
-  if (f.kind === 'gap') return `At x = ${f.x} the track broke: one piece ends at height ${num(f.before)} and the next starts at ${num(f.after)}, so the cart fell into the gap.`;
-  return `At x = ${f.x} the track bent sharply: the slope jumped from ${num(f.before)} to ${num(f.after)}, so the cart hit the corner and flipped.`;
+  if (f.kind === 'gap') return `The track broke at a join: the next piece starts too ${f.after < f.before ? 'low' : 'high'}, so the cart fell into the gap.`;
+  return `The track bent sharply at a join: the next piece is too ${f.after < f.before ? 'shallow' : 'steep'} there, so the cart hit the corner and flipped.`;
 }
 export function spotText(r: Round, v: Record<string, number>): string {
   const f = firstFault(r, v);

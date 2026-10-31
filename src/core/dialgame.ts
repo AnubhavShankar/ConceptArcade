@@ -60,8 +60,8 @@ export interface DialLevel<R> {
   hint: (r: R, k: number) => string;
   /** Where the burst of points appears. */
   hit: (r: R, k: number) => [number, number];
-  /** Seconds into the shot at which the verdict lands (default 1.2). */
-  delay?: number;
+  /** Seconds into the shot at which the verdict lands (default 1.2), or a function of the round and the fired values. */
+  delay?: number | ((r: R, v: Values) => number);
   draw: (s: SceneInput<R>) => void;
 }
 
@@ -102,7 +102,7 @@ export function mountDialLevel<R>(ctx: GameContext, L: DialLevel<R>, aria: strin
     const ok = L.judge(r, v);
     shot = { ok, v };
     const [hx, hy] = L.hit(r, k);
-    A.resolve(ok, ok ? L.win(r, k) : L.miss(r, v), { x: hx, y: hy }, L.delay ?? 1.2);
+    A.resolve(ok, ok ? L.win(r, k) : L.miss(r, v), { x: hx, y: hy }, typeof L.delay === 'function' ? L.delay(r, v) : (L.delay ?? 1.2));
   }));
   onRound = (k) => {
     const r = L.rounds[k];

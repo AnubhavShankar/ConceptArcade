@@ -1,122 +1,279 @@
 import { describe, expect, it } from 'vitest';
+import { createRng } from '@core/random';
 import {
-  buildLevel,
-  currentFromCount,
-  currentFromDrift,
-  driftFromMobility,
-  driftHours,
-  driftSpeedMmS,
-  explainSolution,
-  fmt,
-  judgeCount,
-  judgeDrift,
-  judgeMobility,
-  judgeScale,
-  signalNs,
-  starsFor,
-  type LevelCount,
-  type LevelDrift,
-  type LevelMobility,
-  type LevelScale,
+  CRAWL, DIAL, E_CHARGE, GATE, K, LCD_OFF, MOB, N_CU, THICK, buildRounds, factLabel, fault, goalLine, hintText, judge, lampState, lcdText, meterText, missText, mmss, pace, paceMob, perSecond, shellyPace,
+  verdictDelay, winText, type CrawlRow, type GateRow, type MobRow, type Round, type ThickRow, type Values,
 } from './logic';
 
-const lcg = (seed: number) => {
-  let s = seed >>> 0;
-  return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32);
-};
-const seeds = Array.from({ length: 100 }, (_, i) => i * 7919 + 13);
+const seeds = Array.from({ length: 80 }, (_, i) => i * 7919 + 13);
+const range = (lo: number, hi: number, step: number) => Array.from({ length: Math.round((hi - lo) / step) + 1 }, (_, i) => lo + i * step);
+const near = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThan(1e-9);
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const has = (s: string, token: string) => new RegExp(`(^|[^0-9.])${escape(token)}`).test(s);
+type L = 1 | 2 | 3 | 4;
+const LEVELS: L[] = [1, 2, 3, 4];
+
+/** Every setting a level can reach. */
+function settings(level: L): Values[] {
+  if (level === 1) return range(DIAL.i1.min, DIAL.i1.max, DIAL.i1.step).flatMap((i) => [0, 1].map((dir) => ({ i, dir })));
+  if (level === 2) return range(DIAL.i2.min, DIAL.i2.max, DIAL.i2.step).map((i) => ({ i }));
+  if (level === 3) return range(DIAL.a.min, DIAL.a.max, DIAL.a.step).map((a) => ({ a }));
+  return range(DIAL.mv.min, DIAL.mv.max, DIAL.mv.step).flatMap((mv) => range(DIAL.a.min, DIAL.a.max, DIAL.a.step).map((a) => ({ mv, a })));
+}
+const startOf = (level: L): Values => (level === 1 ? { i: DIAL.i1.start, dir: DIAL.dir.start } : level === 2 ? { i: DIAL.i2.start } : level === 3 ? { a: DIAL.a.start } : { mv: DIAL.mv.start, a: DIAL.a.start });
+const answerOf = (r: Round): Values => (r.kind === 'gate' ? { i: r.i, dir: r.dir } : r.kind === 'crawl' ? { i: r.i } : r.kind === 'thick' ? { a: r.a } : { mv: r.V, a: r.a });
+const allRows = (): Round[] => [
+  ...GATE.flatMap((p, k) => p.map((row) => ({ ...row, kind: 'gate' as const, assist: Math.min(2, k) as 0 | 1 | 2 }))),
+  ...CRAWL.flatMap((p, k) => p.map((row) => ({ ...row, kind: 'crawl' as const, assist: Math.min(2, k) as 0 | 1 | 2 }))),
+  ...THICK.flatMap((p, k) => p.map((row) => ({ ...row, kind: 'thick' as const, assist: Math.min(2, k) as 0 | 1 | 2 }))),
+  ...MOB.flatMap((p, k) => p.map((row) => ({ ...row, kind: 'mob' as const, assist: Math.min(2, k) as 0 | 1 | 2 }))),
+];
+const levelOf = (r: Round): L => ({ gate: 1, crawl: 2, thick: 3, mob: 4 })[r.kind] as L;
 
 describe('the numbers from the textbook', () => {
-  it('3.75 × 10¹⁸ electrons in 2 s is 0.3 A', () => {
-    expect(currentFromCount(3.75, 2)).toBeCloseTo(0.3, 9);
+  it('K is n e times 1e-9', () => near(K, N_CU * E_CHARGE * 1e-9));
+  it('level 1 rows: I = Q/t, the arrow follows the heading, both headings in every pool', () => {
+    for (const pool of GATE) {
+      for (const r of pool as GateRow[]) {
+        near((1.6 * r.e19) / r.t, r.i);
+        expect(r.dir).toBe(r.heading === 'right' ? 1 : 0);
+      }
+      expect(new Set(pool.map((r) => r.heading))).toEqual(new Set(['right', 'left']));
+    }
   });
-  it('3 A through 2 mm² of copper drifts at about 0.11 mm/s and needs about 7.5 h for 3 m (Exercise 3.9)', () => {
-    const vd = driftSpeedMmS(3, 2);
-    expect(vd).toBeCloseTo(0.1103, 3);
-    expect(driftHours(3, vd)).toBeCloseTo(7.55, 1);
+  it('level 2 rows: I = 13.6 A v, and the pace is a snail’s', () => {
+    for (const r of CRAWL.flat() as CrawlRow[]) {
+      const v = (10 * r.len) / r.T;
+      near(K * r.a * v, r.i);
+      expect(v).toBeGreaterThanOrEqual(0.4);
+      expect(v).toBeLessThanOrEqual(2.8);
+    }
   });
-  it('1.5 A through 0.1 mm² of copper drifts at 1.1 mm/s (Example 3.1)', () => {
-    expect(driftSpeedMmS(1.5, 0.1)).toBeCloseTo(1.1, 1);
+  it('level 3 rows: A = I / (13.6 v) with v = 300 tau / T', () => {
+    for (const r of THICK.flat() as ThickRow[]) near(r.i / (K * ((300 * r.tau) / r.T)), r.a);
   });
-  it('the signal takes 10 ns to cross 3 m', () => {
-    expect(signalNs(3)).toBeCloseTo(10, 9);
+  it('level 4 rows: V = 1000 v L / mu, the lamp shows 3 figures, and the nearest dial area is the answer', () => {
+    for (const r of MOB.flat() as MobRow[]) {
+      near((1000 * r.v * r.L) / r.mu, r.V);
+      expect(Number((K * r.a * r.v).toPrecision(3))).toBe(r.lamp);
+      const need = r.lamp / (K * r.v);
+      const nearest = range(DIAL.a.min, DIAL.a.max, DIAL.a.step).reduce((best, a) => (Math.abs(a - need) < Math.abs(best - need) ? a : best));
+      expect(nearest).toBe(r.a);
+    }
+  });
+  it('paceMob is mu V / L', () => near(paceMob(4, 50, 0.4), 0.5));
+  it('perSecond and mmss', () => {
+    near(perSecond(4), 2.5);
+    expect(mmss(340)).toBe('5 min 40 s');
+    expect(mmss(1020)).toBe('17 min');
   });
 });
 
-describe('the rules', () => {
-  it('drift speed is inversely proportional to the area and proportional to the current', () => {
-    expect(driftSpeedMmS(3, 1)).toBeCloseTo(2 * driftSpeedMmS(3, 2), 9);
-    expect(driftSpeedMmS(6, 2)).toBeCloseTo(2 * driftSpeedMmS(3, 2), 9);
+describe('exactly one winner', () => {
+  it('every row of every level: only the answer wins over every reachable setting, and the start setting loses', () => {
+    for (const r of allRows()) {
+      const level = levelOf(r);
+      const wins = settings(level).filter((x) => judge(r, x));
+      expect(wins).toEqual([answerOf(r)]);
+      expect(judge(r, startOf(level))).toBe(false);
+    }
   });
-  it('mobility and the current are consistent: I = n e A μ E', () => {
-    const vd = driftFromMobility(4, 0.05, 2);
-    expect(vd).toBeCloseTo(4e-3 * 0.025 * 1000, 9);
-    expect(currentFromDrift(driftSpeedMmS(2, 1), 1)).toBeCloseTo(2, 9);
+  it('the answer is never at a dial end', () => {
+    for (const r of allRows()) {
+      const a = answerOf(r);
+      if (r.kind === 'gate' || r.kind === 'crawl') {
+        const d = r.kind === 'gate' ? DIAL.i1 : DIAL.i2;
+        expect(a.i).toBeGreaterThan(d.min);
+        expect(a.i).toBeLessThan(d.max);
+      }
+      if (r.kind === 'thick' || r.kind === 'mob') {
+        expect(a.a).toBeGreaterThan(DIAL.a.min);
+        expect(a.a).toBeLessThan(DIAL.a.max);
+      }
+      if (r.kind === 'mob') {
+        expect(a.mv).toBeGreaterThan(DIAL.mv.min);
+        expect(a.mv).toBeLessThan(DIAL.mv.max);
+      }
+    }
+  });
+  it('the three pools of a level never share an answer', () => {
+    const key = (level: L, row: unknown): string => {
+      const r = row as Record<string, number>;
+      return level === 1 || level === 2 ? String(r.i) : level === 3 ? String(r.a) : `${r.a}/${r.V}`;
+    };
+    const pools: [L, unknown[][]][] = [[1, GATE], [2, CRAWL], [3, THICK], [4, MOB]];
+    for (const [level, pool] of pools) {
+      const sets = pool.map((p) => new Set(p.map((row) => key(level, row))));
+      for (let a = 0; a < 3; a++) for (let b = a + 1; b < 3; b++) for (const k of sets[a]) expect(sets[b].has(k)).toBe(false);
+    }
+    // level 4 voltages are disjoint too
+    const vs = MOB.map((p) => new Set(p.map((r) => r.V)));
+    for (let a = 0; a < 3; a++) for (let b = a + 1; b < 3; b++) for (const k of vs[a]) expect(vs[b].has(k)).toBe(false);
   });
 });
 
-describe('levels', () => {
-  it('are deterministic for a seed, and different seeds give different puzzles', () => {
-    for (const level of [1, 2, 3, 4]) {
-      expect(buildLevel(level, lcg(5))).toEqual(buildLevel(level, lcg(5)));
-      expect(new Set(seeds.slice(0, 40).map((s) => JSON.stringify(buildLevel(level, lcg(s))))).size).toBeGreaterThan(3);
+describe('rounds', () => {
+  it('80 seeds: three rounds of the right kind, assist 0, 1, 2, and round k comes from pool k', () => {
+    const pools = [GATE, CRAWL, THICK, MOB] as unknown[][][];
+    const kinds = ['gate', 'crawl', 'thick', 'mob'];
+    for (const level of LEVELS) {
+      for (const s of seeds) {
+        const rounds = buildRounds(level, createRng(s));
+        expect(rounds).toHaveLength(3);
+        expect(rounds.map((r) => r.assist)).toEqual([0, 1, 2]);
+        rounds.forEach((r, k) => {
+          expect(r.kind).toBe(kinds[level - 1]);
+          const { kind: _k, assist: _a, ...row } = r;
+          expect(pools[level - 1][k]).toContainEqual(row);
+        });
+      }
     }
   });
-  it('level 1: both flow directions occur; the current and the opposite-to-electrons direction win', () => {
-    const dirs = new Set<boolean>();
-    for (const s of seeds) {
-      const l = buildLevel(1, lcg(s)) as LevelCount;
-      dirs.add(l.electronsRight);
-      expect(judgeCount(l, l.i, !l.electronsRight).ok).toBe(true);
-      expect(judgeCount(l, l.i, l.electronsRight).dirOk).toBe(false); // the electrons' direction is the wrong convention
-      expect(judgeCount(l, l.i * 2, !l.electronsRight).iOk).toBe(false);
-    }
-    expect(dirs.size).toBe(2);
+  it('the same seed builds the same rounds', () => {
+    for (const level of LEVELS) expect(buildRounds(level, createRng(5))).toEqual(buildRounds(level, createRng(5)));
   });
-  it('level 2: the drift speed is tiny and the crossing takes hours; the speed in m/s is a miss', () => {
-    for (const s of seeds) {
-      const l = buildLevel(2, lcg(s)) as LevelDrift;
-      expect(l.vd).toBeLessThan(1);
-      expect(l.hours).toBeGreaterThan(0.3);
-      expect(judgeDrift(l, l.vd, l.hours).ok).toBe(true);
-      expect(judgeDrift(l, l.vd / 1000, l.hours).vdOk).toBe(false);
-      expect(judgeDrift(l, l.vd, l.hours * 3600).hoursOk).toBe(false);
+});
+
+describe('faults', () => {
+  const row = <T extends Round['kind']>(kind: T, k = 0) => allRows().filter((r) => r.kind === kind)[k] as Extract<Round, { kind: T }>;
+  it('level 1: the wrong arrow is backward whatever the current; i ± 0.5 is fast or slow', () => {
+    for (const r of allRows().filter((x) => x.kind === 'gate') as Extract<Round, { kind: 'gate' }>[]) {
+      for (const i of range(DIAL.i1.min, DIAL.i1.max, DIAL.i1.step)) expect(fault(r, { i, dir: 1 - r.dir })).toBe('backward');
+      expect(fault(r, { i: r.i + 0.5, dir: r.dir })).toBe('fast');
+      expect(fault(r, { i: r.i - 0.5, dir: r.dir })).toBe('slow');
     }
   });
-  it('level 3: thinner wire drifts faster, thicker slower; the signal is far faster than the drift', () => {
-    for (const s of seeds) {
-      const l = buildLevel(3, lcg(s)) as LevelScale;
-      expect(l.a1).not.toBe(l.a2);
-      expect(l.vd2 / l.vd1).toBeCloseTo(l.a1 / l.a2, 9);
-      expect(judgeScale(l, l.vd2, l.ns).ok).toBe(true);
-      expect(judgeScale(l, l.vd1, l.ns).vdOk).toBe(false);
-      expect(l.ns / 1e9).toBeLessThan(1e-6);
+  it('level 2: i ± 0.5', () => {
+    const r = row('crawl');
+    expect(fault(r, { i: r.i + 0.5 })).toBe('fast');
+    expect(fault(r, { i: r.i - 0.5 })).toBe('slow');
+  });
+  it('level 3: a thicker wire is slow, a thinner one is fast', () => {
+    for (const r of allRows().filter((x) => x.kind === 'thick') as Extract<Round, { kind: 'thick' }>[]) {
+      expect(fault(r, { a: r.a + 0.25 })).toBe('slow');
+      expect(fault(r, { a: r.a - 0.25 })).toBe('fast');
     }
   });
-  it('level 4: v_d = μE and I = n e A v_d', () => {
-    for (const s of seeds) {
-      const l = buildLevel(4, lcg(s)) as LevelMobility;
-      expect(l.field).toBeCloseTo(l.v / l.lenM, 9);
-      expect(l.i).toBeCloseTo(8.5e28 * 1.6e-19 * l.aMm2 * 1e-6 * (l.vd / 1000), 6);
-      expect(judgeMobility(l, l.vd, l.i).ok).toBe(true);
-      expect(judgeMobility(l, l.vd * 1000, l.i).vdOk).toBe(false);
-      expect(l.i).toBeLessThan(10); // a believable current
+  it('level 4: mv ± 10 is fast or slow; the right mv with a ± 0.25 is blown or dim; lampState is ok exactly when a·mv matches', () => {
+    for (const r of allRows().filter((x) => x.kind === 'mob') as Extract<Round, { kind: 'mob' }>[]) {
+      expect(fault(r, { mv: r.V + 10, a: r.a })).toBe('fast');
+      expect(fault(r, { mv: r.V - 10, a: r.a })).toBe('slow');
+      expect(fault(r, { mv: r.V, a: r.a + 0.25 })).toBe('blown');
+      expect(fault(r, { mv: r.V, a: r.a - 0.25 })).toBe('dim');
+      for (const x of settings(4)) expect(lampState(r, x) === 'ok').toBe(x.a! * x.mv! === r.a * r.V);
+    }
+  });
+  it('the scene and the judge agree: a slow fault always means a pace below Shelly’s, a fast fault above it', () => {
+    for (const r of allRows()) {
+      const level = levelOf(r);
+      for (const x of settings(level)) {
+        const f = fault(r, x);
+        if (f !== 'slow' && f !== 'fast') continue;
+        let mine: number;
+        let hers: number;
+        if (r.kind === 'gate') {
+          mine = perSecond(x.i!);
+          hers = r.e19 / r.t;
+        } else if (r.kind === 'crawl') {
+          mine = pace(x.i!, r.a);
+          hers = shellyPace(r);
+        } else if (r.kind === 'thick') {
+          mine = pace(r.i, x.a!);
+          hers = shellyPace(r);
+        } else {
+          mine = paceMob(r.mu, x.mv!, r.L);
+          hers = r.v;
+        }
+        if (f === 'slow') expect(mine).toBeLessThan(hers);
+        else expect(mine).toBeGreaterThan(hers);
+      }
+    }
+  });
+  it('the win is a dead heat: the answer’s pace equals Shelly’s', () => {
+    for (const r of allRows()) {
+      if (r.kind === 'crawl') near(pace(r.i, r.a), shellyPace(r));
+      if (r.kind === 'thick') near(pace(r.i, r.a), shellyPace(r));
+      if (r.kind === 'mob') near(paceMob(r.mu, r.V, r.L), r.v);
     }
   });
 });
 
-describe('stars, explanations and formatting', () => {
-  it('free tests are forgiven, then each miss costs a star', () => {
-    expect(starsFor(1, 1)).toBe(3);
-    expect(starsFor(2, 1)).toBe(2);
-    expect(starsFor(9, 1)).toBe(1);
+describe('delays', () => {
+  it('0.65 s backward, 1.05 s fast, 1.65 s otherwise, all below 2.4 s', () => {
+    const g = allRows().find((r) => r.kind === 'gate') as Extract<Round, { kind: 'gate' }>;
+    expect(verdictDelay(g, { i: g.i, dir: 1 - g.dir })).toBe(0.65);
+    expect(verdictDelay(g, { i: g.i + 0.5, dir: g.dir })).toBe(1.05);
+    expect(verdictDelay(g, { i: g.i - 0.5, dir: g.dir })).toBe(1.65);
+    expect(verdictDelay(g, answerOf(g))).toBe(1.65);
+    for (const r of allRows()) for (const x of settings(levelOf(r))) expect(verdictDelay(r, x)).toBeLessThan(2.4);
   });
-  it('every level explains the answer with the physics', () => {
-    const must = [/opposite way/, /I = n e A v_d/, /speed of light/, /Mobility/];
-    [1, 2, 3, 4].forEach((level, i) => expect(explainSolution(buildLevel(level, lcg(3))).join('\n')).toMatch(must[i]));
+});
+
+describe('words', () => {
+  it('a miss never contains the answer, and ends with what to change', () => {
+    for (const r of allRows()) {
+      for (const x of settings(levelOf(r))) {
+        if (judge(r, x)) continue;
+        const m = missText(r, x);
+        expect(m).toMatch(/(Raise|Lower|Pick|arrow\.)/);
+        if (r.kind === 'gate') {
+          expect(has(m, `${r.i} A`) && x.i !== r.i).toBe(false);
+          if (x.dir !== r.dir) expect(m).not.toContain(r.dir ? '← (right to left)' : '→ (left to right)');
+          if (x.i !== r.i && x.dir === r.dir) expect(has(m, `${r.i} A`)).toBe(false);
+        }
+        if (r.kind === 'crawl') expect(has(m, `${r.i} A`)).toBe(false);
+        if (r.kind === 'thick') expect(has(m, `${r.a} mm²`)).toBe(false);
+        if (r.kind === 'mob') {
+          if (x.a !== r.a) expect(has(m, `${r.a} mm²`)).toBe(false);
+          if (x.mv !== r.V) expect(has(m, `${r.V} mV`)).toBe(false);
+        }
+      }
+    }
   });
-  it('formats numbers', () => {
-    expect(fmt(15)).toBe('15');
-    expect(fmt(0.0001)).toBe('1 × 10⁻⁴');
+  it('a miss never names the right arrow in level 1', () => {
+    for (const r of allRows().filter((x) => x.kind === 'gate') as Extract<Round, { kind: 'gate' }>[]) {
+      const m = missText(r, { i: r.i, dir: 1 - r.dir });
+      expect(m).toMatch(/backwards/);
+      expect(m).not.toContain(r.dir ? '← (right to left)' : '→ (left to right)');
+    }
+  });
+  it('the win text carries the working', () => {
+    for (const r of allRows()) {
+      const w = winText(r);
+      if (r.kind === 'gate') expect(w).toContain('I = Q/t');
+      if (r.kind === 'crawl') expect(w).toContain('neAv_d');
+      if (r.kind === 'thick') expect(w).toContain('3 × 10⁸');
+      if (r.kind === 'mob') {
+        expect(w).toContain('μE');
+        expect(w).toContain('neAv_d');
+      }
+      expect(w.startsWith(r.kind === 'gate' ? 'Record!' : 'Dead heat')).toBe(true);
+    }
+  });
+  it('the goal line fits (51 characters at most) and the given-fact labels are right', () => {
+    for (const r of allRows()) {
+      expect(goalLine(r).length).toBeLessThanOrEqual(51);
+      expect(goalLine(r)).toMatch(/Shelly/);
+      if (r.kind === 'crawl') expect(factLabel(r)).toBe(`wire ${r.a} mm²`);
+      if (r.kind === 'mob') expect(factLabel(r)).toMatch(/^track \d+ cm$/);
+      if (r.kind === 'gate' || r.kind === 'thick') expect(factLabel(r)).toBeNull();
+    }
+  });
+  it('the hint line fades round by round', () => {
+    for (const level of LEVELS) {
+      const rounds = buildRounds(level, createRng(3));
+      expect(hintText(rounds[0])).toMatch(/Round 1: the pace board is live/);
+      expect(hintText(rounds[1])).toMatch(/a pace check costs a charge/);
+      expect(hintText(rounds[2])).toMatch(/Grand final: no pace board/);
+    }
+  });
+  it('the pace check and the board show the player’s own values', () => {
+    const g = allRows().find((r) => r.kind === 'gate') as Extract<Round, { kind: 'gate' }>;
+    expect(meterText(g, { i: 4, dir: 0 })).toMatch(/Pace check: at 4 A, 2\.5 × 10¹⁹ electrons .* right to left/);
+    expect(lcdText(g, { i: 4, dir: 0 })).toBe('2.5×10¹⁹ e⁻/s ←');
+    expect(lcdText(g, { i: 4, dir: 1 })).toBe('2.5×10¹⁹ e⁻/s →');
+    const c = allRows().find((r) => r.kind === 'crawl')!;
+    expect(lcdText(c, { i: 4 })).toMatch(/mm\/s$/);
+    expect(LCD_OFF).toBe('— — —');
   });
 });

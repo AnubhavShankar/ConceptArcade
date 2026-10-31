@@ -84,15 +84,19 @@ export function spotText(r: Round, v: number[]): string {
   if (r.kind === 'total') return `Check: ${v[0]} red balls out of ${r.N} is a chance of ${frac(v[0], r.N)}.`;
   return v[1] === 0 ? 'Check: with no red balls there is no chance to speak of.' : `Check: ${v[0]} from gate ${r.gates[r.target].name} out of ${v[1]} red balls is a chance of ${frac(v[0], v[1])}.`;
 }
-/** After a miss: what the drop really showed, never the right counts. */
+/** After a miss: one text for every wrong setting. Level 1 gives the direction of the one count; the Bayes levels say only that the pair did not match, never which count is right. */
 export function missText(r: Round, v: number[]): string {
   if (r.kind === 'total') return `${v[0] > r.ans[0] ? 'More' : 'Fewer'} balls landed red than you said: the drop showed a different count.`;
-  const n = r.gates[r.target];
-  const totalOk = v[1] === r.ans[1];
-  const fromOk = v[0] === r.ans[0];
-  if (!totalOk && !fromOk) return `Neither count matched the drop: the red landings in all and the ones from gate ${n.name} were different.`;
-  if (!totalOk) return `The count from gate ${n.name} was right, but the total number of red landings was ${v[1] > r.ans[1] ? 'smaller' : 'larger'} than you said.`;
-  return `The total of red landings was right, but fewer or more of them came through gate ${n.name} than you said.`;
+  return `The drop did not match your two counts: the red landings from gate ${r.gates[r.target].name} and the red landings in all were different from what you set.`;
+}
+/**
+ * The balls the drop animation sends through each gate. A win plays the real counts; a miss plays a fixed, generic drop (the same for every wrong setting, a half-half split
+ * of an equal share per gate), so the animation never shows the true red counts.
+ */
+export function dropCounts(r: Round, ok: boolean): { n: number; red: number }[] {
+  if (ok) return r.gates.map((g) => ({ n: g.n, red: g.red }));
+  const share = r.N / r.gates.length;
+  return r.gates.map(() => ({ n: share, red: share / 2 }));
 }
 /** After a hit: the working. */
 export function explain(r: Round): string {

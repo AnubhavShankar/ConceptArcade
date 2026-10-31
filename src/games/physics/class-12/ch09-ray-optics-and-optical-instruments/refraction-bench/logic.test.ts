@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   CONE_MIN,
+  GEOM,
+  MISS_DEG,
   PROBE_DEG,
   SLIDER,
   acceptanceDeg,
@@ -9,6 +11,9 @@ import {
   buildGame,
   coneMax,
   coneRadius,
+  coneStart,
+  hitPoint,
+  snellLegDeg,
   criticalDeg,
   explainRound,
   judgeCone,
@@ -128,18 +133,49 @@ describe('every game has three solvable rounds', () => {
       expect(g.rounds.map((r) => r.d)).toEqual([...g.rounds.map((r) => r.d)].sort((a, b) => a - b));
     }
   });
-  it('level 5: two clad fibres then the bare one, where every angle is guided', () => {
+  it('level 5: two clad fibres, then a boss fibre with a wider limit that is only sometimes the bare one', () => {
+    const bossLimits = new Set<number>();
+    let bare = 0;
     for (const s of seeds) {
       const g = as(buildGame(5, lcg(s)), 'pipe');
       expect(g.rounds.map((r) => r.assist)).toEqual([0, 1, 2]);
-      expect(g.rounds[2].n2).toBe(1);
-      expect(g.rounds[2].maxDeg).toBe(90);
+      expect(g.rounds[0].n2).toBeLessThan(g.rounds[0].n1);
+      expect(g.rounds[1].n2).toBeLessThan(g.rounds[1].n1);
+      expect(g.rounds[0].maxDeg).toBeLessThan(90);
+      expect(g.rounds[1].maxDeg).toBeLessThan(90);
       expect(g.rounds[0].maxDeg).toBeLessThanOrEqual(g.rounds[1].maxDeg);
+      expect(g.rounds[2].maxDeg).toBeGreaterThan(g.rounds[1].maxDeg);
+      if (g.rounds[2].n2 === 1) {
+        expect(g.rounds[2].maxDeg).toBe(90);
+        bare++;
+      }
+      bossLimits.add(Math.round(g.rounds[2].maxDeg * 100));
       for (const r of g.rounds) {
         expect(judgePipe(r, Math.round(r.maxDeg)).ok).toBe(true);
         expect(r.maxDeg).toBeGreaterThan(20);
       }
     }
+    expect(bossLimits.size).toBe(6);
+    expect(bare).toBeGreaterThan(0);
+    expect(bare).toBeLessThan(seeds.length / 3);
+  });
+  it('level 5: the end of the dial is not the answer of the boss round except for the bare fibre, and exactly one setting of the dial wins each boss row', () => {
+    const rows = new Map<string, Extract<Game, { kind: 'pipe' }>['rounds'][number]>();
+    for (const s of seeds) {
+      const r = as(buildGame(5, lcg(s)), 'pipe').rounds[2];
+      rows.set(`${r.n1}/${r.n2}`, r);
+    }
+    expect(rows.size).toBe(6);
+    for (const r of rows.values()) {
+      const winners = grid(SLIDER.pipe.min, SLIDER.pipe.max, SLIDER.pipe.step).filter((d) => judgePipe(r, d).ok);
+      expect(winners).toHaveLength(1);
+      expect(winners[0]).toBe(Math.round(r.maxDeg));
+      expect(judgePipe(r, SLIDER.pipe.max).ok).toBe(r.n2 === 1);
+      expect(judgePipe(r, SLIDER.pipe.start).ok).toBe(false);
+    }
+  });
+  it('level 5: the start of the dial wins no round', () => {
+    for (const s of seeds) for (const r of as(buildGame(5, lcg(s)), 'pipe').rounds) expect(judgePipe(r, SLIDER.pipe.start).ok).toBe(false);
   });
   it('every game has a hero with a name, a story and an objective', () => {
     for (const lv of [1, 2, 3, 4, 5]) {
@@ -184,6 +220,72 @@ describe('judging: classic mistakes and lucky guesses do not win', () => {
   });
 });
 
+describe('no leaks: the start, the hit point and the miss effects', () => {
+  it('the start of every dial wins no round of any level', () => {
+    for (const s of seeds) {
+      for (const r of as(buildGame(1, lcg(s)), 'snell').rounds) expect(judgeSnell(r, SLIDER.snell.start).ok).toBe(false);
+      for (const r of as(buildGame(2, lcg(s)), 'depth').rounds) expect(judgeDepth(r, SLIDER.depth.start).ok).toBe(false);
+      for (const r of as(buildGame(3, lcg(s)), 'slab').rounds) expect(judgeSlab(r, SLIDER.slab.start).ok).toBe(false);
+      for (const r of as(buildGame(4, lcg(s)), 'cone').rounds) expect(judgeCone(r, coneStart(r.d)).ok).toBe(false);
+    }
+  });
+  it('level 1: a miss draws the outgoing leg at a fixed offset beside the detector, the same for every wrong angle on the same side', () => {
+    for (const s of seeds.slice(0, 40)) {
+      for (const r of as(buildGame(1, lcg(s)), 'snell').rounds) {
+        const wrongs = grid(SLIDER.snell.min, SLIDER.snell.max, SLIDER.snell.step).filter((i) => !judgeSnell(r, i).ok);
+        const over = wrongs.filter((i) => i > r.iSol);
+        const short = wrongs.filter((i) => i < r.iSol);
+        expect(new Set(over.map((i) => snellLegDeg(r, i, false))).size).toBe(1);
+        expect(new Set(short.map((i) => snellLegDeg(r, i, false))).size).toBe(1);
+        expect(snellLegDeg(r, over[0], false)).toBeCloseTo(r.r + MISS_DEG, 9);
+        expect(snellLegDeg(r, short[0], false)).toBeCloseTo(r.r - MISS_DEG, 9);
+        expect(snellLegDeg(r, r.iSol, true)).toBeCloseTo(r.r, 9);
+        expect(r.r - MISS_DEG).toBeGreaterThan(0);
+        expect(r.r + MISS_DEG).toBeLessThan(90);
+      }
+    }
+  });
+  it('the hit point is a fixed point or the player’s own setting, never the answer', () => {
+    for (const s of seeds.slice(0, 40)) {
+      const g1 = as(buildGame(1, lcg(s)), 'snell');
+      const g2 = as(buildGame(2, lcg(s)), 'depth');
+      const g3 = as(buildGame(3, lcg(s)), 'slab');
+      const g4 = as(buildGame(4, lcg(s)), 'cone');
+      for (let i = 0; i < 3; i++) {
+        // level 1: the same end on the same side for two settings (a function of the side, not of the amount of the error)
+        const r1 = g1.rounds[i];
+        expect(hitPoint(g1, i, r1.iSol + 3, false)).toEqual(hitPoint(g1, i, r1.iSol + 9, false));
+        expect(hitPoint(g1, i, r1.iSol - 3, false)).toEqual(hitPoint(g1, i, r1.iSol - 9, false));
+        expect(hitPoint(g1, i, r1.iSol + 3, false)).not.toEqual(hitPoint(g1, i, r1.iSol - 3, false));
+        // level 2: one fixed point whatever was tried
+        expect(hitPoint(g2, i, -4, false)).toEqual(hitPoint(g2, i, 5, false));
+        expect(hitPoint(g2, i, -4, false)).toEqual([GEOM.depth.ex, GEOM.depth.ey]);
+        // level 3: the player's own focus plane, which is not the true place of the ghost on a miss
+        const r3 = g3.rounds[i];
+        const ghostY = GEOM.slab.table - (r3.shift * GEOM.slab.span) / r3.t;
+        for (const raise of [0, 1, r3.shift + 1, r3.shift - 1, 12].filter((x) => !judgeSlab(r3, x).ok && x >= 0)) {
+          const [x, y] = hitPoint(g3, i, raise, false)!;
+          expect(x).toBe(GEOM.slab.fx);
+          expect(Math.abs(y - ghostY)).toBeGreaterThan(1);
+        }
+        expect(hitPoint(g3, i, r3.shift - 1.5, false)![1]).not.toBe(hitPoint(g3, i, r3.shift + 1.5, false)![1]);
+        // level 4: the player's own disc edge
+        const r4 = g4.rounds[i];
+        expect(hitPoint(g4, i, 30, false)![0]).toBeCloseTo(320 + (30 * 150) / r4.d, 9);
+      }
+    }
+  });
+  it('level 5: the miss text holds no number', () => {
+    for (const s of seeds.slice(0, 20)) {
+      for (const [i, r] of as(buildGame(5, lcg(s)), 'pipe').rounds.entries()) {
+        const g = as(buildGame(5, lcg(s)), 'pipe');
+        expect(missText(g, i, Math.min(90, Math.round(r.maxDeg) + 6))).not.toMatch(/\d/);
+        expect(missText(g, i, 5)).not.toMatch(/\d/);
+      }
+    }
+  });
+});
+
 describe('words: the working and the misses', () => {
   it('every round explains itself with two lines of working', () => {
     for (const lv of [1, 2, 3, 4, 5]) {
@@ -205,6 +307,14 @@ describe('words: the working and the misses', () => {
     const g5 = as(buildGame(5, lcg(3)), 'pipe');
     expect(missText(g5, 0, 89)).toMatch(/leaks out/);
     expect(missText(g5, 0, 5)).toMatch(/wider beam/);
+    const g1 = as(buildGame(1, lcg(3)), 'snell');
+    const r1 = g1.rounds[0];
+    expect(missText(g1, 0, r1.iSol + 10)).toMatch(/overshoots/);
+    expect(missText(g1, 0, r1.iSol - 10)).toMatch(/falls short/);
+    expect(missText(g1, 0, r1.iSol + 10)).toBe(missText(g1, 0, r1.iSol + 25));
+    expect(missText(g1, 0, r1.iSol - 10)).toBe(missText(g1, 0, r1.iSol - 15));
+    expect(missText(g1, 0, r1.iSol + 10)).not.toMatch(/\d/);
+    expect(missText(g1, 0, r1.iSol - 10)).not.toMatch(/\d/);
   });
   it('probes read out in words, and air is not bent', () => {
     const r = as(buildGame(1, lcg(3)), 'snell').rounds[0];

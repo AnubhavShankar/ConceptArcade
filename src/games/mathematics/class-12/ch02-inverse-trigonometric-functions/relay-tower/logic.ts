@@ -55,16 +55,48 @@ interface Row {
   work: string;
   range?: [number, number];
 }
-const SUMS: Row[] = [
+const NEG: [number, number] = [-12, 0];
+/** Level 2, round 1: a sum of two tangent angles that stays inside (−π/2, π/2). The answers are π/4, −π/4, π/3 and π/6, so the pool never hands out the same one. */
+const SUMS_A: Row[] = [
   { text: 'tan⁻¹(1/2) + tan⁻¹(1/3)', value: () => Math.atan(1 / 2) + Math.atan(1 / 3), work: 'tan(A + B) = (1/2 + 1/3)/(1 − 1/6) = 1, and A + B is between 0 and π/2, so it is π/4.' },
   { text: 'tan⁻¹(1/5) + tan⁻¹(2/3)', value: () => Math.atan(1 / 5) + Math.atan(2 / 3), work: 'tan(A + B) = (1/5 + 2/3)/(1 − 2/15) = 1, and A + B is between 0 and π/2, so it is π/4.' },
   { text: 'tan⁻¹(1/4) + tan⁻¹(3/5)', value: () => Math.atan(1 / 4) + Math.atan(3 / 5), work: 'tan(A + B) = (1/4 + 3/5)/(1 − 3/20) = 1, and A + B is between 0 and π/2, so it is π/4.' },
   { text: '2 tan⁻¹(1/3) + tan⁻¹(1/7)', value: () => 2 * Math.atan(1 / 3) + Math.atan(1 / 7), work: 'tan(2·tan⁻¹(1/3)) = (2/3)/(1 − 1/9) = 3/4; then (3/4 + 1/7)/(1 − 3/28) = 1, so the sum is π/4.' },
+  { text: 'tan⁻¹(−1/2) + tan⁻¹(−1/3)', value: () => Math.atan(-1 / 2) + Math.atan(-1 / 3), work: 'tan(A + B) = (−1/2 − 1/3)/(1 − 1/6) = −1, and A + B is between −π/2 and 0, so it is −π/4.', range: NEG },
+  { text: 'tan⁻¹(−1/5) + tan⁻¹(−2/3)', value: () => Math.atan(-1 / 5) + Math.atan(-2 / 3), work: 'tan(A + B) = (−1/5 − 2/3)/(1 − 2/15) = −1, and A + B is between −π/2 and 0, so it is −π/4.', range: NEG },
+  { text: 'tan⁻¹ 1 + tan⁻¹(2 − √3)', value: () => Math.atan(1) + Math.atan(2 - Math.sqrt(3)), work: 'tan(A + B) = (1 + 2 − √3)/(1 − (2 − √3)) = (3 − √3)/(√3 − 1) = √3, and A + B is between 0 and π/2, so it is π/3.' },
+  { text: '2 tan⁻¹(2 − √3)', value: () => 2 * Math.atan(2 - Math.sqrt(3)), work: 'tan 2A = 2(2 − √3)/(1 − (2 − √3)²) = 2(2 − √3)/(4√3 − 6) = 1/√3, and 2A is between 0 and π/2, so it is π/6.' },
+];
+/** Level 2, round 2: an identity or a sum of sines. The answers are ±π/2 and ±π/3. */
+const SUMS_B: Row[] = [
   { text: 'sin⁻¹(3/5) + cos⁻¹(3/5)', value: () => Math.asin(3 / 5) + Math.acos(3 / 5), work: 'sin⁻¹x + cos⁻¹x = π/2 for every x from −1 to 1.' },
   { text: 'sin⁻¹(4/5) + sin⁻¹(3/5)', value: () => Math.asin(4 / 5) + Math.asin(3 / 5), work: 'sin(A + B) = (4/5)(4/5) + (3/5)(3/5) = 1 with both angles positive, so A + B = π/2.' },
+  { text: 'sin⁻¹(5/13) + sin⁻¹(12/13)', value: () => Math.asin(5 / 13) + Math.asin(12 / 13), work: 'sin(A + B) = (5/13)(5/13) + (12/13)(12/13) = 1 with both angles positive, so A + B = π/2.' },
+  { text: 'sin⁻¹(−1/3) + cos⁻¹(−1/3)', value: () => Math.asin(-1 / 3) + Math.acos(-1 / 3), work: 'sin⁻¹x + cos⁻¹x = π/2 for every x from −1 to 1, and −1/3 is in that interval.' },
+  { text: 'sin⁻¹(−4/5) + sin⁻¹(−3/5)', value: () => Math.asin(-4 / 5) + Math.asin(-3 / 5), work: 'sin(A + B) = (−4/5)(4/5) + (−3/5)(3/5) = −1 with both angles negative, so A + B = −π/2.', range: NEG },
+  { text: 'sin⁻¹(1/2) + sin⁻¹(1/2)', value: () => Math.asin(1 / 2) + Math.asin(1 / 2), work: 'sin(A + B) = 2·(1/2)(√3/2) = √3/2 and A + B is small (below π/2), so it is π/3.' },
+  { text: 'sin⁻¹(−1/2) + sin⁻¹(−1/2)', value: () => Math.asin(-1 / 2) + Math.asin(-1 / 2), work: 'sin(A + B) = 2·(−1/2)(√3/2) = −√3/2 and A + B is between −π/2 and 0, so it is −π/3.', range: NEG },
+];
+/** Level 2, the boss: a sum that leaves the principal branch of tan⁻¹ or sin⁻¹. The answers are ±3π/4, 2π/3 and π. */
+const SUMS_C: Row[] = [
   { text: 'tan⁻¹ 2 + tan⁻¹ 3', value: () => Math.atan(2) + Math.atan(3), work: 'tan(A + B) = (2 + 3)/(1 − 6) = −1, and A + B is between π/2 and π, so it is 3π/4 (not −π/4).' },
   { text: 'tan⁻¹(3/2) + tan⁻¹ 5', value: () => Math.atan(3 / 2) + Math.atan(5), work: 'tan(A + B) = (3/2 + 5)/(1 − 15/2) = −1, and A + B is between π/2 and π, so it is 3π/4.' },
+  { text: 'tan⁻¹(−2) + tan⁻¹(−3)', value: () => Math.atan(-2) + Math.atan(-3), work: 'tan(A + B) = (−2 − 3)/(1 − 6) = 1, and A + B is between −π and −π/2, so it is −3π/4 (not π/4).', range: NEG },
+  { text: 'tan⁻¹(−3/2) + tan⁻¹(−5)', value: () => Math.atan(-3 / 2) + Math.atan(-5), work: 'tan(A + B) = (−3/2 − 5)/(1 − 15/2) = 1, and A + B is between −π and −π/2, so it is −3π/4.', range: NEG },
+  { text: 'sin⁻¹(√3/2) + sin⁻¹(√3/2)', value: () => Math.asin(Math.sqrt(3) / 2) + Math.asin(Math.sqrt(3) / 2), work: 'Each angle is π/3, so the sum is 2π/3. Its sine is √3/2, the same as the sine of π/3, but the sum is past π/2 and π/3 is not the sum.' },
+  { text: 'cos⁻¹(1/3) + cos⁻¹(−1/3)', value: () => Math.acos(1 / 3) + Math.acos(-1 / 3), work: 'cos⁻¹(−x) = π − cos⁻¹x, so the two angles add up to π.' },
 ];
+/** Rows grouped by their answer in steps of π/12, so a round picks an answer first and a row second: every answer is about equally likely. */
+function pickRow(rows: Row[], random: () => number, not: number[] = []): Row {
+  const groups = new Map<number, Row[]>();
+  for (const row of rows) {
+    const a = stepsOf(row.value());
+    groups.set(a, [...(groups.get(a) ?? []), row]);
+  }
+  const options = [...groups.keys()].filter((a) => !not.includes(a));
+  const a = pick(options.length ? options : [...groups.keys()], random)[0];
+  return pick(groups.get(a)!, random)[0];
+}
 const SUBST: Row[] = [
   { text: 'tan⁻¹((√(1 + x²) − 1)/x) at x = √3', value: () => Math.atan((Math.sqrt(1 + 3) - 1) / Math.sqrt(3)), work: 'Put x = tan θ: the expression is (sec θ − 1)/tan θ = tan(θ/2), so the value is ½ tan⁻¹ x = ½·π/3 = π/6.', range: [-6, 6] },
   { text: 'tan⁻¹((√(1 + x²) − 1)/x) at x = 1/√3', value: () => Math.atan((Math.sqrt(1 + 1 / 3) - 1) / (1 / Math.sqrt(3))), work: 'Put x = tan θ: the expression is tan(θ/2), so the value is ½ tan⁻¹ x = ½·π/6 = π/12.', range: [-6, 6] },
@@ -82,9 +114,10 @@ export function buildRounds(level: number, random: () => number): Round[] {
   let rs: Round[];
   if (level === 1) rs = (['sin', 'cos', 'tan'] as Fn[]).map((fn) => branchRound(fn, random));
   else if (level === 2) {
-    const pairs = pick(SUMS.filter((r) => /tan⁻¹\(?1/.test(r.text) || r.text.startsWith('2 tan')), random)[0];
-    const ident = pick(SUMS.filter((r) => r.text.startsWith('sin⁻¹')), random)[0];
-    const boss = pick(SUMS.filter((r) => r.text.startsWith('tan⁻¹ 2') || r.text.startsWith('tan⁻¹(3/2)')), random)[0];
+    // The three rounds draw their answer from different pools, and no two rounds of a level share an answer.
+    const pairs = pickRow(SUMS_A, random);
+    const ident = pickRow(SUMS_B, random, [stepsOf(pairs.value())]);
+    const boss = pickRow(SUMS_C, random, [stepsOf(pairs.value()), stepsOf(ident.value())]);
     rs = [fromRow(pairs, 'sum', [0, 12]), fromRow(ident, 'sum', [0, 12]), fromRow(boss, 'sum', [0, 12])];
   } else rs = pick(SUBST, random, 3).map((r) => fromRow(r, 'subst', [-6, 6]));
   return rs.map((r, i) => ({ ...r, assist: aid(i) }));
@@ -92,9 +125,12 @@ export function buildRounds(level: number, random: () => number): Round[] {
 
 export const judge = (r: Round, k: number) => k === r.ans;
 
-/** After a miss: what the dish did, never the right angle. */
+/**
+ * After a miss: what the dish did, never the right angle. The principal range is a helper (live in round 1, a paid check in round 2, absent in the boss round), so only
+ * round 1 names it in a miss; later rounds give the direction for every wrong setting, in or out of the range.
+ */
 export function missText(r: Round, k: number): string {
-  if (k < r.range[0] || k > r.range[1]) return `The dish swung to ${piText(k)}, but the value of this expression can only lie in ${rangeWords(r.range)}: the beam went where no signal can come from.`;
+  if (r.assist === 0 && (k < r.range[0] || k > r.range[1])) return `The dish swung to ${piText(k)}, but the value of this expression can only lie in ${rangeWords(r.range)}: the beam went where no signal can come from.`;
   return `The beam left the dish at ${piText(k)} and passed ${k > r.ans ? 'anticlockwise' : 'clockwise'} of the satellite without catching it.`;
 }
 export const spotText = (r: Round, k: number) => `Check: at ${piText(k)} the dish is ${k >= r.range[0] && k <= r.range[1] ? 'inside' : 'outside'} the range ${rangeWords(r.range)} of the outer inverse function.`;

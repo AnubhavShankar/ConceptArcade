@@ -10,7 +10,7 @@ Class 12 Physics, Chapter 11: Dual Nature of Radiation and Matter (NCERT 2026-27
 
 | Concepts | Total weight | Covered by games |
 |---|---|---|
-| 8 | 69 | 94% (left out: P8 Davisson–Germer in words) |
+| 8 | 69 | 94% (P8 Davisson–Germer is not in the 2026-27 edition: listed for reference only) |
 
 ## Every concept, heaviest first
 
@@ -23,7 +23,7 @@ Class 12 Physics, Chapter 11: Dual Nature of Radiation and Matter (NCERT 2026-27
 | 5 | P7 | What the experiment shows: photocurrent follows intensity, the stopping potential follows frequency | 11.4 to 11.5 | – | – | A | 6 |
 | 6 | P3 | The V₀–f graph is a straight line of slope h/e | 11.4.3 | 11.5 | – | B | 5 |
 | 7 | P6 | X-ray production: the shortest wavelength is hc/eV | 11.2 | 11.1 | – | B | 5 |
-| 8 | P8 | Davisson–Germer: electrons diffract, so matter has a wavelength | 11.8 | – | – | C | 1 |
+| 8 | P8 | Davisson–Germer: electrons diffract, so matter has a wavelength (not in the 2026-27 edition) | 11.8 | – | – | C | 1 |
 
 P2 shares exercises 11.6 and 11.8 with P1, because each tests both ideas.
 

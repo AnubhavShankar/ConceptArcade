@@ -1,327 +1,296 @@
+// Inspirations (code comment only): kart-racer time trials against a ghost racer, the pacing lights of athletics meets, and village-fair snail races.
+// The player sets the pace for Zip, a free electron in a copper wire, so that he drifts beside Shelly the champion racing snail: the race current and its
+// arrow (level 1), the current (level 2), the race wire off the spool rack (level 3), the millivolt throttle and the wire (level 4). Then the Marshal drops the flag.
+// Never leak the answer: Zip never drifts before the flag; on a miss Zip and Shelly stop at the fixed 0.6 of the track, never at a fraction of the error; the pace
+// board is the only helper (live in round 1, for 1.5 s after a pace check in round 2, never in round 3); `hit` is a fixed point; every animation ends by 2.4 s.
+// The art is in art.ts.
+import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
-import { disc, label, themeColors } from '@core/draw';
-import { h } from '@core/dom';
-import { parseNumber } from '@core/quiz';
-import { fitCanvas, startLoop } from '@core/sim';
-import { buildLevel, explainSolution, fmt, judgeCount, judgeDrift, judgeMobility, judgeScale, starsFor } from './logic';
+import { mountDialLevel, type DialLevel, type DialSpec, type HandleSpec, type SceneInput } from '@core/dialgame';
+import { helperOn, paidFlash } from '@core/aidflash';
+import { text } from '@core/neon';
+import {
+  LANE, RACK3, RACK4, RAIL, SWITCH, arrowSwitch, battery, board, camera, capX, clamp01, confetti, crossAt, crowd, ease, facingOf, fairground, feederLabel, finishX, flashRect, grip, lamp,
+  lampAt, lanes, lens, lensArm, marshal, photo, poses, rack, rail, setting, shards, shelly, signal, slotX, startX, table, trophy, tube, zipDot,
+  type MarshalState, type Outcome, type ShellyState, type ZipMood,
+} from './art';
+import {
+  DIAL, FEEDER, LCD_OFF, buildRounds, factLabel, fault, goalLine, hintText, judge, lampState, lcdText, meterText, missText, verdictDelay, winText, type Round,
+} from './logic';
 
-const W = 640;
-const H = 340;
-const NEG = '#3156d3';
-const POS = '#c0392b';
-const REVEAL = 0.9;
-const RUN = 3;
-const ease = (t: number) => 1 - Math.pow(1 - t, 3);
-const CY = 170;
-/** Display speed (px/s) for a drift speed in mm/s: slow things look slow, fast things look faster, never frantic. */
-const vis = (vd: number) => 8 + 14 * Math.log10(1 + 20 * vd);
-const hash = (i: number, k: number) => {
-  const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453;
-  return x - Math.floor(x);
-};
+const ARIA = 'A snail race at a fair: a racing snail on a chalk lane beside a copper wire in a glass tube, a magnifier showing a free electron inside the wire, a race battery at one end and a finish lamp at the other.';
+const ROLE = 'a free electron in a copper wire, hired to pace the champion racing snail';
+const HEROES = [
+  {
+    story: 'The fair’s snail race has a new pacer: Zip, a free electron in a copper wire laid along the track in a glass tube. When the flag drops the battery connects, and every free electron starts to drift toward the battery’s + end. A current is charge per second through the start gate, and by convention it points the opposite way to the electrons’ drift.',
+    objective: 'Set the current and its direction so Zip drifts beside Shelly to a dead heat, in three heats.',
+  },
+  {
+    story: 'Now the stewards give Shelly’s record time and the wire’s cross-section. Every free electron drifts at v_d = I/(neA), and copper has 8.5 × 10²⁸ free electrons in each cubic metre, so even a big current only makes them crawl.',
+    objective: 'Set the current that makes Zip drift at exactly Shelly’s record pace.',
+  },
+  {
+    story: 'The race battery now drives a fixed current, and you pick the race wire from the spool rack. The same current flows through the thick feeder and the race wire, so where the wire is thinner the electrons drift faster. Nobody measured the track, but the finish lamp lit a few nanoseconds after the field passed the start gate: the field that starts the drift moves at 3 × 10⁸ m/s.',
+    objective: 'Pick the race wire that makes Zip drift at Shelly’s record pace.',
+  },
+  {
+    story: 'The finals use a millivolt supply that holds the voltage across the track wire. That voltage sets a field E = V/L, and each electron drifts at v_d = μE, where μ is copper’s mobility on the day. The current that drift carries, I = nAev_d, lights the photo-finish lamp in series: too little and the photo is too dark, too much and the lamp blows.',
+    objective: 'Set the voltage and the race wire so Zip ties Shelly and the lamp lights the photo.',
+  },
+];
+const BANNER = ['HEAT 1', 'SEMI-FINAL', 'GRAND FINAL'];
+
+type Dial = { min: number; max: number };
+const railX = (d: Dial, x: number) => RAIL.x0 + ((x - d.min) / (d.max - d.min)) * (RAIL.x1 - RAIL.x0);
+const railHandle = (key: string, d: Dial): HandleSpec<Round> => ({
+  dial: key,
+  at: (_r, v) => [railX(d, v[key]), RAIL.y],
+  drag: (_r, px) => d.min + ((px - RAIL.x0) / (RAIL.x1 - RAIL.x0)) * (d.max - d.min),
+  radius: 20,
+});
+const spoolHandle = (rack3: typeof RACK3): HandleSpec<Round> => ({
+  dial: 'a',
+  at: (_r, v) => [slotX(v.a), rack3.y + rack3.h / 2],
+  drag: (_r, px) => 0.25 * (Math.floor((px - rack3.x0) / rack3.w) + 1),
+  radius: 20,
+});
+
+function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
+  const rounds = buildRounds(n, random);
+  const flash = paidFlash();
+  const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
+  let touched = false;
+  const fx = { shot: null as unknown, done: new Set<string>() };
+
+  function draw(s: SceneInput<Round>) {
+    const { g, r, k, t, rt, shot, A } = s;
+    const v = s.v;
+    if (fx.shot !== shot) {
+      fx.shot = shot;
+      fx.done.clear();
+    }
+    const once = (key: string, fn: () => void) => {
+      if (!fx.done.has(key)) {
+        fx.done.add(key);
+        fn();
+      }
+    };
+    if (n === 1 && v.i !== DIAL.i1.start) touched = true;
+
+    const f = shot ? fault(r, shot.v) : null;
+    const out: Outcome | null = shot ? (shot.ok ? 'win' : (f ?? 'slow')) : null;
+    const tv = shot ? verdictDelay(r, shot.v) : 0;
+    const since = shot ? rt - tv : -1; // seconds since the verdict
+    const P = shot ? poses(r, f, rt) : { sp: 0, zp: 0, zx: startX(r) };
+    if (out) {
+      A.canvas.dataset.take = out;
+      A.canvas.dataset.pos = `${P.sp.toFixed(2)},${P.zp.toFixed(2)}`;
+    } else {
+      delete A.canvas.dataset.take;
+      delete A.canvas.dataset.pos;
+    }
+
+    // the pace board, the only helper
+    const sinceCheck = flash.since(t, k);
+    const won = shot !== null && shot.ok;
+    const missed = shot !== null && !shot.ok;
+    const live = helperOn(r.assist, won, missed ? Infinity : sinceCheck);
+    A.canvas.dataset.lcd = live ? '1' : '0';
+    const boardText = live ? lcdText(r, v) : LCD_OFF;
+
+    const s0 = startX(r);
+    const s1 = finishX(r);
+    const face = facingOf(r);
+    const lampSt = r.kind === 'mob' ? lampState(r, v) : 'ok';
+
+    // ---- the take, shared by every level -----------------------------------------------------------------------------------------------------------------
+    let zMood: ZipMood = 'happy';
+    let sState: ShellyState = 'idle';
+    let sU = 0;
+    let mState: MarshalState = 'idle';
+    let mU = 0;
+    let bob = 0;
+    let lampLit = 0;
+    let popped = false;
+    let flare = false;
+    let visor = false;
+    let run = 0;
+    if (shot) {
+      once('go', () => A.float('GO!', 572, 250, PAL.green));
+      mState = 'go';
+      mU = rt;
+      visor = rt >= 0.1 && since < 0;
+      run = since < 0 ? ease((rt - 0.1) / 0.2) : 0;
+      sState = P.sp > 0 && rt < (crossAt(f) ?? 0.6) ? 'racing' : 'idle';
+      if (rt >= 0.08) {
+        if (lampSt === 'ok') lampLit = 1;
+        else if (lampSt === 'dim') lampLit = 0.3;
+        else if (rt < 0.3) {
+          lampLit = 1;
+          flare = rt < 0.25;
+        } else popped = true;
+      }
+      if (lampSt === 'blown' && rt >= 0.3) {
+        once('pop', () => A.float('POP', lampAt(r)[0], 140, PAL.orange));
+      }
+      if (f === 'backward' && rt >= 0.6) {
+        once('bonk', () => {
+          A.float('BONK', capX(r), 222, PAL.white);
+          A.shake(5);
+        });
+        zMood = 'dizzy';
+        visor = false;
+      }
+      if (since >= 0) {
+        if (out === 'win') {
+          zMood = 'cheer';
+          sState = 'win';
+          sU = since;
+          mState = 'win';
+          mU = since;
+          bob = since < 0.8 ? 4 * Math.abs(Math.sin((Math.PI * since) / 0.4)) : 0;
+          once('verdict', () => A.float('RECORD!', 572, 250, PAL.yellow));
+        } else {
+          if (f !== 'backward') zMood = 'worried';
+          sState = f === 'fast' ? 'sigh' : f === 'backward' || f === 'slow' || f === 'dim' || f === 'blown' ? 'look' : 'idle';
+          sU = since;
+          mState = f === 'backward' ? 'palm' : 'nope';
+          mU = since;
+          once('verdict', () => {
+            A.float(f === 'backward' ? 'WRONG WAY' : 'NO RECORD', 572, 250, PAL.red);
+            A.float(f === 'fast' ? 'sigh…' : '?', s0 + (s1 - s0) * P.sp, 186, PAL.white);
+          });
+        }
+      }
+    }
+
+    // ---- compose the frame (README order) --------------------------------------------------------------------------------------------------------------
+    fairground(g, t, k, calm);
+    if (k === 2) trophy(g);
+    crowd(g, k, bob);
+    if (out && since >= 0) photo(g, out, -92 + 146 * ease(since / 0.25), t);
+    table(g);
+    lanes(g, r);
+    const fact = factLabel(r);
+    if (fact) text(g, fact, 315, 196, PAL.white, 11);
+    const [lx] = lampAt(r);
+    lamp(g, r, lampLit, popped);
+    if (flare) {
+      g.globalAlpha = 0.8;
+      g.fillStyle = '#ffffff';
+      g.beginPath();
+      g.arc(lx, lampAt(r)[1], 13, 0, Math.PI * 2);
+      g.fill();
+      g.globalAlpha = 1;
+    }
+    if (shot && popped) shards(g, r, rt - 0.3);
+    if (lampSt === 'dim' && shot && rt >= 0.08) text(g, 'dim', lx + (lx > 320 ? -13 : 13), lampAt(r)[1] + 4, PAL.white, 11, lx > 320 ? 'right' : 'left');
+    camera(g, r);
+    lensArm(g);
+    const shellyX = s0 + (s1 - s0) * P.sp;
+    shelly(g, shellyX, LANE.snailY, t, { facing: face, state: sState, trailFrom: shot ? s0 : null, u: sU });
+    tube(g);
+    if (shot && rt < 0.08) signal(g, s0 + ((s1 - s0) * rt) / 0.08);
+    zipDot(g, shot && rt >= 0.1 ? P.zx : s0, t, calm);
+    if (!shot) text(g, 'Zip', s0, 264, PAL.cyan, 11);
+    lens(g, t, P.zx - s0, { mood: zMood, visor, facing: face, run, calm }, calm);
+    battery(g, n, (r as Extract<Round, { kind: 'thick' }>).i);
+    if (n === 3) feederLabel(g, FEEDER);
+    if (n === 1) {
+      arrowSwitch(g, v.dir);
+      setting(g, `current ${v.dir ? '←' : '→'}`, 36, 250);
+      grip(g, SWITCH.x + (v.dir ? -SWITCH.len : SWITCH.len), SWITCH.y, '⇔');
+    }
+    if (n === 3 || n === 4) {
+      const R = n === 3 ? RACK3 : RACK4;
+      rack(g, n, v.a);
+      grip(g, slotX(v.a), R.y + R.h / 2, '⇔', 0.6);
+      if (!shot) setting(g, `${v.a} mm²`, slotX(v.a), n === 3 ? 292 : 264);
+    }
+    if (n === 1 || n === 2) {
+      const d = n === 1 ? DIAL.i1 : DIAL.i2;
+      rail(g, d.min, d.max);
+      const hx = railX(d, v.i);
+      grip(g, hx, RAIL.y, '⇔');
+      setting(g, `${v.i} A`, hx, 302);
+      if (n === 1 && k === 0 && !touched) text(g, 'drag ⇔', hx, 286 + 3 * Math.sin(4 * t), PAL.yellow, 12);
+    }
+    if (n === 4) {
+      rail(g, DIAL.mv.min, DIAL.mv.max);
+      const hx = railX(DIAL.mv, v.mv);
+      grip(g, hx, RAIL.y, '⇔');
+      if (hx > 480) setting(g, `${v.mv} mV`, hx - 26, 334, 'right');
+      else setting(g, `${v.mv} mV`, hx + 26, 334, 'left');
+    }
+    marshal(g, t, mState, mU);
+    board(g, boardText, r.assist === 0 ? PAL.green : PAL.yellow);
+    text(g, BANNER[k], 12, 20, PAL.yellow, 11, 'left');
+    text(g, goalLine(r), 320, 20, PAL.white, 13);
+
+    // ---- take effects ---------------------------------------------------------------------------------------------------------------------------------
+    if (shot && rt >= 0.08 && rt < 1.2) {
+      g.globalAlpha = rt < 0.8 ? 1 : clamp01(1 - (rt - 0.8) / 0.4);
+      text(g, 'signal 3 × 10⁸ m/s', 315, 184, PAL.white, 11);
+      g.globalAlpha = 1;
+    }
+    const cross = shot ? crossAt(f) : null;
+    if (shot && cross !== null && !calm) flashRect(g, s1, rt - cross);
+    if (out === 'win' && since >= 0 && !calm) confetti(g, since);
+  }
+
+  const dials: DialSpec<Round>[] = [];
+  const handles: HandleSpec<Round>[] = [];
+  const dA: DialSpec<Round> = { key: 'a', aria: 'Race wire cross-section in square millimetres', label: 'Race wire', unit: 'mm²', ...DIAL.a };
+  if (n === 1) {
+    dials.push(
+      { key: 'i', aria: 'Race current in amperes', label: 'Current', unit: 'A', ...DIAL.i1 },
+      { key: 'dir', aria: 'Current arrow: 0 points left to right, 1 points right to left', label: 'Current arrow', unit: '', ...DIAL.dir, text: (x) => (x ? '← right to left' : '→ left to right') },
+    );
+    handles.push(railHandle('i', DIAL.i1), {
+      dial: 'dir',
+      at: (_r, v) => [SWITCH.x + (v.dir ? -SWITCH.len : SWITCH.len), SWITCH.y],
+      drag: (_r, px) => (px < SWITCH.x ? 1 : 0),
+      radius: 20,
+    });
+  } else if (n === 2) {
+    dials.push({ key: 'i', aria: 'Race current in amperes', label: 'Current', unit: 'A', ...DIAL.i2 });
+    handles.push(railHandle('i', DIAL.i2));
+  } else if (n === 3) {
+    dials.push(dA);
+    handles.push(spoolHandle(RACK3));
+  } else {
+    dials.push({ key: 'mv', aria: 'Voltage across the track wire in millivolts', label: 'Voltage', unit: 'mV', ...DIAL.mv }, dA);
+    handles.push(railHandle('mv', DIAL.mv), spoolHandle(RACK4));
+  }
+
+  return {
+    hero: { name: 'Zip', role: ROLE, ...HEROES[n - 1] },
+    rounds,
+    charges: [1, 1, 0],
+    dials,
+    handles,
+    test: {
+      button: '⏱ Pace check',
+      aria: 'Pace check: read the pace board for this setting',
+      read: (r, v) => {
+        flash.paid();
+        return meterText(r, v);
+      },
+    },
+    fire: { button: '🏁 Drop the flag', aria: 'Drop the flag and start the heat' },
+    judge: (r, v) => judge(r, v),
+    miss: (r, v) => missText(r, v),
+    win: (r) => winText(r),
+    hint: (r) => hintText(r),
+    hit: () => [320, 170],
+    delay: (r, v) => verdictDelay(r, v),
+    draw,
+  };
+}
 
 export default defineGame({
   mount(ctx) {
-    const lvl = buildLevel(ctx.level, ctx.random);
-    const col = themeColors();
-
-    let misses = 0;
-    let finished = false;
-    let pendingWin: 1 | 2 | 3 | null = null;
-    let wonAt: number | null = null;
-    let clock = 0;
-    let verdictAt: number | null = null;
-    let verdictOk = false;
-    let runT: number | null = null;
-    let gateT: number | null = null; // level 1: the counting gate
-    let conventionalRight: boolean | null = null;
-
-    // ---- DOM --------------------------------------------------------------------------------
-    const canvas = h('canvas', { role: 'img', 'aria-label': 'A metal wire with free electrons jiggling about and drifting slowly along it.' });
-    const g = fitCanvas(canvas, W, H);
-    const feedback = h('p', { class: 'feedback', hidden: true, 'aria-live': 'polite' });
-    const solution = h('section', { class: 'panel solution', hidden: true });
-    const hint = h('p', { class: 'muted note' });
-    const controls = h('div', { class: 'lab-controls' });
-    const free = lvl.freeTests;
-    const say = (text: string, good = false) => {
-      feedback.hidden = false;
-      feedback.className = `feedback ${good ? 'good' : 'bad'}`;
-      feedback.textContent = text;
-    };
-    const costNote = () => (misses > free ? ' That cost a star.' : free > 0 ? ` ${free - misses} free test${free - misses === 1 ? '' : 's'} left.` : '');
-    const freeNote = (m: string) => say(`${m} That does not cost you anything.`);
-    const miss = (text: string) => {
-      misses++;
-      say(text + costNote());
-    };
-    const succeed = (text: string) => {
-      finished = true;
-      say(text, true);
-      solution.replaceChildren(h('h3', null, 'Why that works'), ...explainSolution(lvl).map((t) => h('p', null, t)));
-      solution.hidden = false;
-      controls.querySelectorAll('button, input').forEach((b) => b.setAttribute('disabled', ''));
-      pendingWin = starsFor(misses, free);
-    };
-    const verdict = (ok: boolean) => {
-      verdictAt = clock;
-      verdictOk = ok;
-      runT = 0;
-    };
-    const busy = () => runT !== null && runT < RUN;
-    const field = (aria: string, placeholder: string) => h('input', { class: 'field', type: 'text', inputmode: 'decimal', autocomplete: 'off', 'aria-label': aria, placeholder }) as HTMLInputElement;
-    const num = (el: HTMLInputElement) => parseNumber(el.value);
-    const actionBtn = (text: string, aria: string, fn: () => void) => h('button', { class: 'btn', type: 'button', 'aria-label': aria, onclick: fn }, text);
-    const row = (name: string, input: HTMLElement, unit: string) => h('div', { class: 'control' }, h('span', { class: 'control-label' }, name), input, h('span', { class: 'unit' }, unit));
-
-    // ---- the levels -------------------------------------------------------------------------------------------
-    if (lvl.kind === 'count') {
-      const iIn = field('Current in A', 'I = ? A');
-      const dirBtns = [true, false].map((right) => {
-        const text = right ? 'Conventional current: left to right' : 'Conventional current: right to left';
-        const b = h('button', {
-          class: 'btn btn-ghost',
-          type: 'button',
-          'aria-label': text,
-          'aria-pressed': 'false',
-          onclick: () => {
-            conventionalRight = right;
-            dirBtns.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
-          },
-        }, right ? 'Left to right' : 'Right to left');
-        return b;
-      });
-      const run = () => {
-        if (finished || busy()) return;
-        if (gateT === null) return freeNote('Open the gate first to read the count.');
-        const i = num(iIn);
-        if (i === null || i <= 0) return freeNote('Enter the current as a positive number of amperes.');
-        if (conventionalRight === null) return freeNote('Choose the direction of the conventional current.');
-        const res = judgeCount(lvl, i, conventionalRight);
-        verdict(res.ok);
-        if (res.ok) return succeed(`I = ${fmt(lvl.i)} A, and the conventional current flows ${lvl.electronsRight ? 'right to left' : 'left to right'}.`);
-        const parts: string[] = [];
-        if (!res.iOk) parts.push('The current is not right: the charge that passed is the number of electrons times the charge on one, and current is charge per second.');
-        if (!res.dirOk) parts.push('The direction is not right: the conventional current is defined as the flow of positive charge.');
-        miss(parts.join(' '));
-      };
-      const open = () => {
-        if (finished || gateT !== null) return;
-        gateT = 0;
-      };
-      controls.append(actionBtn('Open the gate', 'Open the gate', open), row('Current', iIn, 'A'), h('div', { class: 'control' }, h('span', { class: 'control-label' }, 'Direction'), ...dirBtns), actionBtn('Check the current', 'Check the current', run));
-      hint.textContent = 'Each electron carries 1.6 × 10⁻¹⁹ C. Open the gate to start the counter.';
-    }
-    if (lvl.kind === 'drift') {
-      const vIn = field('Drift speed in mm/s', 'v_d = ? mm/s');
-      const tIn = field('Time to drift the whole wire in hours', 't = ? h');
-      const run = () => {
-        if (finished || busy()) return;
-        const v = num(vIn);
-        const t = num(tIn);
-        if (v === null || t === null || v <= 0 || t <= 0) return freeNote('Enter both answers as positive numbers.');
-        const res = judgeDrift(lvl, v, t);
-        verdict(res.ok);
-        if (res.ok) return succeed(`v_d = ${fmt(lvl.vd)} mm/s, and the electron needs about ${fmt(lvl.hours)} hours.`);
-        const parts: string[] = [];
-        if (!res.vdOk) parts.push('The drift speed is not right: the current is the charge of the free electrons crossing the cross-section each second. Give it in mm/s.');
-        if (!res.hoursOk) parts.push('The time is not right: it is the length divided by the drift speed, expressed in hours.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Drift speed', vIn, 'mm/s'), row('Time end to end', tIn, 'h'), actionBtn('Check the drift', 'Check the drift', run));
-      hint.textContent = `Copper: n = 8.5 × 10²⁸ electrons per m³, e = 1.6 × 10⁻¹⁹ C. Current ${lvl.i} A, cross-section ${lvl.aMm2} mm², wire length ${lvl.lenM} m.`;
-    }
-    if (lvl.kind === 'scale') {
-      const vIn = field('New drift speed in mm/s', 'v_d′ = ? mm/s');
-      const nIn = field('Time for the signal to cross the circuit in ns', 't = ? ns');
-      const run = () => {
-        if (finished || busy()) return;
-        const v = num(vIn);
-        const n = num(nIn);
-        if (v === null || n === null || v <= 0 || n <= 0) return freeNote('Enter both answers as positive numbers.');
-        const res = judgeScale(lvl, v, n);
-        verdict(res.ok);
-        if (res.ok) return succeed(`v_d′ = ${fmt(lvl.vd2)} mm/s, and the signal crosses in ${fmt(lvl.ns)} ns.`);
-        const parts: string[] = [];
-        if (!res.vdOk) parts.push('The new drift speed is not right: the same current has to squeeze through a different cross-section.');
-        if (!res.nsOk) parts.push('The signal time is not right: the electric field that sets the electrons drifting travels at the speed of light, 3 × 10⁸ m/s. Give it in ns.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('New drift speed', vIn, 'mm/s'), row('Signal time', nIn, 'ns'), actionBtn('Check the wire', 'Check the wire', run));
-      hint.textContent = `Current ${lvl.i} A, copper n = 8.5 × 10²⁸ m⁻³. The wire goes from ${lvl.a1} mm² to ${lvl.a2} mm². Circuit length ${lvl.lenM} m.`;
-    }
-    if (lvl.kind === 'mobility') {
-      const vIn = field('Drift speed in mm/s', 'v_d = ? mm/s');
-      const iIn = field('Current in A', 'I = ? A');
-      const run = () => {
-        if (finished || busy()) return;
-        const v = num(vIn);
-        const i = num(iIn);
-        if (v === null || i === null || v <= 0 || i <= 0) return freeNote('Enter both answers as positive numbers.');
-        const res = judgeMobility(lvl, v, i);
-        verdict(res.ok);
-        if (res.ok) return succeed(`v_d = ${fmt(lvl.vd)} mm/s, and the current is ${fmt(lvl.i)} A.`);
-        const parts: string[] = [];
-        if (!res.vdOk) parts.push('The drift speed is not right: mobility is the drift speed per unit electric field, and the field in the wire is the voltage per metre.');
-        if (!res.iOk) parts.push('The current is not right: use the drift speed with the number of electrons in the cross-section, with the area in m².');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Drift speed', vIn, 'mm/s'), row('Current', iIn, 'A'), actionBtn('Check the wire', 'Check the wire', run));
-      hint.textContent = `Copper: μ = ${lvl.muMilli} × 10⁻³ m²/(V s), n = 8.5 × 10²⁸ m⁻³. ${lvl.v} V across ${lvl.lenM} m of wire, cross-section ${lvl.aMm2} mm².`;
-    }
-
-    // ---- drawing --------------------------------------------------------------------------------------------------------
-    const N = 44;
-    /** A stretch of wire: fixed vibrating ions, and free electrons that jiggle and drift. dir = +1 drifts right. */
-    function wire(x0: number, x1: number, half: number, speedPx: number, dir: number, tag: number) {
-      g.fillStyle = col.panel;
-      g.fillRect(x0, CY - half, x1 - x0, half * 2);
-      g.strokeStyle = col.line;
-      g.lineWidth = 2;
-      g.strokeRect(x0, CY - half, x1 - x0, half * 2);
-      const len = x1 - x0;
-      for (let i = 0; i < 18; i++) {
-        const ix = x0 + 14 + (i % 9) * ((len - 28) / 8);
-        const iy = CY + (i < 9 ? -half * 0.45 : half * 0.45);
-        disc(g, ix + Math.sin(clock * 9 + i) * 1.4, iy + Math.cos(clock * 8 + i * 2) * 1.4, 4.5, col.muted);
-      }
-      const n = Math.max(10, Math.round(N * (len / 500) * Math.max(0.6, half / 30)));
-      for (let i = 0; i < n; i++) {
-        const base = hash(i, tag) * len;
-        const dx = dir * clock * speedPx;
-        const x = x0 + ((((base + dx) % len) + len) % len);
-        const y = CY + (hash(i, tag + 7) * 2 - 1) * (half - 7) + Math.sin(clock * (5 + hash(i, 3) * 6) + i) * 3.5;
-        disc(g, x + Math.cos(clock * (6 + hash(i, 5) * 5) + i) * 3, y, 3.5, NEG);
-      }
-    }
-    const arrow = (x: number, y: number, dir: number, text: string, color: string) => {
-      g.strokeStyle = color;
-      g.fillStyle = color;
-      g.lineWidth = 3;
-      g.beginPath();
-      g.moveTo(x - 30 * dir, y);
-      g.lineTo(x + 30 * dir, y);
-      g.stroke();
-      g.beginPath();
-      g.moveTo(x + 32 * dir, y);
-      g.lineTo(x + 20 * dir, y - 6);
-      g.lineTo(x + 20 * dir, y + 6);
-      g.fill();
-      label(g, text, x, y - 14, { size: 12, color });
-    };
-
-    function drawCount() {
-      if (lvl.kind !== 'count') return;
-      const dir = lvl.electronsRight ? 1 : -1;
-      wire(50, 590, 42, 36, dir, 1);
-      const gx = 320;
-      g.strokeStyle = gateT === null ? col.muted : col.accent;
-      g.lineWidth = gateT === null ? 3 : 4;
-      g.setLineDash([6, 5]);
-      g.beginPath();
-      g.moveTo(gx, CY - 56);
-      g.lineTo(gx, CY + 56);
-      g.stroke();
-      g.setLineDash([]);
-      label(g, 'counting gate', gx, CY - 70, { size: 12, color: col.muted });
-      const f = gateT === null ? 0 : Math.min(1, gateT / RUN);
-      label(g, `N = ${fmt(lvl.n18 * ease(f))} × 10¹⁸ electrons`, gx, CY + 88, { size: 15, color: col.text });
-      label(g, `t = ${fmt(lvl.t * f)} s`, gx, CY + 110, { size: 13, color: col.muted });
-      arrow(gx, 40, dir, 'electrons', NEG);
-      if (verdictAt !== null && verdictOk) arrow(gx, 300, -dir, 'conventional current', POS);
-    }
-    function drawDrift() {
-      if (lvl.kind !== 'drift') return;
-      const half = 14 + lvl.aMm2 * 6;
-      wire(50, 590, half, vis(lvl.vd), 1, 2);
-      const f = runT === null ? 0 : Math.min(1, runT / RUN);
-      label(g, `A = ${lvl.aMm2} mm², L = ${lvl.lenM} m, I = ${lvl.i} A`, 320, 50, { size: 13, color: col.muted });
-      if (runT !== null) {
-        // the field signal races ahead; the electron has barely moved
-        g.fillStyle = col.accent;
-        g.globalAlpha = 0.8 * (1 - f * 0.4);
-        g.fillRect(50, CY + half + 24, 540 * ease(Math.min(1, f * 5)), 6);
-        g.globalAlpha = 1;
-        label(g, 'electric signal', 70, CY + half + 46, { size: 12, color: col.accent });
-        g.fillStyle = NEG;
-        g.fillRect(50, CY + half + 62, Math.max(2, 540 * 0.0006), 6);
-        label(g, 'one electron', 62, CY + half + 84, { size: 12, color: NEG });
-      }
-      if (verdictAt !== null && verdictOk) label(g, `${fmt(lvl.vd)} mm/s: about ${fmt(lvl.hours)} h end to end`, 320, 290, { size: 14, color: col.good });
-    }
-    function drawScale() {
-      if (lvl.kind !== 'scale') return;
-      const h1 = 14 + lvl.a1 * 6;
-      const h2 = 14 + Math.min(lvl.a2, 6) * 6;
-      const s1 = vis(lvl.vd1);
-      const s2 = vis(lvl.vd2);
-      wire(50, 320, h1, s1, 1, 3);
-      wire(320, 590, h2, s2, 1, 4);
-      label(g, `${lvl.a1} mm²`, 185, CY - h1 - 14, { size: 13, color: col.muted });
-      label(g, `${lvl.a2} mm²`, 455, CY - h2 - 14, { size: 13, color: col.muted });
-      label(g, 'same current', 320, 40, { size: 13, color: col.muted });
-      // the lamp at the right end lights as the signal pulse arrives
-      const f = runT === null ? 0 : Math.min(1, runT / 0.6);
-      const px = 50 + 540 * ease(f);
-      if (runT !== null) {
-        g.fillStyle = col.accent;
-        g.globalAlpha = 0.9;
-        g.fillRect(px - 5, CY - 56, 10, 112);
-        g.globalAlpha = 1;
-      }
-      disc(g, 610, CY, 14, f >= 1 ? '#f4b400' : col.muted);
-      label(g, f >= 1 ? 'lit' : 'lamp', 610, CY + 34, { size: 12, color: col.muted });
-      if (verdictAt !== null && verdictOk) label(g, `signal ${fmt(lvl.ns)} ns, drift ${fmt(lvl.vd2)} mm/s`, 320, 300, { size: 14, color: col.good });
-    }
-    function drawMobility() {
-      if (lvl.kind !== 'mobility') return;
-      wire(80, 560, 40, vis(lvl.vd), 1, 5);
-      // the field arrows inside the wire push electrons the other way, so they drift against E
-      g.strokeStyle = col.accent;
-      g.lineWidth = 2;
-      for (let i = 0; i < 6; i++) {
-        const t = (((clock * 0.3 + i / 6) % 1) + 1) % 1;
-        g.globalAlpha = 0.6 * Math.sin(t * Math.PI);
-        g.beginPath();
-        g.moveTo(90 + t * 460 - 14, CY - 52);
-        g.lineTo(90 + t * 460 + 14, CY - 52);
-        g.lineTo(90 + t * 460 + 8, CY - 57);
-        g.stroke();
-      }
-      g.globalAlpha = 1;
-      label(g, `E = V/L, ${lvl.v} V over ${lvl.lenM} m`, 320, 36, { size: 13, color: col.accent });
-      label(g, `μ = ${lvl.muMilli} × 10⁻³ m²/(V s)`, 320, 290, { size: 13, color: col.muted });
-      if (verdictAt !== null && verdictOk) label(g, `${fmt(lvl.vd)} mm/s, ${fmt(lvl.i)} A`, 320, 312, { size: 14, color: col.good });
-    }
-
-    ctx.root.append(h('p', null, lvl.story), canvas, hint, controls, feedback, solution);
-    return startLoop((dt) => {
-      clock += dt;
-      if (runT !== null && runT < RUN + 0.2) runT += dt;
-      if (gateT !== null && gateT < RUN + 0.2) gateT += dt;
-      g.clearRect(0, 0, W, H);
-      drawCount();
-      drawDrift();
-      drawScale();
-      drawMobility();
-      if (verdictAt !== null && clock - verdictAt < REVEAL) {
-        g.strokeStyle = verdictOk ? col.good : col.bad;
-        g.lineWidth = 6;
-        g.globalAlpha = 1 - (clock - verdictAt) / REVEAL;
-        g.strokeRect(3, 3, W - 6, H - 6);
-        g.globalAlpha = 1;
-      }
-      const running = busy() || (gateT !== null && gateT < RUN);
-      const phase = verdictAt === null ? (running ? 'testing' : 'idle') : busy() || clock - verdictAt < REVEAL ? 'testing' : 'done';
-      canvas.dataset.phase = phase;
-      if (pendingWin !== null && phase !== 'testing') {
-        wonAt ??= clock;
-        if (clock - wonAt > 0.3) {
-          const s = pendingWin;
-          pendingWin = null;
-          ctx.win({ stars: s });
-        }
-      }
-    });
+    const n = Math.max(1, Math.min(4, ctx.level)) as 1 | 2 | 3 | 4;
+    return mountDialLevel(ctx as never, level(n, ctx.random) as never, ARIA);
   },
 });
