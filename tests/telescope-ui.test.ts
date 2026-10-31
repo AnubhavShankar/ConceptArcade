@@ -447,7 +447,8 @@ describe('no leaks, levels 1 and 3: the scope view', () => {
             click(FIRE[level - 1]);
             advance(2.0);
             const rec = frameAfter(rc, 0.05);
-            ends.push({ words: texts(rec), radii: bodyRadii(rec, 540, 95) });
+            // apart from the player's own two settings, which are printed beside their handles
+            ends.push({ words: texts(rec).filter((s) => !/^tube L = [\d.]+ cm$/.test(s) && !/^[\d.]+ cm$/.test(s)), radii: bodyRadii(rec, 540, 95) });
             advance(1);
           }
           expect(ends[0].words).toEqual(ends[1].words);
@@ -508,6 +509,129 @@ describe('no leaks, levels 1 to 3: the start never wins', () => {
         advance(2.8);
         expect(hearts()).toBe(before - 1);
       }
+    }
+  });
+});
+
+describe('no leaks, level 1: the zoom inset does not show the eyepiece focus against the objective focus without the helper', () => {
+  const TICK = 'eyepiece focus';
+  const MEETS = 'focus meets focus: image at infinity';
+  const has = (rec: Rec['rec'], s: string) => texts(rec).includes(s);
+  const inset = (rec: Rec['rec']) => texts(rec).includes('objective’s focus (first image)');
+
+  it('round 1 draws the eyepiece focus tick live, and the green note only at the right setting', () => {
+    const rc = canvasRecorder();
+    const g = start(1, 5);
+    validView(g, 0);
+    let rec = frameAfter(rc, 0.1);
+    expect(inset(rec)).toBe(true);
+    expect(has(rec, TICK)).toBe(true);
+    expect(has(rec, MEETS)).toBe(false);
+    setRight(g, 0);
+    rec = frameAfter(rc, 0.1);
+    expect(has(rec, TICK)).toBe(true);
+    expect(has(rec, MEETS)).toBe(true);
+  });
+
+  it('round 2 draws neither before a test shot, both for about 1.5 s after it, then neither', () => {
+    const rc = canvasRecorder();
+    const g = start(1, 5);
+    playTo(1, g, 1);
+    expect(hud()).toMatch(/Round 2 of 3/);
+    validView(g, 1);
+    let rec = frameAfter(rc, 0.1);
+    expect(inset(rec)).toBe(true);
+    expect(has(rec, TICK)).toBe(false);
+    setRight(g, 1);
+    rec = frameAfter(rc, 0.3);
+    expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+    click(TEST[0]);
+    rec = frameAfter(rc, 0.3);
+    expect(has(rec, TICK)).toBe(true);
+    expect(has(rec, MEETS)).toBe(true);
+    rec = frameAfter(rc, 1.5);
+    expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+  });
+
+  it('round 3 (the boss) never draws them, even at the right setting and even after a test shot', () => {
+    const rc = canvasRecorder();
+    const g = start(1, 5);
+    playTo(1, g, 2);
+    expect(hud()).toMatch(/Round 3 of 3/);
+    validView(g, 2);
+    expect(has(frameAfter(rc, 0.1), TICK)).toBe(false);
+    setRight(g, 2);
+    let rec = frameAfter(rc, 0.3);
+    expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+    click(TEST[0]);
+    rec = frameAfter(rc, 0.3);
+    expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+  });
+
+  it('a miss never draws them in any round; a win does', () => {
+    for (const round of [0, 1, 2]) {
+      const rc = canvasRecorder();
+      const g = start(1, 5);
+      playTo(1, g, round);
+      setWrong(g, round);
+      click(FIRE[0]);
+      advance(2.0);
+      let rec = frameAfter(rc, 0.05);
+      expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+      advance(1);
+      // the near-miss at the same eyepiece but the tube length one step off: still a miss, still nothing
+      setRight(g, round);
+      const r = (g as Extract<Game, { kind: 'zoom' }>).rounds[round];
+      setSlider(r.LSol + 3, 1);
+      click(FIRE[0]);
+      advance(2.0);
+      rec = frameAfter(rc, 0.05);
+      expect(has(rec, TICK) || has(rec, MEETS)).toBe(false);
+      advance(1);
+      setRight(g, round);
+      click(FIRE[0]);
+      advance(2.0);
+      rec = frameAfter(rc, 0.05);
+      expect(has(rec, TICK)).toBe(true);
+      expect(has(rec, MEETS)).toBe(true);
+      advance(1);
+    }
+  });
+
+  it('level 3 never prints the level 1 note, and the hint text says the zoom marker is part of the helper', () => {
+    const rc = canvasRecorder();
+    const g = start(3, 5);
+    setRight(g, 0);
+    expect(has(frameAfter(rc, 0.1), MEETS)).toBe(false);
+    start(1, 5);
+    expect($('.note')?.textContent).toMatch(/zoom marks where the eyepiece focus is/);
+  });
+});
+
+describe('telescope-lab UX, levels 1 to 3', () => {
+  it('the goal is on the canvas at the start of every round and gone after 4 s', () => {
+    for (const level of [1, 2, 3]) {
+      const rc = canvasRecorder();
+      const g = start(level, 5);
+      const goal = (rec: Rec['rec']) => texts(rec).filter((s) => /^Goal: /.test(s));
+      expect(goal(frameAfter(rc, 0.1))).toHaveLength(1);
+      expect(goal(frameAfter(rc, 1.5))).toHaveLength(1);
+      expect(goal(frameAfter(rc, 3))).toHaveLength(0);
+      solveRound(level, g, 0);
+      advance(1);
+      expect(goal(frameAfter(rc, 0.3))).toHaveLength(1);
+      expect(goal(frameAfter(rc, 4))).toHaveLength(0);
+    }
+  });
+  it('the player’s own settings are printed beside their handles with their units (levels 1 and 3)', () => {
+    for (const level of [1, 3]) {
+      const rc = canvasRecorder();
+      const g = start(level, 5);
+      setSlider(7, 0);
+      setSlider((g as Extract<Game, { kind: 'zoom' | 'near' }>).rounds[0].fo + 6, 1);
+      const rec = frameAfter(rc, 0.1);
+      expect(texts(rec)).toContain('7 cm');
+      expect(texts(rec).some((s) => /^tube L = [\d.]+ cm$/.test(s))).toBe(true);
     }
   });
 });

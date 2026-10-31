@@ -1,55 +1,56 @@
 {
   "$schema": "../../../../../../schema/game.schema.json",
   "id": "quantum-of-charge",
-  "title": "Millikan's Oil-Drop Lab",
-  "summary": "Tune the voltage until a charged oil drop hovers, measure its charge, and discover that charge comes in whole units of e.",
+  "title": "The Quark Hunt",
+  "summary": "Zap electrons onto an oil drop one at a time until it hovers, calibrate a charge detector, and reject readings that are not whole electrons.",
   "subject": "physics",
   "classLevel": 12,
   "chapter": { "number": 1, "name": "Electric Charges and Fields" },
   "ncertRef": "Section 1.4.3, Quantisation of charge",
-  "concepts": ["Quantisation of charge", "q = n e", "Electron count and charge", "Millikan's measurement"],
-  "learningOutcome": "After winning, the student can balance a drop to measure its charge, count its electrons, find the unit of charge from data, and tell a possible charge from an impossible one.",
+  "concepts": ["Quantisation of charge", "q = n e", "Electron count and charge", "Millikan's measurement", "Finding the unit from data"],
+  "learningOutcome": "After winning, the student can count the electrons on a balanced drop from n e V/d = m g, find the unit of charge from a set of readings, and reject a charge that is not a whole number of e.",
   "mechanic": "tune-to-target",
-  "estimatedMinutes": 20,
+  "estimatedMinutes": 15,
   "levels": [
     {
       "title": "Hold the drop",
       "tier": "concept",
       "kind": "foundation",
-      "adds": "Baseline: tune each drop to hover, read its charge from the lab, and work out how many electrons it carries.",
+      "adds": "Baseline: add electrons one at a time until n e V/d equals the drop's weight, so it hovers between the plates (q = n e, Ex 1.11a).",
       "hints": [
-        "A drop hovers when the upward electric force equals its weight. Raise the voltage if it falls, lower it if it rises.",
-        "Fine-tune with the small buttons, then hold it steady for a second before you record.",
-        "Each electron carries e = 1.6 × 10⁻¹⁹ C, so the number of electrons is the drop's charge divided by e."
+        "The drop hovers when the upward push equals its weight: n e V / d = m g.",
+        "Solve for the number of electrons: n = m g d / (e V), with d = 0.005 m and e = 1.6 × 10⁻¹⁹ C.",
+        "n must come out a whole number. If the drop sinks it needs more electrons; if it rises, fewer."
       ]
     },
     {
-      "title": "Find the unit",
+      "title": "Calibrate the detector",
       "tier": "application",
       "kind": "concept",
-      "adds": "New idea: e is not given. Measure several drops and find the unit that all the charges are whole multiples of.",
+      "adds": "New idea: the unit is not given. Find the largest step that every reading is a whole number of; the smallest reading need not be one unit.",
       "hints": [
-        "Every measured charge is a whole number of the same basic unit, give or take your tuning error.",
-        "Compare the charges: look for the biggest value that goes into all of them a whole number of times.",
-        "If your drops could all be multiples of 2e, you have not yet measured one that rules that out. Measure another drop."
+        "Every drop carries a whole number of electrons, so every reading is a whole number of the same step.",
+        "Look for the biggest step that goes into all three readings a whole number of times.",
+        "The smallest reading may be 2 or 3 electrons. Try dividing each reading by your step and look for whole numbers."
       ]
     },
     {
-      "title": "Impure samples",
+      "title": "Quark or dust?",
       "tier": "challenge",
       "kind": "concept",
-      "adds": "New idea: with e known, spot the drops whose charge cannot be real, because charge only comes in whole multiples of e.",
+      "adds": "New idea: with e known, reject every reading that is not a whole number of e, because free charge only comes as q = n e (Ex 1.4a).",
       "hints": [
-        "Divide each measured charge by e. A real drop gives a number very close to a whole number.",
-        "Your tuning is only accurate to a few percent, so allow a little slack around a whole number.",
-        "A reading near a half, like 2.5 or 4.5, cannot be a whole number of electrons: that sample is impure."
+        "Divide each reading by 1.6: a real drop gives a whole number.",
+        "A result like 2.33 or 4.67 is a third of an electron off. No free charge like that has ever been found.",
+        "Flag every reading that is not whole, and only those, before you publish."
       ]
     }
   ],
   "misconceptions": [
     "Charge can take any value at the atomic scale",
     "The smallest measured charge must be the unit of charge",
-    "A measured value close to a half-integer is just noise"
+    "A reading a third of e away from a whole number is just noise",
+    "Adding one electron changes the force a little, so many counts could hover the drop"
   ],
   "author": { "name": "Concept Arcade maintainers", "github": "AnubhavShankar" }
 }

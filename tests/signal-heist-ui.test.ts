@@ -2,6 +2,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import game from '../src/games/mathematics/class-12/ch07-integrals/signal-heist/index';
 import { LIQUID, SLEEVE } from '../src/games/mathematics/class-12/ch07-integrals/signal-heist/art';
+import { GOALS, HANDLE_RADIUS } from '../src/games/mathematics/class-12/ch07-integrals/signal-heist/index';
+import { STROBE_HALF } from '../src/games/mathematics/class-12/ch07-integrals/signal-heist/ux';
 import { buildFuse, buildMatch, type FuseRound, type MatchRound } from '../src/games/mathematics/class-12/ch07-integrals/signal-heist/logic';
 import { createRng } from '../src/core/random';
 import { arcadeHarness, shellTests } from './helpers/arcade-harness';
@@ -310,10 +312,10 @@ describe('Signal Heist', () => {
     h.start(1, 5);
     const r = buildM(1, 5)[0];
     let rec = frame(R);
-    expect(rec.texts.filter((s) => /^(−?\d+(\/\d+)?)$/.test(s) && s !== '1')).toEqual(['0', '0', '0']);
+    expect(rec.texts.filter((s) => /^amp /.test(s))).toEqual(['amp 0', 'amp 0', 'amp 0']);
     h.setSlider(3, 2);
     rec = frame(R);
-    expect(rec.texts).toContain('3/8');
+    expect(rec.texts).toContain('amp 3/8');
     expect(rec.texts).toContain(r.bands[0][0]);
   });
 
@@ -420,5 +422,220 @@ describe('Signal Heist', () => {
       expect(rec.texts).not.toContain(name);
       expect(rec.texts.some((s) => /π/.test(s))).toBe(false);
     }
+  });
+});
+
+// ---- UX pass: the goal line, grips, cue, text size, round tints, a calm strobe and plain-words miss text ----------------------------------------------------
+
+/** A canvas recorder: strings with their font size, rectangle fills, arcs and strokes. */
+const scene = () => {
+  const rec = { texts: [] as { s: string; size: number }[], rects: [] as string[], arcs: [] as { x: number; y: number; r: number }[], strokes: [] as string[] };
+  const store: Record<string, unknown> = {};
+  const proxy = new Proxy(store, {
+    get: (_t, p) => {
+      if (p === 'fillText') return (s: string) => rec.texts.push({ s: String(s), size: Number(/(\d+(\.\d+)?)px/.exec(String(store.font))?.[1] ?? 99) });
+      if (p === 'fillRect') return () => rec.rects.push(String(store.fillStyle));
+      if (p === 'arc') return (x: number, y: number, r: number) => rec.arcs.push({ x, y, r });
+      if (p === 'stroke' || p === 'strokeRect') return () => rec.strokes.push(String(store.strokeStyle));
+      return () => undefined;
+    },
+    set: (_t, p, v) => {
+      store[String(p)] = v;
+      return true;
+    },
+  });
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(proxy as never);
+  const clear = () => {
+    rec.texts.length = 0;
+    rec.rects.length = 0;
+    rec.arcs.length = 0;
+    rec.strokes.length = 0;
+  };
+  return { rec, clear };
+};
+type Scene = ReturnType<typeof scene>;
+/** Run `dt` seconds, then record exactly one frame. */
+const snap = (R: Scene, dt = 0.05) => {
+  if (dt > 0.05) h.advance(dt - 0.05);
+  R.clear();
+  h.advance(0.05);
+  return R.rec;
+};
+const says = (rec: Scene['rec']) => rec.texts.map((t) => t.s);
+const STROBE_FILL = 'rgba(255,60,60,0.18)';
+const SOFT_FILL = 'rgba(255,60,60,0.1)';
+
+describe('Signal Heist UX', () => {
+  it('the goal is drawn on the scene at the start of every round, fades after 3 s, and is not drawn while the mix is sent', () => {
+    for (const [level, goal] of [[2, GOALS.match], [4, GOALS.fuse]] as const) {
+      const R = scene();
+      h.start(level, 5);
+      expect(says(snap(R))).toContain(goal);
+      expect(says(snap(R, 2.0))).toContain(goal);
+      expect(says(snap(R, 1.7))).not.toContain(goal);
+      if (level === 4) playFuseTo(1);
+      else playMatchTo(level, 1);
+      expect(says(snap(R, 0.3))).toContain(goal);
+      expect(says(snap(R, 3.8))).not.toContain(goal);
+      h.start(level, 5);
+      if (level === 4) h.setSlider(buildF(5)[0].ans + 1);
+      else setBands(buildM(level, 5)[0], 1);
+      h.click(level === 4 ? CHARGE : TRANSMIT);
+      expect(says(snap(R, 0.2))).not.toContain(goal);
+    }
+  });
+
+  it('round 3 shows the goal at its start too', () => {
+    const R = scene();
+    h.start(3, 5);
+    playMatchTo(3, 2);
+    expect(h.hud()).toMatch(/Round 3 of 3 · BOSS/);
+    expect(says(snap(R, 0.3))).toContain(GOALS.match);
+  });
+
+  it('every handle has a grip ring of radius 18 or more at its own place, and the player’s own setting is written with a word beside its tone or fuse', () => {
+    expect(HANDLE_RADIUS).toBeGreaterThanOrEqual(18);
+    const R = scene();
+    for (const [level, count] of [[1, 3], [2, 4], [3, 4]] as const) {
+      h.start(level, 5);
+      const rec = snap(R);
+      const span = 600 / count;
+      for (let i = 0; i < count; i++) {
+        const x = 20 + i * span + (span - 10) / 2;
+        expect(rec.arcs.some((a) => Math.abs(a.x - x) < 0.01 && Math.abs(a.y - 289) < 0.01 && a.r >= 18)).toBe(true);
+      }
+      expect(says(rec).filter((s) => /^amp /.test(s)).length).toBe(count);
+    }
+    h.start(4, 5);
+    const rec = snap(R);
+    expect(rec.arcs.some((a) => Math.abs(a.x - 469) < 0.01 && Math.abs(a.y - (210 - (12 / 24) * 170)) < 0.01 && a.r >= 18)).toBe(true);
+    expect(says(rec)).toContain('fuse 1');
+    h.setSlider(8);
+    expect(says(snap(R))).toContain('fuse 2/3');
+  });
+
+  it('level 1 round 1 pulses a drag cue until the first touch, and no other level or round shows it', () => {
+    const R = scene();
+    h.start(1, 5);
+    expect(says(snap(R))).toContain('drag ⇕');
+    h.setSlider(2, 0);
+    expect(says(snap(R))).not.toContain('drag ⇕');
+    h.start(1, 5);
+    playMatchTo(1, 1);
+    expect(says(snap(R, 0.3))).not.toContain('drag ⇕');
+    for (const level of [2, 4]) {
+      h.start(level, 5);
+      expect(says(snap(R))).not.toContain('drag ⇕');
+    }
+  });
+
+  it('the scene text is at least 11 px in every level, before, during and after a send (hit and miss), with the peek and the probe showing', () => {
+    const R = scene();
+    const sizes = (rec: Scene['rec']) => Math.min(...rec.texts.map((t) => t.size));
+    for (const level of [1, 2, 3, 4]) {
+      for (const hit of [false, true]) {
+        h.start(level, 5);
+        expect(sizes(snap(R, 0.5))).toBeGreaterThanOrEqual(11);
+        if (level === 4) {
+          const r = buildF(5)[0];
+          h.setSlider(hit ? r.ans : r.ans + 1);
+          h.click(CHARGE);
+        } else {
+          setBands(buildM(level, 5)[0], hit ? 0 : 1);
+          h.click(TRANSMIT);
+        }
+        for (const dt of [0.2, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4]) expect(sizes(snap(R, dt))).toBeGreaterThanOrEqual(11);
+        for (const el of document.body.querySelectorAll('button, input')) expect(el.getAttribute('aria-label')).toBeTruthy();
+      }
+    }
+    h.start(4, 5);
+    const g = playFuseTo(1);
+    h.setSlider(g[1].ans - 2);
+    h.click(PROBE);
+    expect(says(snap(R, 0.3))).toContain('▲');
+    expect(sizes(R.rec)).toBeGreaterThanOrEqual(11);
+  });
+
+  it('each round has its own wash of light, and the boss round a still red frame', () => {
+    const R = scene();
+    const washes = ['rgba(77,225,255,0.05)', 'rgba(170,90,255,0.1)', 'rgba(255,60,90,0.11)'];
+    for (let k = 0; k < 3; k++) {
+      h.start(1, 5);
+      playMatchTo(1, k);
+      const rec = snap(R, 0.3);
+      expect(washes.map((w) => rec.rects.includes(w))).toEqual(washes.map((_, i) => i === k));
+      expect(rec.strokes.includes('rgba(255,60,90,0.35)')).toBe(k === 2);
+    }
+  });
+
+  it('the alarm strobe flashes at most 3 times a second, in runs of at least 0.2 s, and keeps its alpha at 0.18', () => {
+    expect(STROBE_HALF).toBeGreaterThanOrEqual(1 / 6);
+    for (const level of [1, 4]) {
+      const R = scene();
+      h.start(level, 5);
+      if (level === 4) h.setSlider(buildF(5)[0].ans + 1);
+      else setBands(buildM(level, 5)[0], 1);
+      h.click(level === 4 ? CHARGE : TRANSMIT);
+      const on: boolean[] = [];
+      for (let i = 0; i < 46; i++) on.push(snap(R).rects.includes(STROBE_FILL));
+      const edges = on.filter((v, i) => v && !on[i - 1]).length;
+      const seconds = on.length * 0.05;
+      expect(edges).toBeGreaterThanOrEqual(2);
+      expect(edges / seconds).toBeLessThanOrEqual(3);
+      // every run of on and off frames inside the strobe lasts at least 0.2 s (4 frames), apart from the ends
+      const runs: number[] = [];
+      let len = 1;
+      for (let i = 1; i < on.length; i++) {
+        if (on[i] === on[i - 1]) len++;
+        else {
+          runs.push(len);
+          len = 1;
+        }
+      }
+      const inner = runs.slice(1);
+      expect(inner.length).toBeGreaterThan(2);
+      for (const l of inner) expect(l).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('with reduced motion the alarm is a steady faint tint, not a strobe', () => {
+    Object.defineProperty(window, 'matchMedia', { value: () => ({ matches: true }), configurable: true, writable: true });
+    try {
+      const R = scene();
+      h.start(1, 5);
+      setBands(buildM(1, 5)[0], 1);
+      h.click(TRANSMIT);
+      const soft: boolean[] = [];
+      const hard: boolean[] = [];
+      h.advance(1.0);
+      for (let i = 0; i < 20; i++) {
+        const rec = snap(R);
+        soft.push(rec.rects.includes(SOFT_FILL));
+        hard.push(rec.rects.includes(STROBE_FILL));
+      }
+      expect(soft.every(Boolean)).toBe(true);
+      expect(hard.some(Boolean)).toBe(false);
+    } finally {
+      Object.defineProperty(window, 'matchMedia', { value: undefined, configurable: true, writable: true });
+    }
+  });
+
+  it('a miss says in plain words what to change: the fuse rating up or down, or the tones’ amplitudes to check, never the numbers', () => {
+    h.start(4, 5);
+    const r = buildF(5)[0];
+    h.setSlider(r.ans - 1);
+    h.click(CHARGE);
+    h.advance(2.8);
+    expect(h.feedback()).toContain('Raise the fuse rating.');
+    h.start(4, 5);
+    h.setSlider(r.ans + 1);
+    h.click(CHARGE);
+    h.advance(2.8);
+    expect(h.feedback()).toContain('Lower the fuse rating.');
+    h.start(2, 5);
+    setBands(buildM(2, 5)[0], 1);
+    h.click(TRANSMIT);
+    h.advance(2.8);
+    expect(h.feedback()).toContain('Check each tone’s amplitude against the identity.');
   });
 });

@@ -1,8 +1,8 @@
 {
   "$schema": "../../../../../../schema/game.schema.json",
   "id": "magnet-bench",
-  "title": "The Magnet Bench",
-  "summary": "Cut magnets in pieces, find the moment and poles of a solenoid, and match a bar magnet with a current.",
+  "title": "The Floating Act",
+  "summary": "Saw a magnet, wind a hidden coil and wire its battery so a ring magnet floats at the ribbon in a stage magic show.",
   "subject": "physics",
   "classLevel": 12,
   "chapter": {
@@ -13,50 +13,53 @@
   "order": 1,
   "concepts": [
     "Poles come in pairs",
+    "Every piece of a magnet is a weaker whole magnet",
     "Solenoid as a bar magnet",
     "Magnetic moment m = NIA",
-    "Right-hand rule for the north pole"
+    "Right-hand rule for the north pole",
+    "Same moment, same field"
   ],
-  "learningOutcome": "The student can say what happens to the poles when a magnet is cut, find the magnetic moment of a solenoid and which end is north, and match a bar magnet with an equivalent solenoid.",
+  "learningOutcome": "The student can say which pole a sawn face becomes and what moment a piece has, find a coil’s moment m = NIA and its north end, and wind a coil that matches a bar magnet.",
   "mechanic": "tune-to-target",
   "estimatedMinutes": 15,
   "levels": [
     {
-      "title": "Cut the magnet",
+      "title": "Saw the magnet",
       "tier": "concept",
       "kind": "foundation",
-      "adds": "Baseline: cutting a magnet gives complete magnets, never a single isolated pole (Example 5.1).",
+      "adds": "Baseline: every piece of a magnet is a whole magnet, cut across or along, never a lone pole (Example 5.1); a k/12 piece has k/12 of the moment.",
       "hints": [
-        "Each piece is a complete magnet with a north pole and a south pole.",
-        "The pieces point the same way as the original.",
-        "Isolated magnetic poles (monopoles) do not exist."
+        "Every piece has its own N and S: a sawn face becomes the pole opposite to the end it faces.",
+        "The piece points the same way as the bar, whatever colour its paint is.",
+        "A piece of k/12 of the bar has k/12 of its magnetic moment."
       ]
     },
     {
-      "title": "A solenoid is a magnet",
+      "title": "The hidden coil",
       "tier": "concept",
       "kind": "concept",
-      "adds": "New idea: a solenoid has m = NIA, and the right-hand rule gives its north pole (Ex 5.3).",
+      "adds": "New idea: a coil is a magnet with m = NIA, no iron needed, and the right-hand rule gives its north end (Ex 5.3).",
       "hints": [
-        "m = N I A, with the area of one turn in m².",
-        "Curl the fingers of the right hand along the current in the windings.",
-        "The thumb points to the north pole."
+        "m = N I A, so N = m/(IA), with the area in m².",
+        "Curl your right hand’s fingers along the current in the front turns: the thumb points to N.",
+        "Like poles must face each other for the ring to float."
       ]
     },
     {
-      "title": "Match the magnet",
+      "title": "Swap a magnet for a coil",
       "tier": "application",
       "kind": "complexity",
-      "adds": "More steps: choose the current so that a solenoid has the same magnetic moment as a bar magnet (Section 5.2).",
+      "adds": "More steps: a coil with the same moment as a bar magnet makes the same field; change the turn area from cm² to m² (Section 5.2.2).",
       "hints": [
-        "Equal magnets have equal magnetic moments.",
-        "Rearrange m = N I A for the current.",
-        "Convert the area from cm² to m²."
+        "Same moment, same field: the coil needs the magnet’s m.",
+        "1 cm² = 10⁻⁴ m².",
+        "Put the magnet’s top pole on top of the coil, using the right-hand rule."
       ]
     }
   ],
   "misconceptions": [
     "Cutting a bar magnet separates the north and south poles",
+    "A piece cut from the north half of a magnet is all north",
     "A solenoid has a magnetic moment only if it has an iron core",
     "A thinner magnet cut along its length has a single pole"
   ],

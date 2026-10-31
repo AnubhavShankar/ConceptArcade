@@ -129,7 +129,7 @@ describe('no leaks: the helper fades, and a miss shows no true value', () => {
   });
 });
 
-describe('level 1: Jenga’s tower', () => {
+describe('level 1: Stacker’s tower', () => {
   it('a test shot reads the mass defect, and paying too much or too little is described, not corrected', () => {
     h.start(1, 5);
     const g = build(1);

@@ -11,7 +11,7 @@ export const RIG = { cx: 250, bottom: 252, mm: 9, w: 160, plate: 6 }; // 9 px pe
 export const topY = (d: number) => RIG.bottom - RIG.plate - d * RIG.mm; // the top plate's upper edge
 export const plateW = (a: number) => 60 + 60 * a; // level 4 only: the plate width follows A
 export const METER = { x: 72, y: 150, r: 34, max: 40 }; // the charger's voltmeter, 0 to 40 kV
-export const LCD = { x: 22, y: 186, w: 100, h: 18 }; // the helper readout
+export const LCD = { x: 22, y: 188, w: 92, h: 32 }; // the helper readout: two lines of 11 px text
 export const ANTENNA = { x: 512, y: 112 }; // TITAN-7's antenna tip
 export const STRIKER = { x: 512, y: 96 }; // level 3: the copper striker ball, 16 px above the antenna
 export const CORE = { x: 512, y: 214, w: 16, h: 70 }; // the chest gauge (centre, size)
@@ -153,9 +153,9 @@ export function desk(g: G, o: DeskOpts) {
     const a = meterAngle(i * 5);
     const big = i % 2 === 0;
     line(g, x + Math.cos(a) * (r - (big ? 10 : 6)), y + Math.sin(a) * (r - (big ? 10 : 6)), x + Math.cos(a) * (r - 2), y + Math.sin(a) * (r - 2), INK, big ? 1.6 : 1);
-    if (big) text(g, String(i * 5), x + Math.cos(a) * (r - 17), y + Math.sin(a) * (r - 17) + 3, INK, 7);
+    if (big) text(g, String(i * 5), x + Math.cos(a) * (r - 18), y + Math.sin(a) * (r - 18) + 4, INK, 11);
   }
-  text(g, 'kV', x, y + 22, INK, 8);
+  text(g, 'kV', x, y + 25, INK, 11);
   if (o.band) {
     g.strokeStyle = '#1fb86a';
     g.lineWidth = 4;
@@ -166,7 +166,7 @@ export function desk(g: G, o: DeskOpts) {
   if (o.cue !== undefined) {
     const a = meterAngle(o.cue);
     line(g, x + Math.cos(a) * (r - 13), y + Math.sin(a) * (r - 13), x + Math.cos(a) * (r + 1), y + Math.sin(a) * (r + 1), '#d99a00', 3.5);
-    text(g, `CUE ${o.cue} kV`, x, 110, PAL.yellow, 9);
+    text(g, `CUE ${o.cue} kV`, x, 111, PAL.yellow, 11);
   }
   const na = meterAngle(o.needle);
   line(g, x, y, x + Math.cos(na) * (r - 7), y + Math.sin(na) * (r - 7), '#c0201a', 2);
@@ -176,11 +176,14 @@ export function desk(g: G, o: DeskOpts) {
   dot(g, 26, 128, 6.5, '#c9ceea');
   const ka = (-135 + (270 * Math.min(METER.max, o.needle)) / METER.max) * (Math.PI / 180) - Math.PI / 2;
   line(g, 26, 128, 26 + Math.cos(ka) * 7, 128 + Math.sin(ka) * 7, INK, 2);
-  text(g, 'HV', 26, 145, PAL.dim, 7);
+  text(g, 'HV', 26, 147, PAL.dim, 11);
   dot(g, 118, 118, 3, o.closed > 0.5 ? PAL.green : PAL.red);
   // the LCD: the only helper
   box(g, LCD.x, LCD.y, LCD.w, LCD.h, '#04120a', '#3a6a4a');
-  text(g, o.lcd, LCD.x + LCD.w / 2, LCD.y + 12.5, o.lcdColor, o.lcd.length > 17 ? 8 : 10);
+  // two lines at 11 px: a reading such as "C 8.85 nF · Q 17.7 µC" is split at the dot
+  const lines = o.lcd.split(' · ');
+  if (lines.length === 1) text(g, lines[0], LCD.x + LCD.w / 2, LCD.y + LCD.h / 2 + 4, o.lcdColor, 11);
+  else lines.forEach((s, i) => text(g, s, LCD.x + LCD.w / 2, LCD.y + 13 + i * 14, o.lcdColor, 11));
   // the knife switch: a blade on a hinge, swung open to the left
   const s = SWITCH;
   box(g, s.x - 9, s.y + 2, 18, 5, '#555c7d');
@@ -192,7 +195,7 @@ export function desk(g: G, o: DeskOpts) {
   dot(g, 0, -s.len, 4.5, '#7a4a22');
   g.restore();
   dot(g, s.x, s.y, 3.5, '#b87333');
-  text(g, o.closed > 0.5 ? 'ON' : 'OFF', s.x, s.y + 17, PAL.dim, 7);
+  text(g, o.closed > 0.5 ? 'ON' : 'OFF', s.x, s.y + 17, PAL.dim, 11);
   // the red discharge lever
   rr(g, LEVER.x - 12, LEVER.y - 2, 24, 8, 3);
   g.fillStyle = '#161a2e';
@@ -203,7 +206,7 @@ export function desk(g: G, o: DeskOpts) {
   line(g, LEVER.x, LEVER.y, tx, ty, '#9aa0bd', 4);
   glow(g, PAL.red, 6, () => dot(g, tx, ty, 5.5, '#e0282d'));
   dot(g, LEVER.x, LEVER.y, 3, '#555c7d');
-  text(g, 'DISCHARGE', LEVER.x, LEVER.y + 15, PAL.dim, 6);
+  text(g, 'LEVER', 14, LEVER.y + 15, PAL.dim, 11, 'left');
 }
 
 /** Where the lever's grip is for an angle (Zara's hand goes there). */
@@ -224,6 +227,8 @@ export interface RigOpts {
   crank: boolean;
   /** Level 4: a drag tab on the bottom plate's right edge. */
   areaTab: boolean;
+  /** Write the gap beside the jack (default true). The scene turns it off while the player's grip writes the same readout. */
+  label?: boolean;
 }
 
 export const crankX = RIG.cx + RIG.w / 2 + 14;
@@ -269,7 +274,7 @@ export function rig(g: G, o: RigOpts) {
       const a = o.d * 0.9 + (i * Math.PI) / 3;
       line(g, xr + Math.cos(a) * 8, ty + 3 + Math.sin(a) * 8, xr - Math.cos(a) * 8, ty + 3 - Math.sin(a) * 8, PAL.yellow, 1.5);
     }
-    text(g, `${o.d} mm`, xr + 14, ty + 7, PAL.yellow, 11, 'left');
+    if (o.label !== false) text(g, `${o.d} mm`, xr + 24, ty + 7, PAL.yellow, 11, 'left');
   }
   if (o.areaTab) {
     const ex = x0 + o.w;
@@ -291,7 +296,7 @@ export function slab(g: G, d: number, w: number, left: number, label?: string) {
   g.lineWidth = 1.5;
   g.strokeRect(left, ty, w, RIG.bottom - RIG.plate - ty);
   g.restore();
-  if (label) text(g, label, left + Math.min(w, 430 - left) / 2, topY(d) - 9, PAL.yellow, 10);
+  if (label) text(g, label, left + Math.min(w, 430 - left) / 2, topY(d) - 9, PAL.yellow, 11);
 }
 
 /** Level 3: the panel rack, six slots; the chosen slot is lit. */
@@ -304,7 +309,7 @@ export function rack(g: G, chosen: number) {
     g.strokeStyle = on ? PAL.yellow : '#4a5078';
     g.lineWidth = on ? 2.5 : 1;
     g.strokeRect(RACK.x0 + i * RACK.w + 2, RACK.y, RACK.w - 4, RACK.h);
-    text(g, i === 0 ? 'air' : `K=${i + 1}`, slotX(i + 1), RACK.y + 15, on ? PAL.yellow : PAL.dim, 9);
+    text(g, i === 0 ? 'air' : `K=${i + 1}`, slotX(i + 1), RACK.y + 16, on ? PAL.yellow : PAL.dim, 11);
   }
 }
 
@@ -421,13 +426,13 @@ export function core(g: G, t: number, c: CoreOpts) {
   dot(g, x + CORE.w + 6, ny, 2, PAL.yellow);
   if (c.notch) {
     line(g, x - 4, ny, TITAN.x - 36, ny, 'rgba(255,210,63,0.5)', 1, [3, 3]);
-    text(g, c.notch, TITAN.x - 38, ny + 3, PAL.yellow, 9, 'right');
+    text(g, c.notch, TITAN.x - 38, ny + 4, PAL.yellow, 11, 'right');
   }
   if (c.shell) {
     g.fillStyle = '#10142e';
-    rr(g, TITAN.x - 31, 251, 62, 11, 3);
+    rr(g, TITAN.x - 40, 250, 80, 15, 3);
     g.fill();
-    text(g, c.shell, TITAN.x, 259.5, PAL.orange, 8);
+    text(g, c.shell, TITAN.x, 261.5, PAL.orange, 11);
   }
 }
 
@@ -642,7 +647,7 @@ export function camera(g: G, t: number, active: boolean, iris: number) {
     dot(g, mx, y - 44, 2, '#555c7d');
   }
   dot(g, x - 16, y - 32, 3, active && t % 1 < 0.5 ? PAL.red : '#4a2030');
-  text(g, 'REC', x - 16, y - 24, PAL.dim, 6);
+  text(g, 'REC', x - 16, y - 17, PAL.dim, 11);
   dot(g, x + 4, y - 22, 6.5, '#161a2e');
   g.strokeStyle = PAL.cyan;
   g.lineWidth = 1.2;
@@ -763,7 +768,7 @@ export function zara(g: G, t: number, o: ZaraOpts) {
   g.fillStyle = '#15151c';
   rr(g, x - 12, y - 57 + bob, 24, 29, 3);
   g.fill();
-  text(g, 'SFX', x, y - 41 + bob, PAL.yellow, 8);
+  text(g, 'SFX', x, y - 39 + bob, PAL.yellow, 11);
   box(g, x - 12, y - 30, 24, 4, '#7a5430');
   dot(g, x - 8, y - 25, 3.4, '#e8d9a8');
   dot(g, x - 8, y - 25, 1.4, '#7a5430');
@@ -954,6 +959,5 @@ export function director(g: G, t: number, state: DirectorState, u: number) {
   // the seat and its front, with the name
   box(g, 574, 294, 44, 5, '#3c5a8a', '#22304a');
   box(g, 576, 299, 40, 9, '#2f4a74');
-  text(g, 'DIRECTOR', 596, 306.5, PAL.white, 6.5);
   if (duck) chairBack();
 }

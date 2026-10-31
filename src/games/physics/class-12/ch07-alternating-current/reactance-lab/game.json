@@ -1,8 +1,8 @@
 {
   "$schema": "../../../../../../schema/game.schema.json",
   "id": "reactance-lab",
-  "title": "The Reactance Lab",
-  "summary": "Find the reactance and current of an inductor or capacitor, and see why they absorb no net power.",
+  "title": "Lights of the High Pass",
+  "summary": "Guide trekkers through a blizzard by setting a lodge turbine’s frequency so a choke and a capacitor give its lamps the right current.",
   "subject": "physics",
   "classLevel": 12,
   "chapter": {
@@ -14,63 +14,65 @@
   "concepts": [
     "Inductive reactance X_L = ωL",
     "Capacitive reactance X_C = 1/ωC",
-    "Frequency dependence",
-    "Phase of the current",
-    "No average power"
+    "Frequency dependence of reactance",
+    "Current lags in L and leads in C by 90°",
+    "No average power in a pure L or C",
+    "Peak current √2 I"
   ],
-  "learningOutcome": "The student can find the reactance and rms current of an inductor or capacitor, predict what a change of frequency does, and explain why they absorb no net power with the current 90° out of phase.",
+  "learningOutcome": "The student can find the frequency at which a choke or a capacitor passes a set current, predict what a change of frequency does to each, and use their quarter-cycle phase and zero average power.",
   "mechanic": "tune-to-target",
   "estimatedMinutes": 25,
   "levels": [
     {
-      "title": "The inductor",
+      "title": "The trail choke",
       "tier": "concept",
       "kind": "foundation",
-      "adds": "Baseline: X_L = ωL and I = V/X_L (Ex 7.3, Example 7.2).",
+      "adds": "Baseline: a choke’s reactance X_L = 2πfL sets the lamps’ current, I = V/X_L, and grows with frequency (Ex 7.3, Example 7.2).",
       "hints": [
-        "ω = 2πf, with f in hertz.",
-        "X_L = ωL with L in henry (mH × 10⁻³).",
-        "I_rms = V_rms/X_L."
+        "X_L = V/I: first find the reactance the lamps need.",
+        "Then f = X_L/(2πL), with L in henry (mH × 10⁻³).",
+        "A faster turbine means a bigger X_L and less current."
       ]
     },
     {
-      "title": "The capacitor",
+      "title": "The porch capacitor",
       "tier": "concept",
       "kind": "concept",
-      "adds": "New idea: X_C = 1/ωC, which falls as the frequency rises (Ex 7.4, Example 7.4).",
+      "adds": "New idea: a capacitor’s reactance X_C = 1/(2πfC) falls as the frequency rises, so a faster turbine passes more current (Ex 7.4, Example 7.4).",
       "hints": [
-        "X_C = 1/(2πfC) with C in farad (µF × 10⁻⁶).",
-        "I_rms = V_rms/X_C.",
-        "The capacitor opposes the current less at higher frequency."
+        "X_C = V/I for the current the beacon needs.",
+        "Then f = 1/(2πC X_C), with C in farad (µF × 10⁻⁶).",
+        "A faster turbine means a smaller X_C and more current: the opposite of a choke."
       ]
     },
     {
-      "title": "Change the frequency",
+      "title": "Both lamps",
       "tier": "application",
       "kind": "concept",
-      "adds": "Apply it: an inductor’s reactance rises with frequency and a capacitor’s falls, changing the lamp’s brightness (Examples 7.3, 7.5).",
+      "adds": "Apply it: a choke and a capacitor on one supply react oppositely to frequency, so only one frequency suits both lamps (Examples 7.3, 7.5).",
       "hints": [
-        "X_L is proportional to f. X_C is proportional to 1/f.",
-        "A smaller reactance means a larger current.",
-        "A larger current makes the lamp glow brighter."
+        "The trail lamps set a highest frequency: f ≤ V/(2πL I_trail).",
+        "The beacon sets a lowest frequency: f ≥ I_beacon/(2πCV).",
+        "Pick the whole number between the two."
       ]
     },
     {
-      "title": "No net power",
+      "title": "Steady light",
       "tier": "application",
       "kind": "concept",
-      "adds": "New idea: the current lags the voltage in an inductor and leads it in a capacitor, and the average power is zero (Ex 7.5).",
+      "adds": "New idea: L and C pass current a quarter cycle out of step with the voltage and take no average power; X = R makes the currents equal (Ex 7.5).",
       "hints": [
-        "The phase difference is 90°, so cos φ = 0.",
-        "Inductor: the current lags. Capacitor: the current leads.",
-        "The energy stored in a quarter cycle is returned in the next."
+        "Equal currents need the reactance to equal the dropper’s resistance.",
+        "For a choke f = R/(2πL); for a capacitor f = 1/(2πRC).",
+        "A quarter cycle apart, one lamp peaks just as the other goes dark."
       ]
     }
   ],
   "misconceptions": [
     "A capacitor blocks the current more at high frequency",
     "An inductor absorbs power from an AC source",
-    "The current in an inductor leads the voltage"
+    "The current in an inductor leads the voltage",
+    "Reactance does not depend on the frequency"
   ],
   "author": {
     "name": "Concept Arcade maintainers",

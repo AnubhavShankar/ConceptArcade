@@ -238,7 +238,7 @@ export function intel(r: Round): string {
     default: return `The stage runs ${e1}, with B = ${matText(B)}. Kiko’s card: C = ${matText(r.card)}.`;
   }
 }
-export const hintText = (r: Round) => `${intel(r)} ${r.assist === 0 ? 'Round 1: the pillars follow the faders live.' : r.assist === 1 ? 'The pillars stay down until showtime: a test lift costs a charge.' : 'Boss round: no preview, no test lift.'}`;
+export const hintText = (r: Round) => `${intel(r)} ${r.assist === 0 ? 'Round 1: the pillars follow the faders live.' : r.assist === 1 ? 'The pillars stay down until showtime: a test lift costs a charge and raises them with the card for 1.5 s.' : 'Boss round: no preview, no test lift.'}`;
 
 const WHO = { kiko: 'Kiko', jax: 'Jax' };
 /** After a miss: which pillar failed and in which direction, never by how much. */
@@ -247,9 +247,10 @@ export function missText(r: Round, v: Values): string {
   if (!f) return 'Every pillar matched the card.';
   const who = WHO[f.runner];
   const where = `(${f.i + 1}, ${f.j + 1})`;
+  // The direction to change, in plain words: the pillar must end up lower or higher (never by how much, and never which fader value to use).
   const base = f.kind === 'high'
-    ? `${who}’s pillar for entry ${where} stood too high: ${who} slammed into its side and dropped into the pit.`
-    : `${who}’s pillar for entry ${where} stood too low: ${who} landed on thin air and fell into the gap.`;
+    ? `${who}’s pillar for entry ${where} stood too high: ${who} slammed into its side and dropped into the pit. Change your settings so that pillar stands lower.`
+    : `${who}’s pillar for entry ${where} stood too low: ${who} landed on thin air and fell into the gap. Change your settings so that pillar stands higher.`;
   return base + (swappedIndices(r, v) ? ' Check the rule: i counts rows and j counts columns.' : '');
 }
 

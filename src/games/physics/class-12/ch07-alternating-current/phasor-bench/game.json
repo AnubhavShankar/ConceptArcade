@@ -1,8 +1,8 @@
 {
   "$schema": "../../../../../../schema/game.schema.json",
   "id": "phasor-bench",
-  "title": "The Phasor Bench",
-  "summary": "Convert rms and peak values, find bulb resistance and AC power in a resistor, and read a phasor.",
+  "title": "Chai Before the Whistle",
+  "summary": "Run a railway chai stall on AC: size the kettle coil, read a scope’s peak, time the brew and sync a camera to the phasor.",
   "subject": "physics",
   "classLevel": 12,
   "chapter": {
@@ -12,63 +12,66 @@
   "ncertRef": "Section 7.2, AC voltage applied to a resistor",
   "order": 1,
   "concepts": [
-    "rms and peak values",
-    "Rated power and resistance",
-    "Average power in a resistor",
-    "Phasors and phase"
+    "Ratings are rms values",
+    "Resistance of a rated element, R = V²/P",
+    "Peak and rms, v_m = √2 V",
+    "Average power V_rms I_rms, never negative",
+    "Phasors, v = v_m sin ωt",
+    "Current in phase with voltage in a resistor"
   ],
-  "learningOutcome": "The student can convert between rms and peak values, find the resistance and currents of a rated bulb, find the average and peak power in a resistor, and read an instantaneous value from a phasor.",
+  "learningOutcome": "The student can size a rated AC element with R = V²/P, convert between peak and rms values, find the energy from the average power, and read v and i in phase from a phasor.",
   "mechanic": "tune-to-target",
   "estimatedMinutes": 20,
   "levels": [
     {
-      "title": "A rated bulb",
+      "title": "Wind the coil",
       "tier": "concept",
       "kind": "foundation",
-      "adds": "Baseline: ratings are rms values, P = V²/R, and the peak is √2 times the rms (Example 7.1).",
+      "adds": "Baseline: a rating is an rms value, so the coil needs R = V²/P; less resistance draws more than the rated current (Example 7.1).",
       "hints": [
-        "The stated voltage is the rms value.",
-        "R = V²/P and I = P/V.",
-        "The peak voltage is √2 times the rms voltage."
+        "P = V²/R, so R = V²/P with V the rated rms voltage.",
+        "Less resistance means more current: the fuse allows only I = P/V.",
+        "More resistance means less power, and the train will not wait."
       ]
     },
     {
-      "title": "rms and peak",
+      "title": "Read the scope",
       "tier": "concept",
       "kind": "concept",
-      "adds": "New idea: V_rms = v_m/√2 and i_m = √2 I_rms (Ex 7.2).",
+      "adds": "New idea: a scope shows the peak value, and ratings use the rms value V = v_m/√2 (Ex 7.2).",
       "hints": [
-        "The rms value is the peak divided by √2.",
-        "The peak is the rms value times √2.",
-        "Check which one of the two you are given."
+        "The scope shows the top of the wave, the peak v_m.",
+        "V_rms = v_m/√2, about 0.707 v_m.",
+        "A selector set too low over-powers the coil; too high under-powers it."
       ]
     },
     {
-      "title": "Power over a cycle",
+      "title": "Brew on time",
       "tier": "application",
       "kind": "concept",
-      "adds": "New idea: power in a resistor never goes negative; the average is half the peak (Ex 7.1).",
+      "adds": "New idea: power in a resistor never goes negative and averages V²/R, half its peak, so the heat is (V²/R)·t (Ex 7.1).",
       "hints": [
-        "I_rms = V_rms/R.",
-        "The average power is V_rms I_rms.",
-        "The largest power at any instant is twice the average."
+        "The average power is V_rms I_rms = V²/R.",
+        "Heat = average power × time, so t = E/P.",
+        "Using the peak power, twice the average, gives half the time and cold chai."
       ]
     },
     {
-      "title": "Read the phasor",
+      "title": "Sync to the phasor",
       "tier": "application",
       "kind": "concept",
-      "adds": "Apply it: v = v_m sin ωt, and a resistor’s current is in phase with the voltage (Section 7.3).",
+      "adds": "Apply it: v = v_m sin ωt and, in a resistor, i = i_m sin ωt in phase, with v_m = √2 V and i_m = √2 I (Section 7.3).",
       "hints": [
-        "v_m is √2 times the rms voltage.",
-        "v = v_m sin ωt at the given angle.",
-        "In a resistor, v and i rise and fall together."
+        "Find the peak first: √2 times the rms value.",
+        "sin ωt = value ÷ peak, on the rising part of the wave.",
+        "In a resistor the current rises with the voltage, at the same angle."
       ]
     }
   ],
   "misconceptions": [
     "The stated 220 V of the mains is the peak voltage",
     "The average power in a resistor is zero over a cycle",
+    "The average power equals the peak power",
     "The current in a resistor lags the voltage"
   ],
   "author": {

@@ -75,11 +75,8 @@ const FIRE = ['Take the photo at this distance', 'Crack the lock with these sett
 const TEST = ['Test shot: measure the picture at this distance', 'Test shot: measure the picture with these settings'];
 const setRight = (g: Game, k: number) => {
   if (g.kind === 'mag') {
-    // the winning dial value nearest the exact spot (the window is a step or two wide, and the sharpness edge sits a hair inside it)
-    const r = g.rounds[k];
-    let best = 1;
-    for (let u = 1; u <= r.f - 0.1; u = r1(u + 0.1)) if (judgeMag(r, u).ok && (!judgeMag(r, best).ok || Math.abs(u - r.uSol) < Math.abs(best - r.uSol))) best = u;
-    setSlider(best);
+    // the exact answer rounded to the dial: the one winning value
+    setSlider(r1(g.rounds[k].uSol));
   } else {
     setSlider(r1(g.rounds[k].uSol), 0);
     setSlider(r1(g.rounds[k].LSol), 1);
@@ -187,6 +184,43 @@ describe('level 1: bug safari', () => {
     advance(1);
     expect(sliders()[0].max).toBe(String(Math.round((g.rounds[1].f - 0.1) * 10) / 10));
     expect($('.note')?.textContent).toMatch(/for a moment after a test shot/);
+  });
+  it('the exact answer rounded to the dial wins every round of every lens, over many seeds (f = 10 wins at 7.1, not at 7.2)', () => {
+    const seen = new Set<number>();
+    for (let seed = 1; seed <= 24; seed++) {
+      const g = start(1, seed) as Extract<Game, { kind: 'mag' }>;
+      for (let k = 0; k < 3; k++) {
+        const r = g.rounds[k];
+        seen.add(r.f);
+        expect(judgeMag(r, r1(r.uSol)).ok).toBe(true);
+        if (r.f === 10) {
+          expect(r1(r.uSol)).toBe(7.1);
+          setSlider(7.2);
+          click(FIRE[0]);
+          advance(2.8);
+          expect(hearts()).toBe(2);
+          expect(feedback()).toMatch(/Sharp, but Mite could look bigger/);
+          start(1, seed);
+          for (let j = 0; j < k; j++) solveRound(1, g, j), advance(1);
+        }
+        solveRound(1, g, k);
+        expect(phase()).not.toBe('play');
+        expect(hearts()).toBe(3);
+        advance(1);
+      }
+    }
+    expect(seen.size).toBeGreaterThanOrEqual(6);
+  });
+  it('the goal is on the canvas at the start of each round, the own setting is printed with its unit, and the goal is gone after 4 s', () => {
+    const rc = canvasRecorder();
+    const g = start(1, 5) as Extract<Game, { kind: 'mag' }>;
+    const goal = (t: string[]) => t.filter((s) => /^Goal: /.test(s));
+    expect(goal(frameAfter(rc, 0.1))).toHaveLength(1);
+    expect(frameAfter(rc, 0.1).some((s) => /^[\d.]+ cm$/.test(s))).toBe(true);
+    expect(goal(frameAfter(rc, 4))).toHaveLength(0);
+    solveRound(1, g, 0);
+    advance(1);
+    expect(goal(frameAfter(rc, 0.3))).toHaveLength(1);
   });
   it('dragging Mite along the bench sets his distance in 0.1 cm steps', () => {
     const g = start(1, 5) as Extract<Game, { kind: 'mag' }>;
@@ -305,7 +339,8 @@ describe('no leaks: the helper fades, and a miss shows no number or true picture
         setSlider(u);
         click(FIRE[0]);
         advance(2.0);
-        ends.push(frameAfter(rc, 0.05));
+        // apart from the player's own setting, which is printed beside the handle
+        ends.push(frameAfter(rc, 0.05).filter((s) => !/^[\d.]+ cm$/.test(s)));
         advance(1);
         says.push(feedback());
       }

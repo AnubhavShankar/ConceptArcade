@@ -1,8 +1,8 @@
 {
   "$schema": "../../../../../../schema/game.schema.json",
   "id": "force-lab",
-  "title": "The Force Lab",
-  "summary": "Steer charges and wires in magnetic fields: force direction, force on a wire, circles and helices.",
+  "title": "Beam Hall",
+  "summary": "Steer proton and electron beams in a hospital beam hall: kick them into rooms, float a test rod, tune a cyclotron and focus a gun.",
   "subject": "physics",
   "classLevel": 12,
   "chapter": {
@@ -12,69 +12,70 @@
   "ncertRef": "Section 4.2, Magnetic force",
   "order": 1,
   "concepts": [
-    "Lorentz force F = qv × B",
-    "Force on a current-carrying wire",
-    "Circular motion in a magnetic field",
-    "Frequency independent of speed",
-    "Helical motion"
+    "Lorentz force F = qv × B, reversed for negative charges",
+    "Force on a wire F = BIl sin θ, balancing its weight",
+    "Circular motion in a field, r = mv/qB",
+    "Lap frequency f = qB/2πm, independent of speed",
+    "Helical motion: width from v sin θ, pitch from v cos θ",
+    "The magnetic force bends a path but does no work"
   ],
-  "learningOutcome": "The student can find the direction and size of the force on a moving charge or a wire in a magnetic field, and the radius, frequency and pitch of the path of a charge in a uniform field.",
+  "learningOutcome": "The student can find the direction and size of the magnetic force on a charge or a wire, and use r = mv/qB, f = qB/2πm and the pitch of a helix to steer real beams.",
   "mechanic": "tune-to-target",
   "estimatedMinutes": 30,
   "levels": [
     {
-      "title": "Which way is the push?",
+      "title": "Kick to the room",
       "tier": "concept",
       "kind": "foundation",
-      "adds": "Baseline: the force F = qv × B is perpendicular to v and B and reverses for a negative charge (Example 4.2).",
+      "adds": "Baseline: F = qv × B is at right angles to v and B, has size qvB, and reverses for an electron (Example 4.2).",
       "hints": [
-        "The force is perpendicular to both the velocity and the field.",
-        "Use the right-hand rule for a positive charge: fingers along v, curl towards B, thumb along F.",
-        "For an electron, reverse the direction. With v perpendicular to B, F = qvB."
+        "The push is at right angles to both the velocity and the field.",
+        "Right-hand rule for a + charge: fingers along v, bend them towards B, and the thumb gives F. Reverse it for an electron.",
+        "Size: F = qvB, so B = F/qv with q = 1.6 × 10⁻¹⁹ C."
       ]
     },
     {
-      "title": "Force on a wire",
+      "title": "Float the test rod",
       "tier": "concept",
       "kind": "concept",
-      "adds": "New idea: F = BIl sin θ for a wire, and balancing it against weight (Ex 4.5, 4.6, Example 4.1).",
+      "adds": "New idea: a wire feels F = BIl sin θ; make it equal to the weight mg and the rod floats (Ex 4.5, 4.6, Example 4.1).",
       "hints": [
-        "Only the component of the field across the wire matters: B sin θ.",
-        "Change the length to metres and give the answer in the unit asked for.",
-        "To hold a wire up, the magnetic force BIl must equal mg."
+        "Only the part of the field across the rod counts: B sin θ.",
+        "To float, BIl sin θ = mg. Change grams to kilograms and centimetres to metres.",
+        "The push must point up: use the right-hand rule with the current and the field."
       ]
     },
     {
-      "title": "Round and round",
+      "title": "Tune the cyclotron",
       "tier": "application",
       "kind": "concept",
-      "adds": "New idea: the force supplies the centripetal force, so r = mv/qB and f = qB/2πm (Ex 4.11, 4.12, Example 4.3).",
+      "adds": "New idea: the push bends a proton into a circle, r = mv/qB, and one lap takes 2πm/qB at any speed (Ex 4.11, 4.12, Example 4.3).",
       "hints": [
-        "qvB = mv²/r gives the radius.",
-        "The frequency is qB/2πm: speed does not appear.",
-        "1 G = 10⁻⁴ T. Give r in cm and f in MHz."
+        "qvB = mv²/r gives r = mv/qB, so B = mv/qr.",
+        "The RF must kick once per lap: f = qB/2πm.",
+        "Use m = 1.67 × 10⁻²⁷ kg and q = 1.6 × 10⁻¹⁹ C, and give f in MHz."
       ]
     },
     {
-      "title": "Faster electron",
+      "title": "A new speed",
       "tier": "application",
       "kind": "concept",
-      "adds": "Misconception check: a faster electron circles on a bigger circle in the same time (Ex 4.12).",
+      "adds": "Misconception check: a faster proton circles wider but laps in the same time, so only the port moves (Ex 4.12).",
       "hints": [
-        "The radius is proportional to the speed.",
-        "Look at the formula for the frequency: is the speed in it?",
-        "A bigger circle at a higher speed takes the same time per circuit."
+        "r = mv/qB: the radius grows in proportion to the speed.",
+        "Look at f = qB/2πm: is the speed in it?",
+        "Same magnet, same lap time."
       ]
     },
     {
-      "title": "The helix",
+      "title": "Focus the gun",
       "tier": "application",
       "kind": "complexity",
-      "adds": "More steps: split the velocity along and across the field; r from the cross part, pitch from the along part.",
+      "adds": "More steps: split v along and across B; the width uses v sin θ and the pitch is v cos θ × 2πm/qB (Section 4.3).",
       "hints": [
-        "The component across the field is v sin θ and sets the radius.",
-        "The component along the field is v cos θ and carries the electron forward.",
-        "Pitch = v cos θ × the period T = 2πm/qB."
+        "Across the field: the circle’s width, 2mv sin θ/qB, must fit inside the tube.",
+        "Along the field: one turn takes T = 2πm/qB, so the pitch is v cos θ × T.",
+        "Set the pitch equal to the screen distance and solve for B. 1 G = 10⁻⁴ T."
       ]
     }
   ],
@@ -82,7 +83,8 @@
     "The magnetic force acts along the direction of the velocity",
     "A faster charge takes less time to go round its circle",
     "A magnetic field speeds the particle up",
-    "An electron and a proton are pushed the same way"
+    "An electron and a proton are pushed the same way",
+    "A wire lying along the field feels the biggest force"
   ],
   "author": {
     "name": "Concept Arcade maintainers",

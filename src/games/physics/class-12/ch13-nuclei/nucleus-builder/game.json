@@ -28,7 +28,7 @@
   "estimatedMinutes": 25,
   "levels": [
     {
-      "title": "Katamari’s radius",
+      "title": "Clump’s radius",
       "tier": "concept",
       "kind": "foundation",
       "adds": "Baseline: R = R₀A^⅓ with R₀ = 1.2 fm, so the volume is proportional to A and the density is the same for every nucleus (Ex 13.4, 13.10; Example 13.1).",

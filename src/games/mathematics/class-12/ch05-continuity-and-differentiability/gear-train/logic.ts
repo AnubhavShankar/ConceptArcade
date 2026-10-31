@@ -136,7 +136,9 @@ export const rateText = (r: Round, x: number) => `${fmt(x)}${unitSuffix(r)} per 
 
 /** After a miss: what the machine did at that crank speed, never the speed that works. */
 export function missText(r: Round, w: number): string {
-  return `The machine ran, but the output gear turned ${output(r, w) < r.target ? 'too slowly to catch the dispatch window' : 'so fast that the dispatch window had already closed'}.`;
+  return output(r, w) < r.target
+    ? 'The machine ran, but the output gear turned too slowly to catch the dispatch window. Turn the crank faster.'
+    : 'The machine ran, but the output gear turned so fast that the dispatch window had already closed. Turn the crank slower.';
 }
 
 /** Where the output gear's speed ends during a shot, as a multiple of the target speed. A miss shows only the side, never how far: the same fixed value for any wrong setting. */

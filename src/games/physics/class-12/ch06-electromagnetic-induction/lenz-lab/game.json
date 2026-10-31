@@ -1,8 +1,8 @@
 {
   "$schema": "../../../../../../schema/game.schema.json",
   "id": "lenz-lab",
-  "title": "The Lenz Lab",
-  "summary": "Use Lenz’s law to find the direction of induced currents and the work done against them.",
+  "title": "Night Shift at Magnet Park",
+  "summary": "Run a theme park’s night rides: flip a magnet to launch or pull down a ring ride, cue a light show, and size a coaster’s magnetic brake.",
   "subject": "physics",
   "classLevel": 12,
   "chapter": {
@@ -14,51 +14,55 @@
   "concepts": [
     "Lenz’s law",
     "Direction of induced current",
+    "A coil repels an approaching pole, attracts a receding one",
     "No change of flux, no emf",
+    "An open loop gets an emf but no current",
     "Work done against the induced current"
   ],
-  "learningOutcome": "The student can use Lenz’s law to find the direction of an induced current, spot cases with no induced emf, and link the induced force to conservation of energy.",
+  "learningOutcome": "The student can use Lenz’s law to find the direction of an induced current and the push or pull it makes, spot when no current flows, and explain a magnetic brake’s heat as work done.",
   "mechanic": "tune-to-target",
   "estimatedMinutes": 25,
   "levels": [
     {
-      "title": "Magnet and coil",
+      "title": "Ring Rocket",
       "tier": "concept",
       "kind": "foundation",
       "adds": "Baseline: the induced current opposes the change in flux, so a coil repels an approaching magnet and attracts a receding one (Section 6.5).",
       "hints": [
-        "An approaching pole increases the flux through the coil, so the coil makes the same pole face it.",
-        "Use the right-hand rule to turn that pole into a direction of current.",
-        "The coil always opposes the motion, to conserve energy."
+        "A pole moving toward the ring raises its flux, so the ring makes the same pole face it and repels it; a pole moving away is attracted.",
+        "Field lines leave N and enter S. Seen from above, anticlockwise current makes a field pointing up.",
+        "A magnet held still, or a ring with a gap, gives no current at all."
       ]
     },
     {
-      "title": "Loop in a field",
+      "title": "The Light Tunnel",
       "tier": "concept",
       "kind": "concept",
       "adds": "New idea: decide if the flux increases, decreases or stays the same, then oppose it (Ex 6.1, 6.2, Examples 6.4, 6.5).",
       "hints": [
-        "Moving out of a field, squeezing, or a fading field all decrease the flux.",
-        "The induced current makes a field in the same direction as the original to prop it up, or opposite to oppose an increase.",
-        "If the flux does not change, there is no current at all."
+        "Driving in, springing open or switching the field on raises the flux; driving out, squeezing flat or fading lowers it.",
+        "The induced field points against a rise and along a fall.",
+        "As you look at the page, anticlockwise current makes a field out of the page (⊙), clockwise into it (⊗)."
       ]
     },
     {
-      "title": "Pulling a rod",
+      "title": "The Brake Run",
       "tier": "application",
       "kind": "complexity",
       "adds": "More steps: the induced current feels a force opposing the motion, and the work done becomes heat (Section 6.5).",
       "hints": [
         "The motional emf is Blv, and I = emf/R.",
-        "The force on the rod is BIl, opposing the motion.",
-        "The power supplied is F v, which equals I²R."
+        "The force on the bar is BIl, against the motion; at a steady speed it equals the pull down the slope.",
+        "So B²l²v/R equals the pull: solve for R in ohms, then turn it into milliohms. The power Fv equals I²R."
       ]
     }
   ],
   "misconceptions": [
     "The induced current helps the change in flux",
     "A strong magnetic field alone induces a current in a loop",
-    "A coil attracts an approaching magnet"
+    "A coil attracts an approaching magnet",
+    "A loop with a gap carries an induced current",
+    "A magnetic brake’s heat does not come from the motion"
   ],
   "author": {
     "name": "Concept Arcade maintainers",

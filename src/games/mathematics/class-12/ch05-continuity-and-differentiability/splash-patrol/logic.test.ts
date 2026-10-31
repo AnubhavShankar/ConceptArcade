@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { RESOLVE } from '@core/arcade';
 import { createRng } from '@core/random';
 import {
-  POOLS, RUN, buildRounds, complete, explain, facts, firstFault, flagText, hintLine, intel, jointAria, jointTime, judge, missText, nextFlag, verdictTime, want, winText, zoomText, zoomWindow,
-  type Fault, type Flag, type Level, type Round, type Row,
+  POOLS, RUN, buildRounds, complete, explain, facts, faultText, firstFault, flagText, hintLine, intel, jointAria, jointTime, judge, missText, nextFlag, verdictTime, want, winText, zoomText, zoomWindow,
+  type Flag, type Level, type Round, type Row,
 } from './logic';
 
 const LEVELS: Level[] = [1, 2, 3, 4];
@@ -126,27 +126,16 @@ describe('what goes wrong at a wrong flag', () => {
     a[i] = f;
     return firstFault(r, a);
   };
-  it('a gap left fine, or only smoothed, leaks', () => {
+  it('every wrong flag at a joint gives the same fault: only the position, never the kind of fault or what the joint needed', () => {
     for (const { level, row } of allRows()) {
       const r = asRound(row, level);
       row.joints.forEach((j, i) => {
-        if (j.kind !== 'gap') return;
-        for (const f of flagSet(level).filter((x) => x !== 'gap')) expect(faultOf(r, i, f)).toEqual({ joint: i, what: 'leak' });
-      });
-    }
-  });
-  it('a kink left fine bends (levels 2 to 4), a kink flagged gap is a wrong repair, and a fine joint flagged kink or gap is a needless repair', () => {
-    for (const { level, row } of allRows()) {
-      const r = asRound(row, level);
-      row.joints.forEach((j, i) => {
-        if (want(level, j) === 'kink') {
-          expect(faultOf(r, i, 'fine')).toEqual({ joint: i, what: 'kink' });
-          expect(faultOf(r, i, 'gap')).toEqual({ joint: i, what: 'wrongfix' });
+        for (const f of flagSet(level).filter((x) => x !== want(level, j))) {
+          const fault = faultOf(r, i, f);
+          expect(fault).toEqual({ joint: i });
+          expect(Object.keys(fault!)).toEqual(['joint']);
         }
-        if (want(level, j) === 'fine') {
-          expect(faultOf(r, i, 'gap')).toEqual({ joint: i, what: 'needless' });
-          if (level > 1) expect(faultOf(r, i, 'kink')).toEqual({ joint: i, what: 'needless' });
-        }
+        expect(faultOf(r, i, want(level, j))).toBeNull();
       });
     }
   });
@@ -160,8 +149,8 @@ describe('what goes wrong at a wrong flag', () => {
     const r = asRound(POOLS[3][0][0], 3);   // [x]: gap, gap, smooth, gap
     expect(firstFault(r, ['fine', 'fine', 'gap', 'fine'])?.joint).toBe(0);
     expect(firstFault(r, ['gap', 'fine', 'gap', 'fine'])?.joint).toBe(1);
-    expect(firstFault(r, ['gap', 'gap', 'gap', 'fine'])).toEqual({ joint: 2, what: 'needless' });
-    expect(firstFault(r, ['gap', 'gap', 'fine', 'fine'])).toEqual({ joint: 3, what: 'leak' });
+    expect(firstFault(r, ['gap', 'gap', 'gap', 'fine'])).toEqual({ joint: 2 });
+    expect(firstFault(r, ['gap', 'gap', 'fine', 'fine'])).toEqual({ joint: 3 });
   });
 });
 
@@ -171,9 +160,7 @@ describe('timing', () => {
       const r = asRound(row, level);
       expect(verdictTime(r, null)).toBeCloseTo(0.3 + RUN, 12);
       expect(verdictTime(r, null)).toBeLessThan(RESOLVE);
-      row.joints.forEach((_, i) => {
-        for (const what of ['leak', 'kink', 'needless', 'wrongfix'] as Fault['what'][]) expect(verdictTime(r, { joint: i, what })).toBeLessThan(RESOLVE - 0.5);
-      });
+      row.joints.forEach((_, i) => expect(verdictTime(r, { joint: i })).toBeLessThan(RESOLVE - 0.5));
     }
   });
   it('the joints are reached in order and before the pool', () => {
@@ -185,7 +172,7 @@ describe('timing', () => {
         if (i > 0) expect(jointTime(r, i)).toBeGreaterThan(jointTime(r, i - 1));
       });
     }
-    expect(verdictTime(asRound(POOLS[3][0][0], 3), { joint: 3, what: 'leak' })).toBeCloseTo(0.3 + (RUN * 4) / 5 + 0.25, 12);
+    expect(verdictTime(asRound(POOLS[3][0][0], 3), { joint: 3 })).toBeCloseTo(0.3 + (RUN * 4) / 5 + 0.25, 12);
   });
 });
 
@@ -224,27 +211,44 @@ describe('the rounds of a level', () => {
 
 describe('words', () => {
   const wrongAssignments = (r: Round) => assignments(r.level, r.joints.length).filter((a) => !judge(r, a));
-  it('a miss names the joint where it went wrong, says what happened, and never names another joint', () => {
+  it('a miss names the joint where the first fault is, and never names another joint', () => {
     for (const { level, row } of allRows()) {
       const r = asRound(row, level);
       for (const a of wrongAssignments(r)) {
         const f = firstFault(r, a)!;
         const text = missText(r, a);
         expect(holds(text, r.joints[f.joint].cText), text).toBe(true);
-        expect(text).toMatch(/dropped out|flew over the side|test was stopped/);
+        expect(text).toMatch(/^Sir Quacks stopped at the joint at x = /);
         r.joints.forEach((j, i) => {
           if (i !== f.joint) expect(holds(text, j.cText), `${row.name}: ${text}`).toBe(false);
         });
       }
     }
   });
-  it('the four miss texts are the briefed sentences', () => {
+  it('a miss text never says what kind of fault it is or what the joint needed (one text per joint position)', () => {
+    const KIND = /leak|kink|bent|bend|smooth|gap|patch|weld|repair|needless|joined|fine|slope|fell|dropped|flew|pool/i;
+    for (const { level, row } of allRows()) {
+      const r = asRound(row, level);
+      row.joints.forEach((_, i) => {
+        const texts = new Set<string>();
+        for (const a of wrongAssignments(r).filter((x) => firstFault(r, x)!.joint === i)) texts.add(missText(r, a));
+        expect(texts.size, `${row.name} joint ${i}`).toBe(1);
+        const [text] = [...texts];
+        // the hint inside the text is the same two sentences for the whole level; strip the generic "what to look at" bracket before the word check
+        expect(text.replace(/\(.*?\)/, '')).not.toMatch(KIND);
+        expect(faultText(r, i)).toBe(`⚠ FAULT at x = ${row.joints[i].cText}`);
+        expect(faultText(r, i)).not.toMatch(KIND);
+      });
+    }
+  });
+  it('the miss texts are the one briefed sentence per level group', () => {
     const r = asRound(POOLS[2][1][0], 2);   // x², x, x + 1: kink at 1, gap at 2
-    expect(missText(r, ['fine', 'gap'])).toBe('At x = 1 the tube bent sharply and nobody smoothed it: Sir Quacks slammed into the kink and flew over the side.');
-    expect(missText(r, ['gap', 'gap'])).toBe('At x = 1 the welder came to patch a gap, but the tube was joined there with a sharp bend: the kink stayed and Sir Quacks flew over the side.');
-    expect(missText(r, ['kink', 'fine'])).toBe('At x = 2 the tube was broken and nobody patched it: Sir Quacks dropped out of the slide into the pool.');
-    const q = asRound(POOLS[2][0][0], 2);   // |x − 1|: smooth at 0, kink at 1
-    expect(missText(q, ['kink', 'kink'])).toBe('At x = 0 a repair crew was sent where the slide needed nothing: the whistle blew and the test was stopped.');
+    const tail = 'Work out again what the slide does at that joint (the two sides, the value and the slopes there), and change your flag.';
+    expect(missText(r, ['fine', 'gap'])).toBe(`Sir Quacks stopped at the joint at x = 1: the inspector found a fault there. ${tail}`);
+    expect(missText(r, ['gap', 'gap'])).toBe(missText(r, ['fine', 'gap']));
+    expect(missText(r, ['kink', 'fine'])).toBe(`Sir Quacks stopped at the joint at x = 2: the inspector found a fault there. ${tail}`);
+    const p = asRound(POOLS[1][0][0], 1);
+    expect(missText(p, ['gap', 'gap'])).toBe('Sir Quacks stopped at the joint at x = 0: the inspector found a fault there. Work out again what the slide does at that joint (the left piece, the right piece and the value there), and change your flag.');
   });
   it('a miss text of a solved round is empty', () => {
     const r = asRound(POOLS[2][0][0], 2);

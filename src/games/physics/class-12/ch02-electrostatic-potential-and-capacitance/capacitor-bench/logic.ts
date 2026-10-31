@@ -171,30 +171,30 @@ export function missText(r: Round, x: Values): string {
   if (f === null) return '';
   if (r.kind === 'wake') {
     const v = x.v!;
-    if (f === 'flash') return `At ${v} kV across ${r.gap} mm of air the field reached 3 kV per millimetre: the air broke down and the rig flashed over between its own plates.`;
-    if (f === 'short') return `At ${v} kV the plates held too little charge: TITAN-7’s core only flickered.`;
-    return `At ${v} kV the plates held too much charge: the core overloaded and blew its fuse.`;
+    if (f === 'flash') return `At ${v} kV across ${r.gap} mm of air the field reached 3 kV per millimetre: the air broke down and the rig flashed over between its own plates. Lower the charger voltage.`;
+    if (f === 'short') return `At ${v} kV the plates held too little charge: TITAN-7’s core only flickered. Raise the charger voltage.`;
+    return `At ${v} kV the plates held too much charge: the core overloaded and blew its fuse. Lower the charger voltage.`;
   }
   if (r.kind === 'gap') {
     const d = x.d!;
-    if (f === 'flash') return `With only ${d} mm of air, ${r.v} kV is 3 kV per millimetre or more: the air broke down and the rig flashed over.`;
-    if (f === 'short') return `With a ${d} mm gap the capacitance was too small: the core got too little charge and only flickered.`;
-    return `With a ${d} mm gap the capacitance was too big: the core got too much charge and blew its fuse.`;
+    if (f === 'flash') return `With only ${d} mm of air, ${r.v} kV is 3 kV per millimetre or more: the air broke down and the rig flashed over. Open the gap wider.`;
+    if (f === 'short') return `With a ${d} mm gap the capacitance was too small: the core got too little charge and only flickered. Close the gap a little.`;
+    return `With a ${d} mm gap the capacitance was too big: the core got too much charge and blew its fuse. Open the gap wider.`;
   }
   if (r.kind === 'panel') {
     const k = x.k!;
     const lead = `${x.on ? 'With the charger connected' : 'With the charger unplugged'} ${k === 1 ? 'and no panel' : `and the K = ${k} panel`},`;
-    if (f === 'nospark') return `${lead} the voltage ended too low to jump the striker gap: the spark fizzled out in mid-air.`;
-    if (f === 'punch') return `${lead} the voltage ended too high for the robot’s shell: the spark punched into its chest.`;
-    if (f === 'short') return `${lead} the spark landed, but the core got too little charge and only flickered.`;
-    return `${lead} the spark landed, but the core got too much charge and blew its fuse.`;
+    if (f === 'nospark') return `${lead} the voltage ended too low to jump the striker gap: the spark fizzled out in mid-air. Choose a setting that leaves the voltage higher.`;
+    if (f === 'punch') return `${lead} the voltage ended too high for the robot’s shell: the spark punched into its chest. Choose a setting that leaves the voltage lower.`;
+    if (f === 'short') return `${lead} the spark landed, but the core got too little charge and only flickered. Choose a setting that leaves more charge.`;
+    return `${lead} the spark landed, but the core got too much charge and blew its fuse. Choose a setting that leaves less charge.`;
   }
   const d = x.d!;
   const a = x.a!;
-  if (f === 'early') return `A ${d} mm gap broke down before the charger reached the cue: the flash went off before the camera rolled.`;
-  if (f === 'late') return `A ${d} mm gap held out past the cue: the camera had stopped rolling when the flash came.`;
-  if (f === 'dim') return `On cue, but plates of ${a} m² stored too little energy in the field: the frame came out dark.`;
-  return `On cue, but plates of ${a} m² stored too much energy in the field: the frame washed out white.`;
+  if (f === 'early') return `A ${d} mm gap broke down before the charger reached the cue: the flash went off before the camera rolled. Try a wider gap.`;
+  if (f === 'late') return `A ${d} mm gap held out past the cue: the camera had stopped rolling when the flash came. Try a narrower gap.`;
+  if (f === 'dim') return `On cue, but plates of ${a} m² stored too little energy in the field: the frame came out dark. Try bigger plates.`;
+  return `On cue, but plates of ${a} m² stored too much energy in the field: the frame washed out white. Try smaller plates.`;
 }
 
 /** The meter check (it costs a charge) and the round 1 live readout. */

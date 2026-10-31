@@ -1,9 +1,10 @@
 // Inspirations: Professor Layton (a puzzle with exactly one consistent answer) and The Sims (seating people in rooms by who belongs with whom).
 // Keeper is a robot butler: a relation on the guests says who shares a room, and only an equivalence relation gives a clean seating plan.
 import { PAL } from '@core/arcade';
+import { helperOn, paidFlash } from '@core/aidflash';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
-import { backdrop, face, track, trackHandle, verdict } from '@core/mathkit';
+import { TRACK, backdrop, face, trackHandle, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
 import { DIALS, MOD_GUESTS, buildRounds, explain, intel, judge, missText, properties, roomsFor, spotText, withPair, type Round } from './logic';
 
@@ -14,7 +15,7 @@ const ROOM = ['#4de1ff', '#ff4d8d', '#ffd23f', '#5dff9a', '#ff9b3d', '#b08cff'];
 
 const HEROES = [
   { story: 'A mansion’s seating chart says which pairs of guests share a room. For clean rooms the chart must be reflexive (everyone shares a room with themselves), symmetric (if x shares with y then y shares with x) and transitive (if x shares with y and y with z then x shares with z). One entry has been rubbed out.', objective: 'Write back the one missing entry so the chart is an equivalence relation, in three rounds. The property lamps are live in round 1; a check costs a charge.' },
-  { story: 'The butler’s rule is that two guests share a room when their numbers differ by a multiple of m. That is an equivalence relation, and its classes are the rooms. The plan shows the rooms; find the m that makes them.', objective: 'Dial the modulus m that seats the twelve guests in the planned rooms, in three rounds. The live colours fade; a check costs a charge.' },
+  { story: 'The butler’s rule is that two guests share a room when their numbers differ by a multiple of m. That is an equivalence relation, and its classes are the rooms. The plan shows the rooms; find the m that makes them.', objective: 'Dial the modulus m that seats the twelve guests in the planned rooms, in three rounds. The live colours fade: a check shows them for a moment and costs a charge.' },
   { story: 'A seating plan is a way of splitting the guests into non-empty rooms: a partition. Some guests must share a room, some must not. The Keeper wants to know how many different plans are possible.', objective: 'Count the possible seating plans, in three rounds. Glue guests who must stay together into one, then count.' },
 ];
 
@@ -57,7 +58,29 @@ function guest(g: G, x: number, y: number, label: string, color: string, t: numb
   text(g, label, x, y + 28, PAL.white, 11);
 }
 
-function drawRepair(g: G, r: Round, v: Record<string, number>, rt: number, shot: { ok: boolean; v: Record<string, number> } | null) {
+/** The goal of the round, in one line on the scene. */
+const GOALS = ['Write back the missing entry: pick its row guest and column guest', 'Set m so that the rooms match the plan', 'Count the seating plans and set that number'];
+
+/** The count and modulus dials: a track with its end labels, the knob (a grip with arrows) and the player's own setting beside it. */
+function knob(g: G, lo: number, hi: number, v: number, label: string) {
+  const span = TRACK.x1 - TRACK.x0;
+  line(g, TRACK.x0, TRACK.y, TRACK.x1, TRACK.y, PAL.dim, 3);
+  text(g, String(lo), TRACK.x0, TRACK.y + 14, PAL.dim, 11);
+  text(g, String(hi), TRACK.x1, TRACK.y + 14, PAL.dim, 11);
+  const x = TRACK.x0 + ((v - lo) / (hi - lo)) * span;
+  g.fillStyle = '#2a2350';
+  g.beginPath();
+  g.arc(x, TRACK.y, 17, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = PAL.yellow;
+  g.lineWidth = 2;
+  g.stroke();
+  text(g, '⇔', x, TRACK.y + 5, PAL.yellow, 14);
+  const left = x > 400;
+  text(g, label, x + (left ? -28 : 28), TRACK.y + 4, PAL.yellow, 12, left ? 'right' : 'left');
+}
+
+function drawRepair(g: G, r: Round, v: Record<string, number>, rt: number, shot: { ok: boolean; v: Record<string, number> } | null, helper: boolean) {
   const n = r.n;
   const cell = 32;
   const x0 = 200;
@@ -83,43 +106,40 @@ function drawRepair(g: G, r: Round, v: Record<string, number>, rt: number, shot:
   g.strokeStyle = PAL.yellow;
   g.lineWidth = 2;
   g.strokeRect(x, y, cell, cell);
-  const live = r.assist === 0 || shot;
-  if (live || r.assist === 1) {
-    g.globalAlpha = live ? 1 : 0.3;
+  text(g, `your entry: row ${use.a}, column ${use.b}`, x0 + (n * cell) / 2, y0 + n * cell + 20, PAL.yellow, 12);
+  // The property lamps are the paid check: live in round 1, for a moment after a check in round 2, on a win, and never in round 3. Each lamp is a word as well as a colour.
+  if (helper) {
     const p = properties(withPair(r, use.a, use.b), n);
     [['reflexive', p.reflexive], ['symmetric', p.symmetric], ['transitive', p.transitive]].forEach(([name, ok], i) => {
       g.fillStyle = ok ? PAL.green : PAL.red;
       g.beginPath();
       g.arc(470, 90 + i * 34, 7, 0, Math.PI * 2);
       g.fill();
-      text(g, String(name), 486, 94 + i * 34, PAL.white, 12, 'left');
+      text(g, `${ok ? '✓' : '✗'} ${name}`, 486, 94 + i * 34, PAL.white, 12, 'left');
     });
-    g.globalAlpha = 1;
   } else text(g, 'lamps off', 520, 110, PAL.dim, 12);
 }
 
-function drawModulus(g: G, r: Round, v: Record<string, number>, t: number, rt: number, shot: { ok: boolean; v: Record<string, number> } | null) {
+function drawModulus(g: G, r: Round, v: Record<string, number>, t: number, rt: number, shot: { ok: boolean; v: Record<string, number> } | null, helper: boolean) {
   const m = shot ? shot.v.m : v.m;
-  const live = r.assist === 0 || shot;
   text(g, 'the plan', 330, 54, PAL.yellow, 12);
   r.rooms.forEach((room, i) => {
-    const w = 640 / Math.max(4, r.rooms.length);
     const cx = 200 + i * (400 / r.rooms.length) + 30;
     g.strokeStyle = PAL.yellow;
     g.lineWidth = 1.5;
     g.strokeRect(cx - 30, 64, 60, 30);
-    text(g, room.join(' '), cx, 84, PAL.white, 10);
-    void w;
+    text(g, room.join(' '), cx, 84, PAL.white, 11);
   });
   const rooms = roomsFor(MOD_GUESTS, m);
+  // The colouring by the player's own m is the paid check: live in round 1, for a moment after a check in round 2, on a win, and never in round 3.
   for (let i = 1; i <= MOD_GUESTS; i++) {
     const x = 210 + ((i - 1) % 6) * 62;
     const y = 150 + Math.floor((i - 1) / 6) * 68;
     const ri = rooms.findIndex((room) => room.includes(i));
-    const color = live ? ROOM[ri % ROOM.length] : r.assist === 1 ? 'rgba(244,246,255,0.5)' : '#aab3d8';
+    const color = helper ? ROOM[ri % ROOM.length] : '#aab3d8';
     guest(g, x, y, String(i), color, t, shot && rt > 0.6 ? (shot.ok ? 'cheer' : 'worried') : 'happy');
   }
-  if (live) text(g, `m = ${m}: ${rooms.length} rooms`, 400, 300, PAL.cyan, 12);
+  if (helper) text(g, `m = ${m}: ${rooms.length} rooms`, 400, 296, PAL.cyan, 12);
 }
 
 function drawCount(g: G, r: Round, t: number, rt: number, shot: { ok: boolean } | null) {
@@ -157,32 +177,45 @@ function level(n: number, random: () => number): DialLevel<Round> {
     unit: '',
     step: 1,
     min: d.min,
-    max: (kind === 'repair' ? (r: Round) => r.n : d.max) as number | ((r: Round) => number),
+    max: (kind === 'repair' ? (r: Round) => r.n : kind === 'count' ? (r: Round) => r.max : d.max) as number | ((r: Round) => number),
     start: d.start,
     text: (v: number) => (kind === 'repair' ? `guest ${v}` : `${v}`),
   }));
+  const flash = paidFlash();
   return {
     hero: { name: 'Keeper', role: 'a robot butler who seats the guests of a mansion in rooms according to who belongs with whom', story: hero.story, objective: hero.objective },
     rounds: buildRounds(n, random),
     charges: [1, 1, 0],
     dials,
-    handles: kind === 'repair' ? [] : [trackHandle<Round>(DIALS[kind][0].key, () => DIALS[kind][0].min, () => DIALS[kind][0].max)],
-    test: { button: '🔍 Check', aria: 'Check the chart or the plan', read: (r, v) => spotText(r, v) },
+    handles: kind === 'repair' ? [] : [trackHandle<Round>(DIALS[kind][0].key, () => DIALS[kind][0].min, kind === 'count' ? (r: Round) => r.max : () => DIALS[kind][0].max)],
+    test: {
+      button: '🔍 Check',
+      aria: 'Check the chart or the plan',
+      read: (r, v) => {
+        flash.paid();
+        return spotText(r, v);
+      },
+    },
     fire: { button: '🗝️ Seat the guests', aria: 'Seat the guests' },
     judge: (r, v) => judge(r, v),
     miss: (r, v) => missText(r, v),
     win: (r) => `Seated! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The live view is on.' : r.assist === 1 ? 'The live view is dim: a check costs a charge.' : 'Boss round: no live view, no check.'}`,
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The live view is on.' : r.assist === 1 ? 'No live view: a check shows it for a moment and costs a charge.' : 'Boss round: no live view, no check.'}`,
     hit: () => [400, 150],
     delay: VERDICT,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
       backdrop(g);
+      // The live view (property lamps, room colours) is round 1 only, a moment after a paid check in round 2, and a win; never in round 3, and never after a miss.
+      const helper = helperOn(r.assist, shot !== null && shot.ok, flash.since(t, k));
+      A.canvas.dataset.live = helper ? '1' : '0';
       const mood: Mood = shot ? (rt > VERDICT ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
       keeper(g, 80, 190, t, mood);
-      if (kind === 'repair') drawRepair(g, r, v, rt, shot);
-      else if (kind === 'modulus') drawModulus(g, r, v, t, rt, shot);
+      if (kind === 'repair') drawRepair(g, r, v, rt, shot, helper);
+      else if (kind === 'modulus') drawModulus(g, r, v, t, rt, shot, helper);
       else drawCount(g, r, t, rt, shot);
-      if (kind !== 'repair') track(g, DIALS[kind][0].min, DIALS[kind][0].max);
+      if (kind === 'modulus') knob(g, DIALS.modulus[0].min, DIALS.modulus[0].max, v.m, `m = ${v.m}`);
+      if (kind === 'count') knob(g, DIALS.count[0].min, r.max, v.c, `${v.c} ways`);
+      if (!(shot && rt > VERDICT)) text(g, GOALS[n - 1], 400, 24, PAL.yellow, 12);
       if (shot && rt > VERDICT) verdict(g, shot.ok, 'THE ROOMS ARE READY', 'THE GUESTS ARE ARGUING');
     },
   };

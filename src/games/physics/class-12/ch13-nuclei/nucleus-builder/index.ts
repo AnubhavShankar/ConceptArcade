@@ -15,7 +15,7 @@ function sizeLevel(random: () => number): DialLevel<SizeRound> {
   const PXF = 20;
   return {
     hero: {
-      name: 'Katamari',
+      name: 'Clump',
       role: 'a ball of nucleons that grows as more of them stick on',
       story: 'The radius of a nucleus grows as the cube root of its mass number: R = R₀A^⅓ with R₀ = 1.2 fm. That is the signature of a ball whose volume is proportional to the number of nucleons packed into it, so every nucleus has the same density.',
       objective: 'Set the radius of the ball for the stated nucleus, in three rounds. A test shot costs a charge; the live nucleon pack fades.',
@@ -270,7 +270,7 @@ function twinLevel(random: () => number): DialLevel<TwinRound> {
   };
   return {
     hero: {
-      name: 'Katamari',
+      name: 'Clump',
       role: 'a ball of nucleons rolling out the nuclide a clue describes',
       story: 'Nuclides come in families. Isotopes have the same number of protons Z, isobars the same mass number A, isotones the same number of neutrons N.',
       objective: 'Roll the nuclide each clue describes, in three rounds.',

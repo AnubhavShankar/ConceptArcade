@@ -1,0 +1,81 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "reactance-lab",
+  "title": "Lights of the High Pass",
+  "summary": "Guide trekkers through a blizzard by setting a lodge turbine’s frequency so a choke and a capacitor give its lamps the right current.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 7,
+    "name": "Alternating Current"
+  },
+  "ncertRef": "Section 7.4, AC voltage applied to an inductor",
+  "order": 1,
+  "concepts": [
+    "Inductive reactance X_L = ωL",
+    "Capacitive reactance X_C = 1/ωC",
+    "Frequency dependence of reactance",
+    "Current lags in L and leads in C by 90°",
+    "No average power in a pure L or C",
+    "Peak current √2 I"
+  ],
+  "learningOutcome": "The student can find the frequency at which a choke or a capacitor passes a set current, predict what a change of frequency does to each, and use their quarter-cycle phase and zero average power.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "The trail choke",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: a choke’s reactance X_L = 2πfL sets the lamps’ current, I = V/X_L, and grows with frequency (Ex 7.3, Example 7.2).",
+      "hints": [
+        "X_L = V/I: first find the reactance the lamps need.",
+        "Then f = X_L/(2πL), with L in henry (mH × 10⁻³).",
+        "A faster turbine means a bigger X_L and less current."
+      ]
+    },
+    {
+      "title": "The porch capacitor",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: a capacitor’s reactance X_C = 1/(2πfC) falls as the frequency rises, so a faster turbine passes more current (Ex 7.4, Example 7.4).",
+      "hints": [
+        "X_C = V/I for the current the beacon needs.",
+        "Then f = 1/(2πC X_C), with C in farad (µF × 10⁻⁶).",
+        "A faster turbine means a smaller X_C and more current: the opposite of a choke."
+      ]
+    },
+    {
+      "title": "Both lamps",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "Apply it: a choke and a capacitor on one supply react oppositely to frequency, so only one frequency suits both lamps (Examples 7.3, 7.5).",
+      "hints": [
+        "The trail lamps set a highest frequency: f ≤ V/(2πL I_trail).",
+        "The beacon sets a lowest frequency: f ≥ I_beacon/(2πCV).",
+        "Pick the whole number between the two."
+      ]
+    },
+    {
+      "title": "Steady light",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: L and C pass current a quarter cycle out of step with the voltage and take no average power; X = R makes the currents equal (Ex 7.5).",
+      "hints": [
+        "Equal currents need the reactance to equal the dropper’s resistance.",
+        "For a choke f = R/(2πL); for a capacitor f = 1/(2πRC).",
+        "A quarter cycle apart, one lamp peaks just as the other goes dark."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A capacitor blocks the current more at high frequency",
+    "An inductor absorbs power from an AC source",
+    "The current in an inductor leads the voltage",
+    "Reactance does not depend on the frequency"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

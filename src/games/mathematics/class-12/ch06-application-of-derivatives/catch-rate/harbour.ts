@@ -113,7 +113,7 @@ export function jar(g: G, x: number, bottom: number, frac: number, clock: number
   g.lineWidth = 3;
   g.strokeRect(x - w / 2, bottom - h * RIM, w, h * RIM);
   line(g, x - w / 2 - 10, bottom - h * TARGET, x + w / 2 + 10, bottom - h * TARGET, PAL.yellow, 2, [5, 4]);
-  text(g, 'target', x + w / 2 + 28, bottom - h * TARGET, PAL.yellow, 10);
+  text(g, 'target', x + w / 2 + 28, bottom - h * TARGET, PAL.yellow, 11);
   text(g, label, x, bottom + 14, PAL.white, 11);
   if (frac > RIM) {
     for (let i = 0; i < 4; i++) {

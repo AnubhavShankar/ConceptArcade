@@ -89,7 +89,11 @@ function eyes(g: G, o: OrbitOpts) {
         g.stroke();
         break;
       case 'dock':
-        text(g, '★', ex, -1.2, PAL.yellow, 8);
+        // a happy star eye, drawn as strokes (it is part of the face, not scene text)
+        line(g, ex - 2.4, -2.6, ex + 2.4, -2.6, PAL.yellow, 1.4);
+        line(g, ex, -5, ex, -0.2, PAL.yellow, 1.4);
+        line(g, ex - 1.7, -4.3, ex + 1.7, -0.9, PAL.yellow, 1.2);
+        line(g, ex + 1.7, -4.3, ex - 1.7, -0.9, PAL.yellow, 1.2);
         break;
       case 'bonk':
         // > <
@@ -102,7 +106,15 @@ function eyes(g: G, o: OrbitOpts) {
         g.stroke();
         break;
       case 'dizzy':
-        text(g, '@', ex, -1.4, PAL.yellow, 8);
+        // a dizzy spiral eye, drawn as two arcs
+        g.strokeStyle = PAL.yellow;
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.arc(ex, -3, 1.2, 0, Math.PI * 1.7);
+        g.stroke();
+        g.beginPath();
+        g.arc(ex, -3, 2.6, Math.PI, Math.PI * 2.7);
+        g.stroke();
         break;
     }
   }
@@ -155,7 +167,7 @@ export function orbit(g: G, x: number, y: number, o: OrbitOpts) {
     g.fill();
     g.fillStyle = '#2a2f55';
     g.fillRect(px + 1, 13, 4, 3);
-    dot(g, px + 3, 7, 1.7, `rgba(255,70,70,${0.3 + 0.7 * Math.abs(Math.sin(t * 17 + (side + 1) * 2.1))})`);
+    dot(g, px + 3, 7, 1.7, `rgba(255,70,70,${0.3 + 0.7 * Math.abs(Math.sin(t * 6 + (side + 1) * 2.1))})`);
   }
   if (t % 2.5 < 0.15) {
     line(g, -18, 16, -21, 20, PAL.yellow, 1.2);
@@ -366,7 +378,7 @@ export function hull(g: G, t: number, light: 'amber' | 'green') {
   }
   const lamp = light === 'green' ? PAL.green : Math.sin(t * 2) > 0 ? PAL.orange : '#6a4a20';
   glow(g, lamp, light === 'green' ? 14 : 6, () => dot(g, WINDOW.x, 52, 4.2, lamp));
-  text(g, 'AIRLOCK 7', WINDOW.x, 122, PAL.dim, 8);
+  text(g, 'AIRLOCK 7', WINDOW.x, 122, PAL.dim, 11);
   // the clamp's rail runs up the wall
   g.fillStyle = '#4a5078';
   g.fillRect(WALL.x - 1, WALL.top, 5, WALL.bottom - WALL.top);
@@ -377,10 +389,10 @@ export function ruler(g: G) {
   for (let m = -12; m <= 12; m++) {
     const y = clampY(m);
     line(g, 514 - (m % 2 === 0 ? 8 : 5), y, 514, y, m === 0 ? PAL.green : PAL.dim, m === 0 ? 2 : 1);
-    if (m % 2 === 0) text(g, num(m), 500, y + 3, m === 0 ? PAL.green : PAL.dim, 9, 'right');
+    if (m % 2 === 0) text(g, num(m), 500, y + 3, m === 0 ? PAL.green : PAL.dim, 11, 'right');
   }
   line(g, REL.x + 24, REL.y, 482, REL.y, PAL.dim, 1, [4, 4]);
-  text(g, 'release height', 400, REL.y - 6, PAL.green, 10);
+  text(g, 'release height', 400, REL.y - 6, PAL.green, 11);
 }
 
 /** The rail: a glowing tube along a fixed decorative curve into the release cradle (a dark box that hides the rail's last direction). */
@@ -418,8 +430,8 @@ export function sign(g: G, title: string, formula: string, info: string) {
   g.strokeStyle = PAL.cyan;
   g.lineWidth = 1.4;
   g.stroke();
-  text(g, title, 24, 250, PAL.dim, 10, 'left');
-  const size = formula.length > 36 ? 10.5 : formula.length > 30 ? 11.5 : 13;
+  text(g, title, 24, 250, PAL.dim, 11, 'left');
+  const size = formula.length > 36 ? 11 : formula.length > 30 ? 12 : 13;
   text(g, formula, 24, 267, PAL.yellow, size, 'left');
   text(g, info, 24, 282, PAL.white, 11, 'left');
 }

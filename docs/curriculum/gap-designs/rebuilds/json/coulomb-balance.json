@@ -1,0 +1,82 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "coulomb-balance",
+  "title": "Float the Bead",
+  "summary": "Charge a metal bead so the push of a charged base floats it into a laser beam, then slide the laser to where a charged bead will float.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 1,
+    "name": "Electric Charges and Fields"
+  },
+  "ncertRef": "Section 1.5, Coulomb's Law",
+  "concepts": [
+    "Coulomb's law",
+    "Inverse-square dependence",
+    "Balancing forces",
+    "Attraction and repulsion",
+    "SI units and prefixes",
+    "Solving Coulomb's law for the distance"
+  ],
+  "learningOutcome": "After winning, the student can balance the Coulomb push against weight, solve k q Q / h² = m g for the charge or the height, convert mg, mm, nC and pC to SI, and match the sign to the base.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 15,
+  "levels": [
+    {
+      "title": "Float it",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: set the bead's charge so the push from the base equals its weight exactly in the laser beam (Ex 1.1 and Example 1.3 at lab scale).",
+      "hints": [
+        "The bead floats where the electric push equals its weight: k q Q / h² = m g.",
+        "Solve for q: q = m g h² / (k Q). Convert g, cm and µC to kg, m and C first.",
+        "Use g = 9.8 m/s² and k = 9 × 10⁹ N m² C⁻². Four times the charge floats the bead only twice as high."
+      ]
+    },
+    {
+      "title": "Tiny scale",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "Harder: milligrams, millimetres and nanocoulombs. Convert every prefix to SI, and the charge comes out in picocoulombs.",
+      "hints": [
+        "1 mg = 10⁻⁶ kg, 1 mm = 10⁻³ m, 1 nC = 10⁻⁹ C, 1 pC = 10⁻¹² C.",
+        "The balance is the same: q = m g h² / (k Q).",
+        "A result of 2.7 × 10⁻¹¹ C is 27 pC."
+      ]
+    },
+    {
+      "title": "Opposite base",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the base may be negative. Only like charges repel, so choose the sign of the bead's charge as well as its size.",
+      "hints": [
+        "Like charges repel and unlike charges attract. To float, the bead must be pushed up.",
+        "Give the bead the same sign as the base. An opposite charge pulls it down onto the base.",
+        "Find the size exactly as before, with the sizes of the charges: q = m g h² / (k |Q|)."
+      ]
+    },
+    {
+      "title": "Aim the laser",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "New idea: the bead's charge is given and you set the height. Solve Coulomb's law for the distance, h = √(k q Q / (m g)) (Ex 1.2a).",
+      "hints": [
+        "The bead still floats where k q Q / h² = m g; this time h is the unknown.",
+        "Rearrange: h = √(k q Q / (m g)), with every quantity in SI units.",
+        "Convert the answer from metres to centimetres: 0.09 m is 9 cm."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Force varies linearly (1/r) with distance",
+    "Doubling the charge doubles the float height",
+    "Forgetting to convert prefixes (mg, mm, nC) to SI units",
+    "A bead with the opposite charge can still float",
+    "An uncharged bead is pushed up a little"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "order": 2
+}

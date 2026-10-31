@@ -1,0 +1,91 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "magnet-dipole-bench",
+  "title": "Pebble in Orbit",
+  "summary": "Steer a student satellite with a magnet rod and a coil against Earth’s field: stop its spin, park it, turn it and dock a twin.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 5,
+    "name": "Magnetism and Matter"
+  },
+  "ncertRef": "Section 5.2.3, The dipole in a uniform magnetic field",
+  "order": 1,
+  "concepts": [
+    "Torque τ = mB sin θ",
+    "Potential energy U = −mB cos θ",
+    "Work to turn a magnet",
+    "No net force in a uniform field",
+    "Equilibrium of two magnets"
+  ],
+  "learningOutcome": "The student can find the torque, potential energy and work for a magnet or coil in a uniform field, say why the net force is zero, and place two small magnets by their energy.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "Stop the spin",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: τ = mB sin θ, largest at right angles to the field and zero along it; find m from a needed torque (Ex 5.1).",
+      "hints": [
+        "τ = m B sin θ, where θ is the angle between m and B.",
+        "To find m, divide the torque by B sin θ.",
+        "Check the units: m is in J/T and B in µT, so τ comes out in µN m."
+      ]
+    },
+    {
+      "title": "Stable and unstable",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: U = −mB cos θ is lowest along the field (stable) and highest against it (unstable), with no torque at either (Ex 5.2).",
+      "hints": [
+        "The torque is zero at θ = 0 and at θ = 180°.",
+        "U = −mB cos θ, which is −mB at 0° and +mB at 180°.",
+        "The moment points from the S end of the rod to its N end."
+      ]
+    },
+    {
+      "title": "Coast to the star",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: the work done to turn a magnet is the rise in its potential energy: mB to reach 90° and 2mB to reach 180° (Ex 5.5).",
+      "hints": [
+        "Work = U(final) − U(initial).",
+        "From along the field, U goes from −mB to 0 at 90° and to +mB at 180°.",
+        "The torque mB sin θ is zero at 180°, though it took work to get there."
+      ]
+    },
+    {
+      "title": "The coil near the station",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: find m = NIA, then the torque; a uniform field gives no net force, a non-uniform one does (Ex 5.4, 5.6).",
+      "hints": [
+        "m = N I A, with the area in m²: 1 cm² is 10⁻⁴ m².",
+        "τ = m B sin θ.",
+        "In a uniform field the forces on the two ends are equal and opposite, so there is no net force."
+      ]
+    },
+    {
+      "title": "Twin dock",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: use the field of P (2k on its axis, k at right angles, opposite in direction there) to place Q (Example 5.2).",
+      "hints": [
+        "On the axis of P, its field points the same way as m_P; at right angles to the axis it points the opposite way.",
+        "U = −m_Q·B_P: lowest when m_Q points along the strongest field.",
+        "If m_Q is across the field of P there is a torque on it: not equilibrium."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "A magnet in a uniform field feels a net force",
+    "The torque on a magnet is largest when it is aligned with the field",
+    "The potential energy of a magnet along the field is zero",
+    "Opposite poles side by side are an unstable arrangement"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

@@ -11,6 +11,14 @@ import { backdrop } from '@core/mathkit';
 import { line, text } from '@core/neon';
 import { dart, door, hatch, hex, lasers, meter, muzzle, polyline, scopeFrame, slot, turretBody, type DoorScreen, type HexMood, type HexPose, type HatchLight } from './art';
 import { amp, buildFuse, buildMatch, fuseHint, fuseMiss, fuseWin, gaps, judgeFuse, judgeMatch, matchHint, matchMiss, matchWin, mix, peekText, probeText, tone, twelfths, type FuseRound, type MatchRound } from './logic';
+import { goalLine, grip, strobe, tag, tint, wasTouched } from './ux';
+
+/** Every handle's grab radius, in scene pixels (about 44 px on a phone). */
+export const HANDLE_RADIUS = 18;
+/** The round's goal as one short line on the scene: levels 1 to 3, and level 4. */
+export const GOALS = { match: 'Goal: rebuild the lock signal exactly', fuse: 'Goal: set the fuse to the net charge' };
+/** Where the goal line stands: above the scope, centred over it. */
+const GOAL_AT = { x: 250, y: 22 };
 
 const ARIA = 'A hacker beside a vault door with a laser grid, rebuilding the lock’s waveform on an oscilloscope from pure tones.';
 const ROLE = 'a hacker who cracks vault locks by rebuilding their signals from pure tones';
@@ -145,13 +153,6 @@ function vault(s: Frame, fx: Fx, delay: number, sp: number, at: { x: number; y: 
   return { vt, win };
 }
 
-/** The red strobe of the alarm over the whole screen. */
-function strobe(g: CanvasRenderingContext2D, rt: number, vt: number, win: boolean) {
-  if (vt < 0 || win || Math.floor(rt / 0.12) % 2 !== 0) return;
-  g.fillStyle = 'rgba(255,60,60,0.18)';
-  g.fillRect(0, 0, 640, 340);
-}
-
 // ---- Levels 1 to 3: rebuild the signal ------------------------------------------------------------------------------------------------------------------
 
 function matchLevel(n: 1 | 2 | 3, random: () => number): DialLevel<MatchRound> {
@@ -166,11 +167,13 @@ function matchLevel(n: 1 | 2 | 3, random: () => number): DialLevel<MatchRound> {
     dial: `b${i}`,
     at: (_r, v) => [geom(i).x + geom(i).w / 2, SLOT.mid - (v[`b${i}`] / 8) * SLOT.amp],
     drag: (_r, _px, py) => Math.round(((SLOT.mid - py) / SLOT.amp) * 8),
-    radius: 12,
+    radius: HANDLE_RADIUS,
   });
   let peekPending = false;
   let peekAt = -10;
   let lastK = -1;
+  let roundT0 = 0;
+  let moved = false;
   const fx: Fx = { shot: null, wheel: 0, impact: false, granted: false, trip: false, blow: false };
   const cache = new WeakMap<object, { sg: Sig; f: [number, number][] }>();
   const sigFor = (r: MatchRound) => {
@@ -189,6 +192,7 @@ function matchLevel(n: 1 | 2 | 3, random: () => number): DialLevel<MatchRound> {
     const { g, r, k, t, rt, shot } = s;
     if (k !== lastK) {
       lastK = k;
+      roundT0 = t;
       peekPending = false;
       peekAt = -10;
     }
@@ -199,6 +203,7 @@ function matchLevel(n: 1 | 2 | 3, random: () => number): DialLevel<MatchRound> {
     const a = amps(s.v);
     const { sg, f } = sigFor(r);
     backdrop(g);
+    tint(g, k);
     const { vt, win } = vault(s, fx, 0.9, 1, HEX);
     if (shot && flagsShot !== shot) {
       flagsShot = shot;
@@ -233,9 +238,16 @@ function matchLevel(n: 1 | 2 | 3, random: () => number): DialLevel<MatchRound> {
     r.bands.forEach(([b], i) => {
       const { x, w } = geom(i);
       const tf = tone(b);
-      slot(g, x, w, SLOT.top, SLOT.mid, b, amp(a[i]), (p) => (a[i] / 8) * SLOT.amp * tf(p));
+      slot(g, x, w, SLOT.top, SLOT.mid, b, `amp ${amp(a[i])}`, (p) => (a[i] / 8) * SLOT.amp * tf(p));
     });
-    strobe(g, rt, vt, win);
+    if (!shot) {
+      // each tone's grip, with the cue on the first one in level 1 round 1, and the goal of the round
+      if (a.some((v) => v !== 0)) moved = true;
+      const cue = n === 1 && k === 0 && !moved && !wasTouched(s.A.canvas);
+      r.bands.forEach((_b, i) => grip(g, s.A.canvas, t, { x: geom(i).x + geom(i).w / 2, y: SLOT.mid - (a[i] / 8) * SLOT.amp, r: HANDLE_RADIUS, cue: cue && i === 0 }));
+      goalLine(g, GOALS.match, t - roundT0, false, GOAL_AT.y, GOAL_AT.x);
+    }
+    strobe(g, shot ? rt - 0.9 : -1, win);
   }
 
   return {
@@ -278,6 +290,7 @@ function fuseLevel(random: () => number): DialLevel<FuseRound> {
   let probeK = 12;
   let probeSign = 0;
   let lastK = -1;
+  let roundT0 = 0;
   const fx: Fx = { shot: null, wheel: 0, impact: false, granted: false, trip: false, blow: false };
   const HI = Math.PI / 2;
   const cache = new WeakMap<object, { sg: Sig; f: [number, number][] }>();
@@ -295,11 +308,13 @@ function fuseLevel(random: () => number): DialLevel<FuseRound> {
     const { g, r, k, t, rt, shot, A } = s;
     if (k !== lastK) {
       lastK = k;
+      roundT0 = t;
       probePending = false;
       probeAt = -10;
     }
     const kk = s.v.k;
     backdrop(g);
+    tint(g, k);
     const { vt, win } = vault(s, fx, FUSE_AT, FUSE_SPEED, HEX4);
     // the scope: f over 0 to π/2, normalised, with a faint zero line (the sign matters) and no number
     const { sg, f } = sigFor(r);
@@ -346,7 +361,14 @@ function fuseLevel(random: () => number): DialLevel<FuseRound> {
       else if (probeSign < 0) text(g, '▼', METER.x + METER.w / 2, py + 22, PAL.pink, 14);
       else text(g, '◎', METER.x + METER.w / 2, py + 5, PAL.green, 16);
     }
-    strobe(g, rt, vt, win);
+    if (!shot) {
+      // the fuse bar's grip with the player's own rating beside it, and the goal of the round
+      const gx = METER.x + METER.w / 2;
+      grip(g, A.canvas, t, { x: gx, y: fuseY(kk), r: HANDLE_RADIUS });
+      tag(g, `fuse ${twelfths(kk)}`, gx + HANDLE_RADIUS + 6, fuseY(kk) + 4, 'left', PAL.yellow, 12);
+      goalLine(g, GOALS.fuse, t - roundT0, false, GOAL_AT.y, GOAL_AT.x);
+    }
+    strobe(g, shot ? rt - FUSE_AT : -1, win);
   }
 
   return {
@@ -359,7 +381,7 @@ function fuseLevel(random: () => number): DialLevel<FuseRound> {
         dial: 'k',
         at: (_r, v) => [METER.x + METER.w / 2, fuseY(v.k)],
         drag: (_r, _px, py) => ((METER.y1 - py) / (METER.y1 - METER.y0)) * 24,
-        radius: 14,
+        radius: HANDLE_RADIUS,
       },
     ],
     test: {

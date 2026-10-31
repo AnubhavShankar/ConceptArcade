@@ -61,12 +61,72 @@ describe('every round has exactly one winning setting', () => {
   });
 });
 
+describe('a miss never prints a count, a product or a chance of the player’s own setting', () => {
+  it('level 1: one generic text for every wrong board, so an all-yellow board cannot read |B| or |A ∩ B| off it', () => {
+    for (const r of all(1).slice(0, 60)) {
+      const boards: number[][] = [
+        Array(CARDS).fill(1),
+        Array(CARDS).fill(2),
+        Array(CARDS).fill(0),
+        r.target.map((x) => (x > 0 ? 1 : 0)),
+        r.target.map((x) => (x > 0 ? 2 : 0)),
+        r.target.map((x) => (x === 0 ? 1 : x)),
+      ].filter((b) => !judgeBoard(r, b));
+      expect(boards.length).toBeGreaterThanOrEqual(4);
+      const texts = new Set(boards.map((b) => missText(r, 0, b)));
+      expect(texts.size).toBe(1);
+      const msg = [...texts][0];
+      expect(msg).toMatch(/at least one card is marked wrong/);
+      expect(msg).not.toMatch(/\d|\//);
+    }
+  });
+  it('levels 2 and 3: a miss says only more or less and what to change, the same for every wrong setting on a side, and the direction is true', () => {
+    for (const level of [2, 3]) {
+      for (const r of all(level).slice(0, 60)) {
+        const wrongs = span(r.min, r.max).filter((x) => x !== r.ans);
+        for (const x of wrongs) {
+          const msg = missText(r, x);
+          expect(msg).not.toMatch(/\d/);
+          expect(msg).toMatch(x > r.ans ? /comes out more than/ : /comes out less than/);
+          expect(msg).toMatch(level === 2 ? (x > r.ans ? /smaller k/ : /larger k/) : x > r.ans ? /fewer red cards/ : /more red cards/);
+          // the direction matches the real quantity
+          const q = level === 2 ? pOf(r, x) - pOf(r, r.ans) : (() => { const [n, d] = drawChance(r, x); const [n2, d2] = drawChance(r, r.ans); return n * d2 - n2 * d; })();
+          expect(q > 0).toBe(x > r.ans);
+        }
+        expect(new Set(wrongs.filter((x) => x < r.ans).map((x) => missText(r, x))).size).toBeLessThanOrEqual(1);
+        expect(new Set(wrongs.filter((x) => x > r.ans).map((x) => missText(r, x))).size).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+  it('level 4: round 1 may say what was left out; rounds 2 and 3 give one generic text with no digits for every wrong board (all-yellow cannot read |B|)', () => {
+    for (const r of all(4).slice(0, 90)) {
+      const boards: number[][] = [
+        Array(CARDS).fill(1),
+        Array(CARDS).fill(2),
+        Array(CARDS).fill(0),
+        r.target.map((x) => (x > 0 ? 1 : 0)),
+        r.target.map((x) => (x === 0 ? 1 : x)),
+      ].filter((b) => !judgeBoard(r, b));
+      const msgs = new Set(boards.map((b) => missText(r, 0, b)));
+      if (r.assist === 0) {
+        const state = [...r.target];
+        state[state.findIndex((x) => x > 0)] = 0;
+        expect(missText(r, 0, state)).toMatch(/left out/);
+      } else {
+        expect(msgs.size).toBe(1);
+        expect([...msgs][0]).not.toMatch(/\d|\//);
+      }
+    }
+  });
+});
+
 describe('words', () => {
-  it('misses say what was left out or extra without the cards; probes read the chance; the working has the fraction', () => {
+  it('probes read the chance; the working has the fraction', () => {
     for (const r of all(1).slice(0, 30)) {
       const state = [...r.target];
       state[state.findIndex((x) => x === 1)] = 0;
-      expect(missText(r, 0, state)).toMatch(/left out/);      expect(spotText(r, 0, state)).toMatch(/green out of/);
+      expect(missText(r, 0, state).length).toBeGreaterThan(30);
+      expect(spotText(r, 0, state)).toMatch(/green out of/);
       expect(explain(r)).toMatch(/P\(A \| B\)/);
     }
     for (const level of [2, 3]) {
@@ -207,7 +267,7 @@ describe('level 4, Not and or: compound events on the reduced deck', () => {
         const i = state.findIndex((x) => x > 0);
         mutate(state, i);
         const msg = missText(r, 0, state);
-        expect(msg).toMatch(/left out|wrong colour for the event/);
+        expect(msg).toMatch(r.assist === 0 ? /left out|wrong colour for the event/ : /at least one card is marked wrong/);
         expect(msg).not.toContain('/');
         expect(msg).not.toContain(answer);
         expect(msg).not.toMatch(/P\(/);

@@ -133,6 +133,20 @@ describe('words', () => {
       }
     }
   });
+  it('a miss gives its direction only: every setting on one side of the answer reads the same, apart from the player’s own x, and says which way to move', () => {
+    for (const { e } of entries) {
+      const sides: Record<'low' | 'high', Set<string>> = { low: new Set(), high: new Set() };
+      for (const x of whole(e)) {
+        if (x === e.q) continue;
+        const own = x < 0 ? `x = −${Math.abs(x)} m` : `x = ${x} m`;
+        sides[x < e.q ? 'low' : 'high'].add(missText(e, x).replace(own, 'x = N m'));
+      }
+      expect(sides.low.size).toBeLessThanOrEqual(1);
+      expect(sides.high.size).toBeLessThanOrEqual(1);
+      for (const t of sides.low) expect(t).toMatch(/Move the (ramp|cone) to the right for more (spin|speed)\./);
+      for (const t of sides.high) expect(t).toMatch(/Move the (ramp|cone) to the left for less (spin|speed)\./);
+    }
+  });
   it('spin misses talk about spin and boost misses about the canyon or the billboard', () => {
     for (const { e } of entries) {
       for (const x of whole(e)) {

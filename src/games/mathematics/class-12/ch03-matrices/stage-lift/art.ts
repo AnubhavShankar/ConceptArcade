@@ -13,6 +13,8 @@ export const EQ = { y: 14, h: 76 };
 export const STAGE = { x0: 34, floor: 262, dx: 58, backDx: 30, backDy: 30, unit: 7, w: 40, d: 26 };
 export const STAGE2_X0 = 214;
 export const DESK = { x0: 404, x1: 632, top: 104, trackTop: 132, trackBottom: 286, y1: 316 };
+/** The desk's left edge: eight faders (level 3) get a wider desk so their grips (radius 18) never overlap their neighbours' grab zones. */
+export const deskX0 = (n: number) => (n >= 7 ? 362 : DESK.x0);
 const OX = STAGE.d * 0.5;
 const OY = STAGE.d * 0.35;
 const PW = 22;
@@ -80,8 +82,9 @@ export function slab(g: G, x0: number, cols: number) {
   const [ex, ey] = exitBase(x0);
   cuboid(g, sx, sy, PW, STAGE.d, 0, '#1d2a6a', false);
   cuboid(g, ex, ey, PW, STAGE.d, 0, '#1d2a6a', false);
-  text(g, 'START', startStand(x0)[0], startStand(x0)[1] + 2.5, PAL.green, 7);
-  text(g, 'EXIT', exitStand(x0)[0], exitStand(x0)[1] + 2.5, PAL.yellow, 7);
+  // the labels stand above the runner's head, big enough to read
+  text(g, 'START', startStand(x0)[0], startStand(x0)[1] - 48, PAL.green, 11);
+  text(g, 'EXIT', exitStand(x0)[0], exitStand(x0)[1] - 48, PAL.yellow, 11);
 }
 
 const topFace = (g: G, x: number, y: number) => {
@@ -119,7 +122,7 @@ function pillar(g: G, x: number, y: number, hu: number, rise: number, tone: stri
   g.lineWidth = 1;
   topFace(g, x, ty);
   g.stroke();
-  text(g, name, x + (STAGE.w + OX) / 2, ty - OY / 2 + 3, PAL.white, 8);
+  text(g, name, x + (STAGE.w + OX) / 2, ty - OY / 2 + 4, PAL.white, 11);
 }
 
 function ghostBox(g: G, x: number, y: number, hu: number, alpha: number) {
@@ -190,7 +193,7 @@ export function dust(g: G, x: number, y: number, age: number) {
 export function stars(g: G, x: number, y: number, t: number) {
   for (let i = 0; i < 3; i++) {
     const a = t * 7 + (i * Math.PI * 2) / 3;
-    text(g, '★', x + Math.cos(a) * 12, y + Math.sin(a) * 4, PAL.yellow, 10);
+    text(g, '★', x + Math.cos(a) * 12, y + Math.sin(a) * 4, PAL.yellow, 11);
   }
 }
 /** A cartoon exclamation mark above a head. */
@@ -360,7 +363,7 @@ export function crowd(g: G, t: number, mood: 'idle' | 'cheer' | 'groan') {
 }
 
 /** Two beams from the top corners of the stage area, sweeping slowly; on a win they lock onto (lockX, lockY). */
-export function spotlights(g: G, t: number, lock: { x: number; y: number; f: number } | null) {
+export function spotlights(g: G, t: number, lock: { x: number; y: number; f: number } | null, beam = 'rgba(255,240,170,0.07)') {
   for (const [sx, dir] of [[10, 1], [390, -1]] as const) {
     const sweep = Math.sin(t * 0.7) * 0.28 * dir;
     let tx = sx + dir * 70 + sweep * 260;
@@ -370,7 +373,7 @@ export function spotlights(g: G, t: number, lock: { x: number; y: number; f: num
       ty += (lock.y - ty) * lock.f;
     }
     const a = Math.atan2(ty - 0, tx - sx);
-    g.fillStyle = 'rgba(255,240,170,0.07)';
+    g.fillStyle = beam;
     g.beginPath();
     g.moveTo(sx, 0);
     g.lineTo(sx + Math.cos(a - 0.09) * 380, Math.sin(a - 0.09) * 380);
@@ -381,28 +384,32 @@ export function spotlights(g: G, t: number, lock: { x: number; y: number; f: num
 }
 
 /** The x of fader idx of n, and the y of a knob at `value`. */
-export const trackX = (idx: number, n: number) => DESK.x0 + ((idx + 1) * (DESK.x1 - DESK.x0)) / (n + 1);
+export const trackX = (idx: number, n: number) => deskX0(n) + 16 + (idx * (DESK.x1 - deskX0(n) - 32)) / (n - 1);
 export const knobY = (value: number) => DESK.trackBottom - ((value + 9) / 18) * (DESK.trackBottom - DESK.trackTop);
 /** The fader value for a pointer at height py. */
 export const faderValue = (py: number) => -9 + ((DESK.trackBottom - py) / (DESK.trackBottom - DESK.trackTop)) * 18;
 
-/** The mixing desk: a dark panel with one fader per key (value above, name below) and a small LED meter beside each knob when there is room. */
+/**
+ * The mixing desk: a dark panel with one fader per key (value above, name below) and a small LED meter beside each knob when there is room.
+ * The knobs themselves (with their grips) are drawn by the caller on top, through `knob` in ux.ts, at (trackX, knobY).
+ */
 export function desk(g: G, keys: string[], values: Record<string, number>, label: (key: string) => string) {
   const n = keys.length;
+  const x0 = deskX0(n);
   g.fillStyle = '#0a0f2c';
-  rr(g, DESK.x0, DESK.top, DESK.x1 - DESK.x0, DESK.y1 - DESK.top, 8);
+  rr(g, x0, DESK.top, DESK.x1 - x0, DESK.y1 - DESK.top, 8);
   g.fill();
   g.strokeStyle = PAL.dim;
   g.lineWidth = 1.5;
   g.stroke();
-  for (const [sx, sy] of [[DESK.x0 + 8, DESK.top + 8], [DESK.x1 - 8, DESK.top + 8], [DESK.x0 + 8, DESK.y1 - 8], [DESK.x1 - 8, DESK.y1 - 8]]) {
+  for (const [sx, sy] of [[x0 + 8, DESK.top + 8], [DESK.x1 - 8, DESK.top + 8], [x0 + 8, DESK.y1 - 8], [DESK.x1 - 8, DESK.y1 - 8]]) {
     g.fillStyle = '#2a3070';
     g.beginPath();
     g.arc(sx, sy, 3, 0, Math.PI * 2);
     g.fill();
     line(g, sx - 2, sy - 2, sx + 2, sy + 2, PAL.dim, 1);
   }
-  text(g, 'STAGE DESK', (DESK.x0 + DESK.x1) / 2, DESK.top + 13, PAL.dim, 10);
+  text(g, 'STAGE DESK · units', (x0 + DESK.x1) / 2, DESK.top + 11, PAL.dim, 11);
   keys.forEach((key, idx) => {
     const tx = trackX(idx, n);
     const v = values[key] ?? 0;
@@ -415,13 +422,8 @@ export function desk(g: G, keys: string[], values: Record<string, number>, label
         g.fillRect(tx + 14, DESK.trackBottom - 6 - s * ((DESK.trackBottom - DESK.trackTop - 8) / 8.5), 4, 8);
       }
     }
-    const ky = knobY(v);
-    g.fillStyle = PAL.yellow;
-    rr(g, tx - 11, ky - 6, 22, 12, 3);
-    g.fill();
-    line(g, tx - 7, ky, tx + 7, ky, '#7a5a00', 1.5);
-    text(g, v < 0 ? `−${-v}` : String(v), tx, DESK.trackTop - 8, PAL.yellow, 10);
-    text(g, label(key), tx, DESK.trackBottom + 17, PAL.white, n >= 8 ? 9 : 10);
+    text(g, v < 0 ? `−${-v}` : String(v), tx, DESK.trackTop - 6, PAL.yellow, 11);
+    text(g, label(key), tx, DESK.trackBottom + 17, PAL.white, 11);
   });
 }
 
@@ -429,7 +431,8 @@ export function desk(g: G, keys: string[], values: Record<string, number>, label
 
 const TONE = { unknown: PAL.yellow, known: PAL.white, card: PAL.pink };
 interface Size { cw: number; ch: number; fs: number; sub: number }
-const sizeFor = (level: number): Size => (level === 3 ? { cw: 20, ch: 19, fs: 10, sub: 7 } : { cw: 26, ch: 22, fs: 12, sub: 8 });
+// Every size is at least 11 px. Level 4 has no entry names under its cells, so its rows stay short and its yellow line fits under the grids.
+const sizeFor = (level: number): Size => (level === 3 ? { cw: 22, ch: 26, fs: 11, sub: 11 } : level === 4 ? { cw: 26, ch: 22, fs: 12, sub: 11 } : { cw: 26, ch: 26, fs: 12, sub: 11 });
 
 /** Width of one token. */
 function tokWidth(tok: Tok, z: Size): number {
@@ -479,8 +482,8 @@ export function equationBand(g: G, eqs: Tok[][], level: number, below: string | 
         g.lineWidth = 1.5;
         g.stroke();
         text(g, tok.rule, x + w / 2, by + bh * 0.42, PAL.pink, 13);
-        text(g, tok.notes, x + w / 2, by + bh * 0.82, PAL.dim, 9);
-        text(g, tok.label, x + w / 2, gridTop - 6, PAL.pink, 9);
+        text(g, tok.notes, x + w / 2, by + bh * 0.82, PAL.dim, 11);
+        text(g, tok.label, x + w / 2, gridTop - 6, PAL.pink, 11);
       } else {
         const rows = tok.grid.length;
         const chars = Math.max(...tok.grid.flat().map((c) => c.text.length));
@@ -504,7 +507,7 @@ export function equationBand(g: G, eqs: Tok[][], level: number, below: string | 
             }
           }),
         );
-        text(g, tok.label, x + w / 2, gridTop - 6, tok.tone === 'card' ? PAL.pink : PAL.dim, 9);
+        text(g, tok.label, x + w / 2, gridTop - 6, tok.tone === 'card' ? PAL.pink : PAL.dim, 11);
       }
       x += w + 4;
     }

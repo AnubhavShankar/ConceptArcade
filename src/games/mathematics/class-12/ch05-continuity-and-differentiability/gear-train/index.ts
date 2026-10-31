@@ -1,10 +1,12 @@
 // Inspirations: The Incredible Machine and Factorio (a chain of linked parts whose speed you set at one end and watch at the
 // other). Cog is a clockwork robot at a hand crank: set the crank speed w so the last gear turns at the dispatch rate.
+import { helperOn, paidFlash } from '@core/aidflash';
 import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
-import { backdrop, face, gear, track, trackHandle, verdict } from '@core/mathkit';
+import { TRACK, backdrop, face, gear, track, trackHandle, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
+import { goalLine, grip, tint } from './ux';
 import { DIAL, buildRounds, explain, flowEnd, intel, judge, missText, output, rateText, spotText, type Round } from './logic';
 
 type G = CanvasRenderingContext2D;
@@ -85,27 +87,33 @@ function cog(g: G, x: number, y: number, t: number, mood: Mood, crank: number) {
 
 function level(n: number, random: () => number): DialLevel<Round> {
   const hero = HEROES[n - 1];
+  const flash = paidFlash();
   return {
     hero: { name: 'Cog', role: 'a clockwork robot who runs the dispatch machine of the city', story: hero.story, objective: hero.objective },
     rounds: buildRounds(n, random),
     charges: [1, 1, 0],
     dials: [{ key: 'w', aria: 'Crank speed w', label: 'Crank speed w', unit: 'per second', step: 1, min: DIAL.min, max: DIAL.max, start: DIAL.min, text: (v) => `${v}` }],
     handles: [trackHandle('w', () => DIAL.min, () => DIAL.max)],
-    test: { button: '🔧 Test run', aria: 'Test run: read the output at this crank speed', read: (r, v) => spotText(r, v.w) },
+    test: { button: '🔧 Test run', aria: 'Test run: read the output at this crank speed', read: (r, v) => (flash.paid(), spotText(r, v.w)) },
     fire: FIRE[n - 1],
     judge: (r, v) => judge(r, v.w),
     miss: (r, v) => missText(r, v.w),
     win: (r) => `Dispatched! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The ghost gear and the live reading are on.' : r.assist === 1 ? 'The ghost is dim: a test run costs a charge.' : 'Boss round: no ghost, no test run.'}`,
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The ghost gear and the live reading are on.' : r.assist === 1 ? 'The ghost and the reading show for a moment after a test run, which costs a charge.' : 'Boss round: no ghost, no reading, no test run.'}`,
     hit: () => [440, 140],
     delay: VERDICT,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, v, t, rt, shot, k, A }) => {
       backdrop(g);
+      tint(g, k, t);
       const w = v.w;
       const out = output(r, w);
+      // The helper (the ghost ring and the output reading) is live in round 1, shows for 1.5 s after a paid test run in round 2, never in round 3.
+      const helper = helperOn(r.assist, shot?.ok === true, shot ? Infinity : flash.since(t, k));
+      A.canvas.dataset.helper = helper ? '1' : '0';
       const mood: Mood = shot ? (rt > VERDICT ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
       const spin = (w / DIAL.max) * 4;
-      const outSpin = (shot ? flowEnd(r, w) : out / r.target) * 1.6;
+      // Without the helper the output gear turns by the crank alone: its speed against the target would otherwise read out the answer.
+      const outSpin = (shot ? flowEnd(r, w) : helper ? out / r.target : w / DIAL.max) * 1.6;
       const clock = shot ? rt : t;
       cog(g, 78, 130, t, mood, clock * spin * 2);
       gear(g, 200, 120, 38, 10, clock * spin, '#6f7fd0');
@@ -113,16 +121,14 @@ function level(n: number, random: () => number): DialLevel<Round> {
       gear(g, 380, 140, 46, 12, clock * outSpin, shot && rt > VERDICT ? (shot.ok ? PAL.green : PAL.red) : '#6f7fd0');
       line(g, 238, 126, 252, 142, PAL.dim, 2);
       line(g, 300, 146, 336, 144, PAL.dim, 2);
-      text(g, `crank w = ${w}`, 200, 176, PAL.white, 12);
       text(g, r.kind === 'trig' ? '∿ output' : 'output', 380, 204, r.kind === 'trig' ? PAL.yellow : PAL.dim, 12);
       if (r.kind === 'trig') {
         text(g, '∿', 380, 142, PAL.yellow, 22);
         line(g, 170, 64, 188, 88, PAL.dim, 2);
         cam(g, 170, 50, clock * spin * 2);
       }
-      const ghost = r.assist === 0 || (r.assist === 1 && !shot) ? 1 : 0;
-      if (ghost && !shot) {
-        g.globalAlpha = r.assist === 1 ? 0.3 : 0.9;
+      if (helper && !shot) {
+        g.globalAlpha = 0.9;
         g.strokeStyle = PAL.yellow;
         g.lineWidth = 2;
         g.setLineDash?.([6, 5]);
@@ -133,11 +139,9 @@ function level(n: number, random: () => number): DialLevel<Round> {
         g.globalAlpha = 1;
       }
       text(g, `target ${rateText(r, r.target)}`, 470, 70, PAL.yellow, 13, 'center');
-      g.globalAlpha = r.assist === 1 && !shot ? 0.3 : 1;
-      if (shot && !shot.ok) text(g, out < r.target ? 'output ⬇ too slow' : 'output ⬆ too fast', 320, 296, PAL.cyan, 14);
-      else if (r.assist <= 1 || shot) text(g, `output ${rateText(r, out)}`, 320, 296, PAL.cyan, 14);
-      else text(g, 'reading off', 320, 296, PAL.dim, 12);
-      g.globalAlpha = 1;
+      if (shot && !shot.ok) text(g, out < r.target ? 'output ⬇ too slow' : 'output ⬆ too fast', 320, 288, PAL.cyan, 14);
+      else if (helper) text(g, `output ${rateText(r, out)}`, 320, 288, PAL.cyan, 14);
+      else text(g, r.assist === 2 ? 'reading off' : 'reading off: a test run shows it', 320, 288, PAL.dim, 12);
       if (shot && !shot.ok && rt > 0.6) {
         for (let i = 0; i < 5; i++) {
           g.fillStyle = 'rgba(180,180,200,0.4)';
@@ -147,6 +151,11 @@ function level(n: number, random: () => number): DialLevel<Round> {
         }
       }
       track(g, DIAL.min, DIAL.max);
+      if (!shot) {
+        const hx = TRACK.x0 + ((w - DIAL.min) / (DIAL.max - DIAL.min)) * (TRACK.x1 - TRACK.x0);
+        grip(g, A.canvas, t, { x: hx, y: TRACK.y, r: 20, dir: 'h', read: `crank w = ${w} per s`, side: hx > 400 ? 'left' : 'right', cue: n === 1 && k === 0 });
+      }
+      goalLine(g, 'Goal: set w so the last gear turns at the target rate', A.t, shot !== null);
       if (shot && rt > VERDICT) verdict(g, shot.ok, 'DISPATCHED ON TIME', 'MISSED THE WINDOW');
     },
   };

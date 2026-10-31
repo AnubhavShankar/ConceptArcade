@@ -1,0 +1,93 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "id": "field-maker",
+  "title": "Turtle Compass",
+  "summary": "Wind, bend and switch coils of wire so a sea-turtle hatchling feels the magnetic field of home and swims for the open sea.",
+  "subject": "physics",
+  "classLevel": 12,
+  "chapter": {
+    "number": 4,
+    "name": "Moving Charges and Magnetism"
+  },
+  "ncertRef": "Section 4.4, Magnetic field due to a current element, Biot-Savart law",
+  "order": 1,
+  "concepts": [
+    "Biot–Savart law for a current element",
+    "Field at the centre of a coil, B = μ₀NI/2R",
+    "Right-hand thumb rule for the field of a loop",
+    "Field of an arc; leads in line with the centre add nothing",
+    "Field on the axis of a coil falls off",
+    "Superposition: coils add or subtract"
+  ],
+  "learningOutcome": "The student can find the size and direction of the field of a current element, a coil, an arc and two coils with one centre, and how the field on a coil’s axis falls off.",
+  "mechanic": "tune-to-target",
+  "estimatedMinutes": 30,
+  "levels": [
+    {
+      "title": "The trim wire",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: dB = (μ₀/4π) I dl sin θ/r², pointing along dl × r (Example 4.4).",
+      "hints": [
+        "μ₀/4π = 10⁻⁷ T m/A. Change dl and r to metres, and give the field in nT.",
+        "Only the part of dl across the line to the probe counts: sin θ.",
+        "Point your fingers along the current and bend them towards the probe: the thumb shows whether the field points up or down."
+      ]
+    },
+    {
+      "title": "Wind the coil",
+      "tier": "concept",
+      "kind": "concept",
+      "adds": "New idea: every turn of a tight coil adds μ₀I/2R at the centre, so B = μ₀NI/2R (Ex 4.1, Example 4.6).",
+      "hints": [
+        "B = μ₀NI/2R with R in metres, so N = 2RB/μ₀I.",
+        "μ₀ = 4π × 10⁻⁷ T m/A, and 1 µT = 10⁻⁶ T.",
+        "Curl your right fingers along the current: the thumb gives the field. Anticlockwise seen from above points up."
+      ]
+    },
+    {
+      "title": "Bend an arc",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: an arc gives its fraction of the loop field, and straight leads in line with the centre give none (Example 4.5).",
+      "hints": [
+        "For a lead that points at the centre, dl × r = 0.",
+        "An arc of φ degrees gives φ/360 of μ₀I/2R.",
+        "Send the current round the other way and the field reverses."
+      ]
+    },
+    {
+      "title": "Raise the tank",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: on the axis B = μ₀NIR²/2(R² + x²)^(3/2), which falls off from the centre value μ₀NI/2R (Section 4.5).",
+      "hints": [
+        "Keep every length in metres.",
+        "At x = 0 the axis formula gives the centre value μ₀NI/2R.",
+        "The higher the tank, the weaker each turn’s field, so the more turns you need."
+      ]
+    },
+    {
+      "title": "Two coils",
+      "tier": "application",
+      "kind": "complexity",
+      "adds": "More steps: coils with a common centre add their fields when the currents go the same way and subtract when they are opposite.",
+      "hints": [
+        "Same sense: the fields add. Opposite senses: they subtract, and the bigger one decides the direction.",
+        "Work out what the outer coil must add or take away, with its direction.",
+        "Then N = 2RB/μ₀I for the outer coil alone."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "The field of a coil at its centre does not depend on the number of turns",
+    "A straight lead pointing at the centre adds the most field",
+    "The field on the axis of a coil is the same everywhere along the axis",
+    "Currents in opposite senses in two coils add their fields",
+    "A current element makes a field along its own length"
+  ],
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  }
+}

@@ -61,12 +61,30 @@ describe('Hole in the Wall', () => {
     h.setSlider(g[0].ans.k + 1, 0);
     h.click(FIRE[4]);
     h.advance(3);
-    expect(h.feedback()).toMatch(/vertex \d came out at/);
-    expect(h.feedback()).not.toMatch(/k = |m = /);
+    expect(h.feedback()).toMatch(/^Vertex \d landed outside the hole/);
+    expect(h.feedback()).not.toMatch(/came out at|k = |m = |\(/);
     keys(g[0]).forEach((key, i) => h.setSlider(g[0].ans[key], i));
     h.click(FIRE[4]);
     h.advance(3);
     expect(h.feedback()).toMatch(/A² −/);
+  });
+  it('level 5 puts the goal on the canvas, shows k and m, and has no dim result block in any round', () => {
+    const R = canvasRecorder();
+    h.start(5, 5);
+    const g = build(5, 5);
+    h.setSlider(4, 0);
+    h.setSlider(2, 1);
+    h.advance(0.1);
+    expect(texts(R.rec).some((s) => s === 'Set k and m so one pass of kA − mI fits the hole')).toBe(true);
+    expect(texts(R.rec).some((s) => s === 'k = 4, m = 2')).toBe(true);
+    for (let k = 0; k < 3; k++) {
+      R.clear();
+      h.advance(0.1);
+      expect(texts(R.rec).some((s) => /dim/.test(s))).toBe(false);
+      keys(g[k]).forEach((key, i) => h.setSlider(g[k].ans[key], i));
+      h.click(FIRE[4]);
+      h.advance(3.8);
+    }
   });
   it('level 3 can be dragged on the track and shows the angle in π', () => {
     h.start(3, 5);
@@ -104,8 +122,8 @@ const playRound = (level: number, g: Round[], k: number) => {
 /** The corner dots of Blocky (the only arcs of radius 3.5), in the order drawn. */
 const dots = (rec: CanvasRec['rec']) => rec.arcs.filter((a) => a.r === 3.5).map((a) => `${a.x.toFixed(2)},${a.y.toFixed(2)}`).join(' ');
 
-describe('Hole in the Wall levels 1 to 4 never leak the answer', () => {
-  for (const level of [1, 2, 3, 4]) {
+describe('Hole in the Wall levels 1 to 5 never leak the answer', () => {
+  for (const level of [1, 2, 3, 4, 5]) {
     it(`level ${level}: the live outline is on in round 1, shows 1.5 s after a test slide in round 2, and never in round 3`, () => {
       const R = canvasRecorder();
       h.start(level, 5);

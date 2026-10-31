@@ -8,8 +8,11 @@ import {
   eyeSees,
   judgeMag,
   judgeScope,
+  MAG_F,
   magRange,
   magReading,
+  magRound,
+  magSide,
   magnifier,
   missText,
   nearPointU,
@@ -80,18 +83,48 @@ describe('every game has three solvable rounds', () => {
       for (const r of g.rounds) {
         const rg = magRange(r.f);
         const winners = grid(rg.min, rg.max, SLIDERS.mag.step).filter((u) => judgeMag(r, u).ok);
-        // only sharp settings that look within 2% as big as the best one win (one to three 0.1 cm steps)
-        expect(winners.length).toBeGreaterThanOrEqual(1);
-        expect(winners.length).toBeLessThanOrEqual(3);
-        for (const u of winners) {
-          expect(magnifier(r.f, u).v).toBeGreaterThanOrEqual(D - 0.5);
-          expect(D / u).toBeGreaterThanOrEqual(0.98 * (D / r.uSol));
-        }
+        // exactly one winner: the dial value nearest the exact solution
+        expect(winners).toEqual([r.uAns]);
         expect(r.uSol).toBeLessThan(r.f);
         expect(magnifier(r.f, r.uSol).v).toBeCloseTo(D, 6);
         expect(r.m).toBeCloseTo(1 + D / r.f, 9);
       }
     }
+  });
+  it('level 1: for EVERY lens in the pool the answer is the dial value nearest the exact solution, it is the only winner over the whole dial, and the exact answer rounded to the dial wins', () => {
+    for (const f of MAG_F) {
+      const r = magRound(f);
+      const rg = magRange(f);
+      const dial = grid(rg.min, rg.max, SLIDERS.mag.step);
+      const exact = (f * D) / (f + D);
+      // the nearest dial value
+      const nearest = dial.reduce((a, b) => (Math.abs(b - exact) < Math.abs(a - exact) ? b : a));
+      expect(r.uAns, `f = ${f}`).toBe(nearest);
+      expect(Math.abs(r.uAns - exact)).toBeLessThanOrEqual(0.05 + 1e-9);
+      // no tie: the next dial value is strictly farther
+      const others = dial.filter((u) => u !== nearest).map((u) => Math.abs(u - exact));
+      expect(Math.min(...others)).toBeGreaterThan(Math.abs(nearest - exact) + 1e-6);
+      // one winner over the whole dial, and it is the nearest value (what a player gets by rounding the exact answer to 0.1)
+      expect(dial.filter((u) => judgeMag(r, u).ok), `f = ${f}`).toEqual([nearest]);
+      expect(judgeMag(r, Math.round(exact * 10) / 10).ok).toBe(true);
+      // inside the slider range, and not where the start is
+      expect(r.uAns).toBeGreaterThanOrEqual(rg.min);
+      expect(r.uAns).toBeLessThanOrEqual(rg.max);
+      expect(r.uAns).not.toBe(Math.round(f * 0.4 * 10) / 10);
+      // the neighbours miss, on the right sides
+      expect(judgeMag(r, Math.round((r.uAns - 0.1) * 10) / 10).ok).toBe(false);
+      expect(judgeMag(r, Math.round((r.uAns + 0.1) * 10) / 10).ok).toBe(false);
+      expect(magSide(r, Math.round((r.uAns - 0.1) * 10) / 10)).toBe('near');
+      expect(magSide(r, Math.round((r.uAns + 0.1) * 10) / 10)).toBe('far');
+    }
+  });
+  it('level 1: a lens of f = 10 cm wins at 7.1 cm (exact 7.14), not at 7.0 or 7.2', () => {
+    const r = magRound(10);
+    expect(r.uAns).toBe(7.1);
+    expect(judgeMag(r, 7.1).ok).toBe(true);
+    expect(judgeMag(r, 7.2).ok).toBe(false);
+    expect(judgeMag(r, 7).ok).toBe(false);
+    expect(missText({ kind: 'mag', hero: { name: '', role: '', story: '', objective: '' }, rounds: [r], charges: [1] }, 0, { u: 7.2 })).toMatch(/Sharp, but Mite could look bigger/);
   });
   it('level 1: every closer spot looks bigger but blurs; every farther spot is sharp but looks smaller (so the near point is the optimum)', () => {
     for (const r of as(buildGame(1, lcg(3)), 'mag').rounds) {
@@ -209,9 +242,12 @@ describe('words: the working and the misses', () => {
     }
   });
   it('test shots read out the picture in words', () => {
-    expect(magReading(9, 6.6)).toMatch(/virtual image is [\d.]+ cm away/);
-    expect(magReading(9, 5.4)).toMatch(/nearer than your eye can focus/);
-    expect(magReading(9, 9)).toMatch(/infinity/);
+    expect(magReading(magRound(9), 6.6)).toMatch(/virtual image is [\d.]+ cm away/);
+    expect(magReading(magRound(9), 6.6)).not.toMatch(/nearer than your eye/);
+    expect(magReading(magRound(9), 5.4)).toMatch(/nearer than your eye can focus/);
+    expect(magReading(magRound(9), 9)).toMatch(/infinity/);
+    // the winning dial value is never called too near, even when its image is a hair inside the near point (f = 10 at 7.1 cm: 24.5 cm)
+    expect(magReading(magRound(10), 7.1)).not.toMatch(/nearer than your eye/);
     const r = as(buildGame(2, lcg(3)), 'scope').rounds[0];
     expect(scopeReading(r, 1, 10)).toMatch(/inside the objective/);
     expect(scopeReading(r, r.uSol, r.LSol)).toMatch(/total magnification 20/);

@@ -9,6 +9,7 @@ import {
   STAGE, STAGE2_X0, bang, base, crowd, desk, drawPillars, dust, equationBand, exitStand, faderValue, knobY, runner, spotlights, startStand, stand, stars, trackX,
   type Mood, type Pose, type RunnerOpts,
 } from './art';
+import { BEAMS, goalLine, knob, tag, tint, wasTouched } from './ux';
 import {
   HOP, RISE, ariaFor, buildRounds, equations, explain, firstFault, hintText, heights, judge, labelFor, letterValues, missText, order, testText, verdictTime,
   type Fault, type Mat, type Round,
@@ -31,6 +32,18 @@ const OBJECTIVE = [
 ];
 const ARIA = 'A concert stage of hydraulic pillars that rise to the heights of a matrix, a free-runner who jumps across them, and a mixing desk of faders.';
 const CROWD_Y = 250;
+/** Every fader's grab radius, in scene pixels: a thumb can hold the knob. The desk is laid out so these zones never overlap. */
+export const HANDLE_RADIUS = 18;
+/** The round's goal, as the one short line drawn on the stage at the start of each round (level 1 to 5). */
+export const GOALS = [
+  'Goal: set Y so every pillar matches the card',
+  'Goal: set X so every pillar matches the card',
+  'Goal: set X and Y to match both cards',
+  'Goal: set the letters so each pillar matches',
+  'Goal: build Y from the rule on the card',
+];
+/** Where the goal line stands: between the equation band and the pillars, centred over the stages. */
+const GOAL_AT = { x: 210, y: 108 };
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const easeOut = (u: number) => 1 - (1 - clamp01(u)) ** 2;
@@ -118,7 +131,8 @@ function runAt(p: Plan, rt: number): Run {
     const m = Math.min(n + 1, Math.round(((p.freezeAt as number) - RISE) / HOP));
     return out(pts[m][0], pts[m][1], 'idle', 'worried', faceOf(Math.max(0, m - 1)), m);
   }
-  if (tt < RISE) return out(pts[0][0], pts[0][1], 'idle', 'happy', 1, 0);
+  // Right after Showtime she crouches to jump, so something moves within 100 ms even before the first hop.
+  if (tt < RISE) return out(pts[0][0], pts[0][1], tt >= 0.05 ? 'crouch' : 'idle', 'happy', 1, 0);
   const k = Math.floor((tt - RISE) / HOP);
   if (k > n) {
     const u = (tt - hopStart(n + 1)) / 0.3;
@@ -139,8 +153,8 @@ const hopEnd = (at: number) => RISE + HOP * Math.ceil((at - RISE) / HOP - 1e-9);
 // ---- The faders ------------------------------------------------------------------------------------------------------------------------------------------
 
 function faderHandle(key: string, idx: number, n: number): HandleSpec<Round> {
-  // With eight faders the tracks are only 25 px apart, so the grab radius shrinks to keep a neighbour from stealing the drag.
-  return { dial: key, at: (_r, v) => [trackX(idx, n), knobY(v[key])], drag: (_r, _px, py) => faderValue(py), radius: n >= 7 ? 5 : n >= 6 ? 10 : 14 };
+  // Eight faders get a wider desk (see deskX0), so even at radius 18 the engine's grab zones (radius + 14) stay clear of the neighbouring track.
+  return { dial: key, at: (_r, v) => [trackX(idx, n), knobY(v[key])], drag: (_r, _px, py) => faderValue(py), radius: HANDLE_RADIUS };
 }
 
 // ---- One level -------------------------------------------------------------------------------------------------------------------------------------------
@@ -152,6 +166,8 @@ function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
   let testAt = -10;
   let testV: Values = {};
   let lastK = -1;
+  let roundT0 = 0;
+  let moved = false;
   let seen: unknown = null;
   let floated = false;
   const x0s = n === 3 ? [STAGE.x0, STAGE2_X0] : [STAGE.x0];
@@ -179,6 +195,7 @@ function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
     draw: ({ g, r, k, v, t, rt, shot, A }) => {
       if (k !== lastK) {
         lastK = k;
+        roundT0 = t;
         testAt = -10;
         testPending = false;
       }
@@ -192,6 +209,7 @@ function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
         floated = false;
       }
       backdrop(g);
+      tint(g, k);
       // What the pillars show: live in round 1, the fired values during the show, the snapshot during a test lift, and flat otherwise.
       const tAge = t - testAt;
       const testing = !shot && r.assist > 0 && tAge >= 0 && tAge < 1.5;
@@ -218,7 +236,7 @@ function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
       });
       // Light and crowd first, then the stages, the runners, and last the desk and the equation
       const kiko = runs[0].run;
-      spotlights(g, t, win && done ? { x: kiko.head[0], y: kiko.head[1], f: easeOut((rt - vt) / 0.6) } : null);
+      spotlights(g, t, win && done ? { x: kiko.head[0], y: kiko.head[1], f: easeOut((rt - vt) / 0.6) } : null, BEAMS[Math.min(2, k)]);
       x0s.forEach((x0, ri) => {
         const landed = new Set<string>();
         const ord = order(r.cols);
@@ -247,6 +265,11 @@ function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
         else A.float('OOOH…', 200, CROWD_Y, PAL.dim);
       }
       desk(g, keys, v, labelFor);
+      if (!shot && keys.some((key) => v[key] !== 0)) moved = true;
+      const cue = n === 1 && k === 0 && !moved && !wasTouched(A.canvas);
+      keys.forEach((key, idx) => knob(g, A.canvas, t, { x: trackX(idx, keys.length), y: knobY(v[key]), r: HANDLE_RADIUS, cue: cue && idx === 0 }));
+      if (!shot) goalLine(g, GOALS[n - 1], t - roundT0, false, GOAL_AT.y, GOAL_AT.x);
+      else if (rt < 0.9) tag(g, 'SHOWTIME!', GOAL_AT.x, GOAL_AT.y, 'center', PAL.yellow, 14);
       if (shot && rt > vt + 0.1) verdict(g, shot.ok, 'PERFECT RUN', 'SHOW STOPPED');
       else equationBand(g, equations(r, v), n, n === 4 ? letterValues(v) : null);
     },

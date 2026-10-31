@@ -1,368 +1,358 @@
+// The Quark Hunt. Inspirations (code comment only): Lunar Lander (hold a hover by balancing two forces), a guitar tuner (level 2: tune the rung spacing until every
+// string rings true) and Papers, Please (level 3: inspect the readings and reject the ones that cannot be real).
+// Levels 1 and 3 are tap boards on createArcade (level 1: add or remove single electrons; level 3: tap the drops that are dust); level 2 is a mountDialLevel level.
+// Never leak the answer: the gauge, the full ladder and the e-ladder strip are the only helpers (live in round 1, for 1.5 s after a check in round 2, never in
+// round 3); every miss animation takes a fixed speed or a fixed stamp, and `hit` is a fixed point. The art is in art.ts, the rules in logic.ts.
+import { PAL, createArcade } from '@core/arcade';
 import { defineGame } from '@core/define';
-import { disc, label, themeColors } from '@core/draw';
-import { h } from '@core/dom';
-import { parseNumber } from '@core/quiz';
-import { fitCanvas, startLoop } from '@core/sim';
+import { mountDialLevel, type DialLevel } from '@core/dialgame';
+import { helperOn, paidFlash } from '@core/aidflash';
+import { text } from '@core/neon';
+import { pointerToLocal } from '@core/sim';
+import type { GameContext } from '@core/types';
 import {
-  buildLevel,
-  checkElectrons,
-  checkUnit,
-  determinesUnit,
-  G,
-  GAP,
-  in19,
-  isHovering,
-  measuredCharge,
-  netRatio,
-  scoreFlags,
-  speed,
-  starsFor,
-  V_MAX,
-  type Drop,
+  DROPS, DROP_X, DROP_Y, HIT, LADDER, MARK_X, STRIP, calm, chamber, clamp01, desk, ease, eli, envelope, goalLine, grip, lab, ladderY, lcd, marker, oilDrop, panel, pico, rung, stamp, stencil,
+  strip, stripX, tag, untouched, view, viewDrop, zap, type EliMood, type PicoOpts,
+} from './art';
+import {
+  ARIA, LCD_OFF, LETTERS, N_DIAL, U_DIAL, buildRounds, calFault, checkText, faultOf, goalText, hintLine, lcdText, missText, offBy, reading, two, winText,
+  type Fault, type Round,
 } from './logic';
 
-const W = 640;
-const H = 340;
-const TOP = 46; // top plate, y
-const BOTTOM = H - 46; // bottom plate, y
-const PLATE_X0 = 150;
-const PLATE_X1 = 490;
-const R = 11;
-const HOLD = 1; // seconds the drop must stay hovering before it can be recorded
-const FINE = 5; // the fine knob covers ±5 V around the coarse setting
+type G = CanvasRenderingContext2D;
+const ROLE = 'a particle physicist on the night shift, hunting for free quarks with charged oil drops';
+const HEROES = [
+  {
+    story: 'A free quark would carry a third of an electron’s charge, so Eli’s lab weighs charge itself. An oil drop sits between two plates 5 mm apart; the top plate is positive, so every extra electron on the drop adds an upward push e V/d. The drop hovers when n e V / d = m g. Charge only comes in whole electrons: an X-ray zap adds one, a UV flash knocks one off.',
+    objective: 'Give the drop exactly the number of electrons that makes it hover, in three runs.',
+  },
+  {
+    story: 'The lab’s new charge detector reads in its own units, du, and nobody knows how many du one electron gives. Every drop carries a whole number of electrons, so every reading is a whole number of the same step. The step is the largest one that fits every reading, and the smallest reading need not be a single electron.',
+    objective: 'Set the detector’s rung spacing so every reading lands on a rung, in three runs.',
+  },
+  {
+    story: 'Tonight’s run measured five drops. Every real free charge is a whole number of e = 1.6 × 10⁻¹⁹ C. A reading of a third or two thirds of e more would be a free quark, but every such reading so far has been dust on the lens or a misread drop.',
+    objective: 'Flag every drop that is not a whole number of e, then publish the run, in three nights.',
+  },
+];
+const hero = (n: 1 | 2 | 3) => ({ name: 'Eli', role: ROLE, ...HEROES[n - 1] });
 
-const sci = (m: number) => {
-  const [a, b] = m.toExponential(2).split('e');
-  return `${Number(a)} × 10${[...String(Number(b))].map((c) => ({ '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' })[c] ?? c).join('')}`;
-};
+/** One-shot effects (floaters) during an attempt: runs `fn` once per attempt and key. */
+function onceFor() {
+  let cur: unknown = null;
+  const done = new Set<string>();
+  return (shot: unknown, key: string, fn: () => void) => {
+    if (cur !== shot) {
+      cur = shot;
+      done.clear();
+    }
+    if (shot && !done.has(key)) {
+      done.add(key);
+      fn();
+    }
+  };
+}
+
+function eliMood(shot: boolean, ok: boolean, rt: number, verdict: number, fault: Fault | null): EliMood {
+  if (!shot) return 'happy';
+  if (rt < verdict) return 'squint';
+  if (ok) return 'cheer';
+  return fault === 'kept' ? 'facepalm' : 'worried';
+}
+function picoOpts(shot: boolean, ok: boolean, rt: number, verdict: number): PicoOpts {
+  const after = shot && rt >= verdict;
+  return { lit: shot, droop: after && !ok, mark: after ? (ok ? 'ok' : 'bad') : null, flash: after && ok && rt - verdict < 0.12 ? 0.3 : 0 };
+}
+/** The gauge text for a frame and its colour. */
+function gauge(r: Round, helper: boolean, s: { n: number; u: number }): [string, string] {
+  return helper ? [lcdText(r, s), r.assist === 0 ? PAL.green : PAL.yellow] : [LCD_OFF, PAL.dim];
+}
+
+// ---- levels 1 and 3: tap boards on createArcade ----
+function boardLevel(ctx: GameContext, n: 1 | 3): () => void {
+  const rounds = buildRounds(n, ctx.random);
+  let count = 0;
+  let flags = [false, false, false, false, false];
+  let fired: { ok: boolean; count: number; flags: boolean[]; fault: Fault | null } | null = null;
+  let tapped = false;
+  let flagged = false;
+  let jabAt = -10;
+  const zaps: { kind: 'x' | 'uv'; at: number }[] = [];
+  const pf = paidFlash();
+  const once = onceFor();
+  const A = createArcade(ctx, hero(n), {
+    W: 640,
+    H: 340,
+    aria: ARIA,
+    rounds: 3,
+    charges: [1, 1, 0],
+    onRound: (k) => {
+      count = 0;
+      flags = [false, false, false, false, false];
+      fired = null;
+      tapped = false;
+      flagged = false;
+      zaps.length = 0;
+      A.feedback.hidden = true;
+      A.hint.textContent = hintLine(rounds[k]);
+      slider?.set(0);
+      refreshFlags();
+    },
+  });
+  const cur = () => rounds[Math.min(A.round, 2)];
+  let slider: ReturnType<typeof A.slider> | null = null;
+  const flagBtns: HTMLButtonElement[] = [];
+
+  function setCount(v: number) {
+    const nv = Math.max(N_DIAL.min, Math.min(N_DIAL.max, v));
+    if (nv === count) return;
+    const up = nv > count;
+    slider?.set(nv);
+    A.sound('blip');
+    zaps.push({ kind: up ? 'x' : 'uv', at: A.clock });
+    jabAt = A.clock;
+    tapped = true;
+    A.float(up ? '⚡' : '☀', up ? 270 : 420, 140, up ? PAL.yellow : '#c9a0ff');
+  }
+  function toggle(i: number) {
+    if (A.phase !== 'play') return;
+    flags[i] = !flags[i];
+    flagged = true;
+    jabAt = A.clock;
+    A.sound('blip');
+    refreshFlags();
+  }
+  function refreshFlags() {
+    flagBtns.forEach((b, i) => b.setAttribute('aria-pressed', String(flags[i])));
+  }
+  function fire() {
+    const r = cur();
+    const f = faultOf(r, { n: count, u: 6, flags });
+    fired = { ok: f === null, count, flags: [...flags], fault: f };
+    A.resolve(f === null, f === null ? winText(r) : missText(r, f, { n: count, u: 6 }), { x: HIT[0], y: HIT[1] }, n === 1 ? 1.2 : 1.4);
+  }
+  const check = A.button(n === 1 ? '🔎 Force check' : '🔎 Ladder check', n === 1 ? 'Force check: compare the push with the weight' : 'Ladder check: see the whole numbers of e for a moment', () => {
+    if (!A.spend()) return;
+    pf.paid();
+    A.say(checkText(cur(), { n: count, u: 6 }), true);
+  }, 'secondary');
+
+  if (n === 1) {
+    slider = A.slider({ aria: 'Electrons on the drop', label: 'Electrons', min: N_DIAL.min, max: N_DIAL.max, step: 1, value: 0, unit: '', onInput: (v) => (count = v) });
+    A.controls.append(
+      A.button('☀ −1 electron', 'UV flash: knock one electron off the drop', () => setCount(count - 1), 'secondary'),
+      A.button('⚡ +1 electron', 'X-ray zap: add one electron to the drop', () => setCount(count + 1), 'secondary'),
+      slider.row,
+      check,
+      A.button('🔌 Switch on the plates', 'Switch on the plates and release the drop', fire),
+    );
+  } else {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin:4px 0';
+    for (let i = 0; i < 5; i++) {
+      const b = A.button(`Drop ${LETTERS[i]}`, `Flag drop ${LETTERS[i]}`, () => toggle(i), 'small');
+      b.setAttribute('aria-pressed', 'false');
+      flagBtns.push(b);
+      row.append(b);
+    }
+    A.controls.append(row, check, A.button('📰 Publish the run', 'Publish the run', fire));
+    A.canvas.addEventListener('pointerdown', (e) => {
+      if (A.phase !== 'play') return;
+      const p = pointerToLocal(e, A.canvas, 640, 340);
+      const i = DROPS.findIndex((d) => Math.hypot(p.x - d.x, p.y - d.y) <= 22);
+      if (i >= 0) toggle(i);
+    });
+  }
+
+  A.scene((g, t) => {
+    if (A.phase === 'between') return;
+    if (A.phase === 'play') fired = null;
+    const k = Math.min(A.round, 2);
+    const r = cur();
+    const shot = A.phase === 'resolve' ? fired : null;
+    const rt = shot ? A.rt : 0;
+    const since = pf.since(t, k);
+    const helper = helperOn(r.assist, false, since);
+    A.canvas.dataset.live = helper ? '1' : '0';
+    lab(g, t, k);
+    stencil(g, k);
+    if (r.kind === 'hold') drawHold(g, A, r, k, t, rt, shot, count, helper, once);
+    else if (r.kind === 'dust') drawDust(g, A, r, k, t, rt, shot, flags, helper, once);
+    if (!shot) goalLineFor(g, A, r);
+  });
+
+  function goalLineFor(g: G, a: typeof A, r: Round) {
+    goalLine(g, goalText(r), a.t, false);
+  }
+
+  // Level 1: the chamber.
+  function drawHold(g: G, a: typeof A, r: Extract<Round, { kind: 'hold' }>, k: number, t: number, rt: number, shot: typeof fired, live: number, helper: boolean, one: ReturnType<typeof onceFor>) {
+    const c = shot ? shot.count : live;
+    const ok = shot?.ok ?? false;
+    const [lt, lc] = gauge(r, helper, { n: c, u: 6 });
+    lcd(g, lt, lc);
+    a.canvas.dataset.lcd = helper ? '1' : '0';
+    const verdict = 1.2;
+    const lever = shot ? -25 + 50 * ease(rt / 0.15) : -25;
+    const press = (kind: 'x' | 'uv') => (zaps.some((z) => z.kind === kind && t - z.at < 0.12) ? 1 : 0);
+    desk(g, t, { lever, xray: press('x'), uv: press('uv'), knob: 0, plates: !!shot });
+    chamber(g, t, { glow: !!shot, V: r.V, m: r.m, pulse: k === 0 && !tapped && !shot, tapCue: k === 0 && !tapped && !shot });
+    text(g, `${c} electron${c === 1 ? '' : 's'}`, DROP_X, 214, PAL.yellow, 15);
+    // the drop: a hover with a jiggle, or a fixed 110 px/s fall or rise to a plate
+    let y = DROP_Y;
+    let squash = false;
+    const fall = 86;
+    if (shot && rt > 0.1) {
+      if (ok) y = DROP_Y + (calm() ? 0 : Math.sin(t * 20));
+      else if (shot.fault === 'low') {
+        y = DROP_Y + Math.min(fall, 110 * (rt - 0.1));
+        squash = y >= DROP_Y + fall;
+        if (squash) y = 262;
+      } else y = DROP_Y - Math.min(fall, 110 * (rt - 0.1));
+    }
+    a.canvas.dataset.dropy = y.toFixed(2);
+    if (!shot) for (const z of zaps) if (t - z.at < 0.15) zap(g, z.kind, (t - z.at) / 0.15, DROP_Y);
+    oilDrop(g, DROP_X, y, t, c, { squash, glint: ok && rt >= verdict, wobble: shot ? 0 : 0.35 });
+    const stuck = !ok && shot?.fault === 'high' && rt > 0.1 + fall / 110;
+    one(shot, 'clack', () => a.float('CLACK', 150, 262, PAL.white));
+    if (shot && rt >= 0.1 + fall / 110 && !ok) one(shot, 'land', () => a.float(stuck ? 'tik' : 'plip', DROP_X, stuck ? 100 : 250, PAL.white));
+    if (shot && rt >= verdict) one(shot, 'verdict', () => (ok ? a.float('CLICK', 400, 64, PAL.white) : a.float('hmm', 400, 64, PAL.dim)));
+    pico(g, t, picoOpts(!!shot, ok, rt, verdict));
+    eli(g, t, { mood: eliMood(!!shot, ok, rt, verdict, shot?.fault ?? null), reach: shot && rt < 0.35 ? 'lever' : 'box', jab: clamp01(1 - (t - jabAt) / 0.12), lever, cheerT: rt - verdict });
+  }
+
+  // Level 3: the five drops.
+  function drawDust(g: G, a: typeof A, r: Extract<Round, { kind: 'dust' }>, k: number, t: number, rt: number, shot: typeof fired, live: boolean[], helper: boolean, one: ReturnType<typeof onceFor>) {
+    const fl = shot ? shot.flags : live;
+    const ok = shot?.ok ?? false;
+    const verdict = 1.4;
+    view(g);
+    desk(g, t, { lever: -25, xray: 0, uv: 0, knob: 0, plates: false });
+    const keptKs = r.ks.filter((_, i) => !fl[i]);
+    r.ks.forEach((kk, i) => {
+      const label = two(reading(kk));
+      if (!shot) return viewDrop(g, i, label, t, { flagged: fl[i] });
+      if (fl[i]) {
+        const u0 = clamp01(rt / 0.4);
+        if (rt < 0.4) viewDrop(g, i, label, t, { flagged: true, dy: -50 * ease(u0), alpha: 1 - u0, showText: false });
+        one(shot, `pfft${i}`, () => a.float('PFFT', DROPS[i].x, 130, PAL.white));
+      } else if (rt < 0.4) viewDrop(g, i, label, t, { flagged: false });
+      else if (rt < 0.7) {
+        const u1 = ease((rt - 0.4) / 0.3);
+        viewDrop(g, i, label, t, { flagged: false, dx: (DROP_X - DROPS[i].x) * u1, r: 12 * (1 - 0.6 * u1), showText: false });
+      }
+    });
+    // the kept drops go into an envelope that slides to Pico; Pico reads it; the stamp slams on at 1.4 s
+    if (shot && rt >= 0.55 && rt < verdict) {
+      const slide = calm() ? (rt >= 0.9 ? 1 : 0) : ease((rt - 0.6) / 0.3);
+      envelope(g, DROP_X, 150 + (62 - 150) * slide, 1.2);
+    }
+    const showStrip = shot ? ok && rt >= verdict + 0.1 : helper;
+    a.canvas.dataset.strip = showStrip ? '1' : '0';
+    if (showStrip) strip(g, shot ? keptKs : r.ks);
+    if (shot && ok && rt >= verdict + 0.1) {
+      const u2 = ease((rt - verdict - 0.1) / 0.5);
+      keptKs.forEach((kk) => {
+        const x = stripX(kk / 3);
+        g.fillStyle = '#e8c15a';
+        g.beginPath();
+        g.arc(DROP_X + (x - DROP_X) * u2, 150 + (STRIP.y - 30 - 150) * u2, 6, 0, Math.PI * 2);
+        g.fill();
+      });
+    }
+    if (shot && rt >= verdict) {
+      stamp(g, ok ? 'PUBLISHED: NO FREE QUARKS' : shot.fault === 'kept' ? 'RETRACTED' : 'TOO FEW DROPS', ok ? PAL.green : shot.fault === 'kept' ? PAL.red : PAL.orange, rt - verdict);
+      one(shot, 'verdict', () => (ok ? a.float('CLICK', 400, 64, PAL.white) : a.float('hmm', 400, 64, PAL.dim)));
+    }
+    if (k === 0 && !flagged && !shot) {
+      g.globalAlpha = 0.5 + 0.5 * Math.sin(5 * t);
+      tag(g, 'tap a drop', DROPS[0].x, 100, 'center', PAL.yellow, 11);
+      g.globalAlpha = 1;
+    }
+    void r;
+    pico(g, t, picoOpts(!!shot, ok, rt, verdict));
+    eli(g, t, { mood: eliMood(!!shot, ok, rt, verdict, shot?.fault ?? null), reach: shot ? 'point' : 'box', jab: clamp01(1 - (t - jabAt) / 0.12), lever: -25, cheerT: rt - verdict });
+  }
+
+  A.mountAll();
+  return A.run();
+}
+
+// ---- level 2: calibrate the detector (a dial level) ----
+function calLevel(random: () => number): DialLevel<Round> {
+  const rounds = buildRounds(2, random);
+  const pf = paidFlash();
+  const once = onceFor();
+  return {
+    hero: hero(2),
+    rounds,
+    charges: [1, 1, 0],
+    dials: [{ key: 'u', aria: 'Detector units per electron: the spacing of the rungs', label: 'Rung spacing', unit: 'du', step: U_DIAL.step, min: U_DIAL.min, max: U_DIAL.max, start: U_DIAL.start, text: (x) => x.toFixed(1) }],
+    handles: [{ dial: 'u', at: (_r, v) => [LADDER.x, ladderY(v.u)], drag: (_r, _px, py) => (LADDER.y0 - py) / LADDER.px, radius: 20 }],
+    test: {
+      button: '🔎 Fit check',
+      aria: 'Fit check: see the counts at this spacing',
+      read: (r, v) => {
+        pf.paid();
+        return checkText(r, { n: 0, u: v.u });
+      },
+    },
+    fire: { button: '📏 Fit the ladder', aria: 'Fit the ladder to the readings' },
+    judge: (r, v) => r.kind === 'cal' && calFault(r, v.u) === null,
+    miss: (r, v) => missText(r, 'offrung', { n: 0, u: v.u }),
+    win: (r) => winText(r),
+    hint: (r) => hintLine(r),
+    hit: () => HIT,
+    delay: 1.1,
+    draw: ({ g, r, k, v, t, rt, shot, A }) => {
+      if (r.kind !== 'cal') return;
+      const u = v.u;
+      const verdict = 1.1;
+      const ok = shot?.ok ?? false;
+      const since = pf.since(t, k);
+      const helper = helperOn(r.assist, false, since);
+      A.canvas.dataset.live = helper ? '1' : '0';
+      A.canvas.dataset.lcd = helper ? '1' : '0';
+      lab(g, t, k);
+      stencil(g, k);
+      const [lt, lc] = gauge(r, helper, { n: 0, u });
+      lcd(g, lt, lc);
+      desk(g, t, { lever: -25, xray: 0, uv: 0, knob: shot ? rt * 9 : 0, plates: false });
+      panel(g);
+      const N = Math.floor(36 / u + 1e-9);
+      // the rungs: only the first before the attempt, unless the helper is on; the whole ladder draws upward during the attempt
+      let shown = helper ? N : 1;
+      if (shot) shown = 1 + Math.floor(clamp01((rt - 0.1) / 0.5) * (N - 1));
+      for (let j = Math.min(N, shown); j >= 2; j--) rung(g, u * j, false);
+      rung(g, u, true);
+      once(shot, 'fit', () => A.float('FIT', 380, 70, PAL.cyan));
+      // the three drop markers, labelled with their readings; they slide onto the ladder from 0.6 to 1.0 s
+      const slide = shot ? (calm() ? (rt >= 1 ? 1 : 0) : ease((rt - 0.6) / 0.4)) : 0;
+      r.reads.forEach((q, i) => {
+        const y = ladderY(q);
+        const on = offBy(q, u) < 0.02;
+        const x = MARK_X + (LADDER.x - MARK_X) * slide;
+        const wob = shot && !on && rt >= 1 && !calm() ? Math.sin(t * 20) * 2 : 0;
+        marker(g, x, y + wob, `${q} du`);
+        if (shot && rt >= 1) {
+          if (on) text(g, '✓', 318, y + 4, PAL.green, 13, 'right');
+          else text(g, '?', 318, y + 4, PAL.red, 13, 'right');
+        }
+        if (shot && ok && rt >= verdict) text(g, `${r.ns[i]} e`, 446, y + 4, PAL.green, 12, 'left');
+      });
+      if (!shot) grip(g, A.canvas, t, { x: LADDER.x, y: ladderY(u), read: `${u.toFixed(1)} du`, cue: k === 0 && untouched(A.canvas) });
+      if (shot && rt >= verdict) once(shot, 'verdict2', () => A.float(ok ? 'CLICK' : 'hmm', 400, 64, ok ? PAL.white : PAL.dim));
+      pico(g, t, { ...picoOpts(!!shot, ok, rt, verdict), scale: 0.8 });
+      eli(g, t, { mood: eliMood(!!shot, ok, rt, verdict, null), reach: shot ? 'knob' : 'box', jab: 0, lever: -25, cheerT: rt - verdict });
+      if (!shot) goalLine(g, goalText(r), A.t, false);
+    },
+  };
+}
 
 export default defineGame({
   mount(ctx) {
-    const lvl = buildLevel(ctx.level, ctx.random);
-    const col = themeColors();
-    const mid = (TOP + BOTTOM) / 2;
-
-    let current = 0;
-    let volts = 0;
-    let y = mid;
-    let stable = 0;
-    let wrong = 0;
-    let finished = false;
-    let lastStatus = '';
-    const recorded = new Map<number, { volts: number; q: number }>();
-    const rightN = new Set<number>(); // level 1: drops whose electron count is right
-    const flagged = new Set<number>(); // level 3
-
-    const drop = (): Drop => lvl.drops[current];
-
-    // ---- DOM --------------------------------------------------------------------------------
-    const canvas = h('canvas', { role: 'img', 'aria-label': 'Two horizontal plates with a charged oil drop between them, and arrows for its weight and the electric force.' });
-    const g = fitCanvas(canvas, W, H);
-    const status = h('p', { class: 'status-line', 'aria-live': 'polite' });
-    const feedback = h('p', { class: 'feedback', hidden: true, 'aria-live': 'polite' });
-    const readout = h('span', { class: 'v-readout', 'aria-label': 'Total voltage' });
-    const coarseVal = h('span', { class: 'knob-val' });
-    const fineVal = h('span', { class: 'knob-val' });
-    const holdFill = h('span', { class: 'bar-fill', style: 'width:0%' });
-    const hold = h('span', { class: 'bar hold-bar', role: 'progressbar', 'aria-label': 'Time held steady', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': 0 }, holdFill);
-    // Two knobs, like the real apparatus: coarse (whole volts) and fine (±5 V in hundredths of a volt).
-    // The voltage is their sum. Dragging one never moves the other, so a drag never jumps under your finger.
-    const coarse = h('input', { type: 'range', min: 0, max: V_MAX, step: 1, value: '0', 'aria-label': 'Voltage, coarse knob', class: 'v-slider', oninput: () => dialsChanged() }) as HTMLInputElement;
-    const fine = h('input', { type: 'range', min: -FINE, max: FINE, step: 0.01, value: '0', 'aria-label': 'Voltage, fine knob', class: 'v-slider', oninput: () => dialsChanged() }) as HTMLInputElement;
-    const nudge = (label: string, delta: number) => h('button', { class: 'btn secondary small', 'aria-label': `Voltage ${delta > 0 ? 'up' : 'down'} ${Math.abs(delta)} volt`, onclick: () => setVolts(volts + delta) }, label);
-    const recordBtn = h('button', { class: 'btn', 'aria-label': 'Record this drop', disabled: true, onclick: () => record() }, 'Record this drop');
-    const dropButtons = lvl.drops.map((d, i) => h('button', { class: 'btn secondary small', 'aria-pressed': 'false', onclick: () => select(i) }, `Drop ${d.id}`));
-    const resultsEl = h('div', { class: 'results' });
-    const answerEl = h('div', { class: 'answer' });
-
-    // ---- actions ----------------------------------------------------------------------------
-    function say(text: string, kind: 'good' | 'bad' | '') {
-      feedback.hidden = false;
-      feedback.className = `feedback ${kind}`;
-      feedback.textContent = text;
-    }
-    function showVolts() {
-      const f = Number(fine.value);
-      readout.textContent = `${volts.toFixed(2)} V`;
-      coarseVal.textContent = `${Number(coarse.value)} V`;
-      fineVal.textContent = `${f < 0 ? '−' : '+'}${Math.abs(f).toFixed(2)} V`;
-    }
-    /** A knob moved: the voltage is coarse + fine. The knobs themselves are left alone while being dragged. */
-    function dialsChanged() {
-      if (finished) return;
-      volts = Math.max(0, Math.min(V_MAX, Math.round((Number(coarse.value) + Number(fine.value)) * 100) / 100));
-      showVolts();
-    }
-    /** Set the voltage directly (nudge buttons, tests) and bring both knobs to match it. */
-    function setVolts(v: number) {
-      if (finished) return;
-      volts = Math.max(0, Math.min(V_MAX, Math.round(v * 100) / 100));
-      const c = Math.round(volts);
-      coarse.value = String(c);
-      fine.value = String(Math.round((volts - c) * 100) / 100);
-      showVolts();
-    }
-    function select(i: number) {
-      if (finished || i === current) return; // clicking the drop you are already on must not restart its timer
-      current = i;
-      y = mid;
-      stable = 0;
-      refresh();
-    }
-    function record() {
-      const d = drop();
-      if (finished || recorded.has(d.id) || stable < HOLD) return;
-      recorded.set(d.id, { volts, q: measuredCharge(volts, d) });
-      stable = 0;
-      const next = lvl.drops.findIndex((x) => !recorded.has(x.id));
-      if (next >= 0) {
-        current = next;
-        y = mid;
-      }
-      say(`Recorded drop ${d.id}: V = ${volts.toFixed(2)} V, so q = m g d / V = ${in19(recorded.get(d.id)!.q).toFixed(2)} × 10⁻¹⁹ C.`, 'good');
-      refresh();
-    }
-    function win(message: string) {
-      finished = true;
-      say(message, 'good');
-      refresh();
-      ctx.win({ stars: starsFor(wrong) });
-    }
-
-    // level 1: how many electrons?
-    function checkCount(d: Drop, raw: string) {
-      const n = Number(raw);
-      if (raw.trim() === '' || !Number.isFinite(n)) return say('Enter a whole number of electrons.', 'bad');
-      if (checkElectrons(n, d)) {
-        rightN.add(d.id);
-        say(`Yes: drop ${d.id} carries ${d.multiple} electron${d.multiple === 1 ? '' : 's'}.`, 'good');
-        if (rightN.size === lvl.drops.length) return win('All three drops counted. Charge always comes as a whole number of electrons.');
-      } else {
-        wrong++;
-        say('Not quite. Divide the drop’s charge by e = 1.6 × 10⁻¹⁹ C. (That cost a star.)', 'bad');
-      }
-      refresh();
-    }
-
-    // level 2: what is the unit of charge?
-    function submitUnit(raw: string) {
-      if (finished) return;
-      const measured = lvl.drops.filter((d) => recorded.has(d.id));
-      if (!determinesUnit(measured)) {
-        // The student's data cannot tell e from 2e yet: say so, and cost nothing.
-        return say(
-          measured.length < 3
-            ? 'Measure at least three drops first. Two numbers cannot show what unit they are multiples of.'
-            : 'Your drops could all be multiples of something bigger than the true unit, so any answer would be a guess. Measure another drop. (This does not cost you anything.)',
-          'bad',
-        );
-      }
-      const n = parseNumber(raw);
-      if (n === null) return say('Enter a number, like 1.6 (in units of 10⁻¹⁹ C).', 'bad');
-      if (checkUnit(n, lvl.unitTol)) return win('That is the unit of charge: every drop carries a whole number of it. Millikan found 1.6 × 10⁻¹⁹ C.');
-      wrong++;
-      say('That does not fit all your data. Every measured charge should be a whole number of the unit. (That cost a star.)', 'bad');
-      refresh();
-    }
-
-    // level 3: which samples are impure?
-    function submitFlags() {
-      if (finished) return;
-      if (recorded.size < lvl.drops.length) return say(`Measure all ${lvl.drops.length} drops first. (This does not cost you anything.)`, 'bad');
-      if (scoreFlags([...flagged], lvl.drops).correct) return win('Right: those two samples carry charges that are not whole numbers of e, so they cannot be real.');
-      wrong++;
-      say('Not quite: you flagged a good sample or missed an impure one. (That cost a star.)', 'bad');
-      refresh();
-    }
-
-    // ---- rendering of the DOM parts ---------------------------------------------------------
-    function refresh() {
-      dropButtons.forEach((b, i) => {
-        const d = lvl.drops[i];
-        b.setAttribute('aria-pressed', String(i === current));
-        b.textContent = `Drop ${d.id}${recorded.has(d.id) ? ' ✓' : ''}`;
-        b.toggleAttribute('disabled', finished);
-      });
-      recordBtn.toggleAttribute('disabled', finished || recorded.has(drop().id) || stable < HOLD);
-
-      const rows = lvl.drops.filter((d) => recorded.has(d.id));
-      const showRatio = lvl.mode === 'flag';
-      resultsEl.replaceChildren(
-        rows.length === 0
-          ? h('p', { class: 'muted' }, 'Nothing recorded yet. Tune a drop until it hovers, hold it steady, then record it.')
-          : h(
-              'table',
-              { class: 'data' },
-              h('thead', null, h('tr', null, h('th', null, 'Drop'), h('th', null, 'Mass (kg)'), h('th', null, 'V (volts)'), h('th', null, 'q (10⁻¹⁹ C)'), ...(showRatio ? [h('th', null, 'q ÷ e'), h('th', null, 'Impure?')] : []), ...(lvl.mode === 'count' ? [h('th', null, 'Electrons')] : []))),
-              h(
-                'tbody',
-                null,
-                ...rows.map((d) => {
-                  const rec = recorded.get(d.id)!;
-                  const cells: Node[] = [h('td', null, String(d.id)), h('td', null, sci(d.mass)), h('td', null, rec.volts.toFixed(2)), h('td', null, in19(rec.q).toFixed(2))];
-                  if (showRatio) {
-                    cells.push(h('td', null, (rec.q / 1.6e-19).toFixed(2)));
-                    cells.push(
-                      h(
-                        'td',
-                        null,
-                        h('input', {
-                          type: 'checkbox',
-                          'aria-label': `Flag drop ${d.id} as impure`,
-                          checked: flagged.has(d.id),
-                          disabled: finished,
-                          onchange: (e: Event) => {
-                            if ((e.target as HTMLInputElement).checked) flagged.add(d.id);
-                            else flagged.delete(d.id);
-                          },
-                        }),
-                      ),
-                    );
-                  }
-                  if (lvl.mode === 'count') {
-                    if (rightN.has(d.id)) cells.push(h('td', null, `${d.multiple} ✓`));
-                    else {
-                      const input = h('input', { class: 'field small-field', type: 'number', min: 0, step: 1, 'aria-label': `Electrons on drop ${d.id}` }) as HTMLInputElement;
-                      cells.push(h('td', null, input, h('button', { class: 'btn small', 'aria-label': `Check electrons on drop ${d.id}`, onclick: () => checkCount(d, input.value) }, 'Check')));
-                    }
-                  }
-                  return h('tr', null, ...cells);
-                }),
-              ),
-            ),
-      );
-
-      answerEl.replaceChildren();
-      if (lvl.mode === 'unit') {
-        const input = h('input', { class: 'field', type: 'text', inputmode: 'decimal', 'aria-label': 'Unit of charge, in 10⁻¹⁹ C', placeholder: 'e = ? × 10⁻¹⁹ C', autocomplete: 'off' }) as HTMLInputElement;
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') submitUnit(input.value);
-        });
-        answerEl.append(
-          h('p', null, h('strong', null, 'The unit of charge: '), `measured ${recorded.size} of ${lvl.drops.length} drops.`),
-          h('div', { class: 'row' }, input, h('span', { class: 'unit' }, '× 10⁻¹⁹ C'), h('button', { class: 'btn', disabled: finished, onclick: () => submitUnit(input.value) }, 'Submit unit')),
-        );
-      } else if (lvl.mode === 'flag') {
-        answerEl.append(h('p', null, 'Tick the impure samples, then submit.'), h('div', { class: 'row' }, h('button', { class: 'btn', 'aria-label': 'Submit flags', disabled: finished, onclick: () => submitFlags() }, 'Submit flags')));
-      }
-    }
-
-    // ---- the chamber ------------------------------------------------------------------------
-    function describeDrop(): string {
-      const d = drop();
-      if (recorded.has(d.id)) return `Drop ${d.id} is already recorded.`;
-      const ratio = netRatio(volts, d);
-      if (volts === 0) return `Drop ${d.id}: no voltage yet, so it falls.`;
-      if (isHovering(volts, d, lvl.tol)) return stable >= HOLD ? `Drop ${d.id} is hovering. You can record it.` : `Drop ${d.id} is hovering. Hold it steady…`;
-      return ratio > 0 ? `Drop ${d.id} is rising ↑` : `Drop ${d.id} is falling ↓`;
-    }
-
-    function frame(dt: number) {
-      const d = drop();
-      if (!recorded.has(d.id) && !finished) {
-        y -= speed(netRatio(volts, d)) * dt;
-        const lo = TOP + 8 + R;
-        const hi = BOTTOM - R;
-        y = Math.max(lo, Math.min(hi, y));
-        stable = isHovering(volts, d, lvl.tol) ? stable + dt : 0;
-      }
-      const pct = Math.round(Math.min(1, stable / HOLD) * 100);
-      holdFill.style.width = `${pct}%`;
-      hold.setAttribute('aria-valuenow', String(pct));
-      recordBtn.toggleAttribute('disabled', finished || recorded.has(d.id) || stable < HOLD);
-      const text = describeDrop();
-      if (text !== lastStatus) {
-        lastStatus = text;
-        status.textContent = text;
-      }
-      draw();
-    }
-
-    function arrow(x: number, y0: number, y1: number, color: string, text: string) {
-      g.strokeStyle = color;
-      g.fillStyle = color;
-      g.lineWidth = 3;
-      g.beginPath();
-      g.moveTo(x, y0);
-      g.lineTo(x, y1);
-      g.stroke();
-      const dir = Math.sign(y1 - y0) || 1;
-      g.beginPath();
-      g.moveTo(x, y1);
-      g.lineTo(x - 6, y1 - 9 * dir);
-      g.lineTo(x + 6, y1 - 9 * dir);
-      g.closePath();
-      g.fill();
-      label(g, text, x + 10, (y0 + y1) / 2 + 4, { size: 11, color, align: 'left', bold: false });
-    }
-
-    function draw() {
-      const d = drop();
-      g.clearRect(0, 0, W, H);
-      g.fillStyle = col.panel;
-      g.fillRect(0, 0, W, H);
-
-      // plates, and a faint field between them that strengthens with voltage
-      g.fillStyle = col.muted;
-      g.fillRect(PLATE_X0, TOP, PLATE_X1 - PLATE_X0, 8);
-      g.fillRect(PLATE_X0, BOTTOM, PLATE_X1 - PLATE_X0, 8);
-      label(g, '+', PLATE_X0 - 14, TOP + 9, { size: 18, color: '#c0392b' });
-      label(g, '−', PLATE_X0 - 14, BOTTOM + 9, { size: 22, color: '#3156d3' });
-      g.globalAlpha = 0.08 + 0.4 * Math.min(1, volts / V_MAX);
-      g.strokeStyle = col.accent;
-      g.lineWidth = 1;
-      for (let x = PLATE_X0 + 20; x < PLATE_X1; x += 34) {
-        g.beginPath();
-        g.moveTo(x, TOP + 12);
-        g.lineTo(x, BOTTOM - 4);
-        g.stroke();
-      }
-      g.globalAlpha = 1;
-
-      const x = (PLATE_X0 + PLATE_X1) / 2;
-      disc(g, x, y, R, '#d9a441', col.text);
-      // the two forces on the drop: weight is fixed, the electric force grows with voltage
-      const weightLen = 38;
-      const electricLen = Math.max(0, Math.min(110, weightLen * (1 + netRatio(volts, d))));
-      arrow(x - 26, y + R + 3, y + R + 3 + weightLen, '#3156d3', 'weight');
-      if (electricLen > 1) arrow(x + 26, y - R - 3, y - R - 3 - electricLen, '#c0392b', 'electric force');
-
-      label(g, `Drop ${d.id}`, 24, 70, { size: 14, color: col.text, align: 'left' });
-      label(g, `mass ${sci(d.mass)} kg`, 24, 90, { size: 12, color: col.muted, align: 'left', bold: false });
-      label(g, `V = ${volts.toFixed(2)} V`, W - 24, 70, { size: 16, color: col.text, align: 'right' });
-      label(g, `plate gap d = ${(GAP * 1000).toFixed(1)} mm`, W - 24, 90, { size: 12, color: col.muted, align: 'right', bold: false });
-    }
-
-    // ---- assemble ---------------------------------------------------------------------------
-    ctx.root.append(
-      h('p', { class: 'story' }, lvl.story),
-      h(
-        'p',
-        { class: 'formula' },
-        h('strong', null, 'Lab notes: '),
-        `at balance the electric force equals the weight, so  q = m g d / V  (g = ${G} m/s², d = ${(GAP * 1000).toFixed(1)} mm).`,
-        lvl.eKnown ? '  The charge of one electron is e = 1.6 × 10⁻¹⁹ C.' : '  The unit of charge is not known yet.',
-      ),
-      status,
-      canvas,
-      // One grid with real gaps between every control, so nothing can touch or overlap its neighbour.
-      h(
-        'div',
-        { class: 'lab-controls' },
-        h('div', { class: 'control total' }, h('span', { class: 'control-label' }, 'Voltage'), readout, h('span', { class: 'muted' }, '= coarse knob + fine knob')),
-        h('div', { class: 'control' }, h('span', { class: 'control-label' }, 'Coarse knob'), coarse, coarseVal),
-        h('div', { class: 'control' }, h('span', { class: 'control-label' }, `Fine knob (±${FINE} V)`), fine, fineVal),
-        h('div', { class: 'control' }, h('span', { class: 'control-label' }, 'Nudge'), nudge('−1', -1), nudge('−0.1', -0.1), nudge('+0.1', 0.1), nudge('+1', 1)),
-        h('div', { class: 'control record-row' }, h('span', { class: 'control-label' }, 'Held steady'), hold, recordBtn),
-        h('div', { class: 'control drops' }, h('span', { class: 'control-label' }, 'Drops'), ...dropButtons),
-      ),
-      h('h3', null, 'Results'),
-      resultsEl,
-      answerEl,
-      feedback,
-    );
-    setVolts(0);
-    refresh();
-    return startLoop(frame);
+    const n = Math.max(1, Math.min(3, ctx.level)) as 1 | 2 | 3;
+    if (n === 2) return mountDialLevel(ctx as never, calLevel(ctx.random) as never, ARIA);
+    return boardLevel(ctx, n);
   },
 });

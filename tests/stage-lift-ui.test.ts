@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import game from '../src/games/mathematics/class-12/ch03-matrices/stage-lift/index';
+import { GOALS, HANDLE_RADIUS } from '../src/games/mathematics/class-12/ch03-matrices/stage-lift/index';
+import { knobY, trackX } from '../src/games/mathematics/class-12/ch03-matrices/stage-lift/art';
 import { buildRounds, type Round } from '../src/games/mathematics/class-12/ch03-matrices/stage-lift/logic';
+import { PAL } from '../src/core/arcade';
 import { createRng } from '../src/core/random';
 import { arcadeHarness, shellTests } from './helpers/arcade-harness';
 
@@ -191,4 +194,198 @@ describe('Stage Lift', () => {
     h.click('Test lift: raise the pillars for a moment to the heights you set');
     expect(h.feedback()).toMatch(/No charges left/);
   });
+});
+
+// ---- UX pass: the goal line, grips, cue, text size, round tints and the round 2 helper rule ------------------------------------------------------------------
+
+const LIFT = 'Test lift: raise the pillars for a moment to the heights you set';
+const START = 'Start the show';
+const LEVELS = [1, 2, 3, 4, 5];
+/** A canvas recorder: strings with their font size, rectangle fills, arcs and strokes (style and dashed or not). */
+const scene = () => {
+  const rec = { texts: [] as { s: string; size: number }[], rects: [] as string[], arcs: [] as { x: number; y: number; r: number }[], strokes: [] as { style: string; dash: boolean }[] };
+  const store: Record<string, unknown> = {};
+  let dash = false;
+  const proxy = new Proxy(store, {
+    get: (_t, p) => {
+      if (p === 'fillText') return (s: string) => rec.texts.push({ s: String(s), size: Number(/(\d+(\.\d+)?)px/.exec(String(store.font))?.[1] ?? 99) });
+      if (p === 'fillRect') return () => rec.rects.push(String(store.fillStyle));
+      if (p === 'arc') return (x: number, y: number, r: number) => rec.arcs.push({ x, y, r });
+      if (p === 'setLineDash') return (a: number[]) => (dash = a.length > 0);
+      if (p === 'stroke' || p === 'strokeRect') return () => rec.strokes.push({ style: String(store.strokeStyle), dash });
+      return () => undefined;
+    },
+    set: (_t, p, v) => {
+      store[String(p)] = v;
+      return true;
+    },
+  });
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(proxy as never);
+  const clear = () => {
+    rec.texts.length = 0;
+    rec.rects.length = 0;
+    rec.arcs.length = 0;
+    rec.strokes.length = 0;
+  };
+  return { rec, clear };
+};
+type Scene = ReturnType<typeof scene>;
+/** Run `dt` seconds, then record exactly one frame. */
+const frame = (R: Scene, dt = 0.05) => {
+  if (dt > 0.05) h.advance(dt - 0.05);
+  R.clear();
+  h.advance(0.05);
+  return R.rec;
+};
+const words = (rec: Scene['rec']) => rec.texts.map((t) => t.s);
+/** The card ghosts are the only dashed pink strokes: the helper of rounds 1 and 2. */
+const ghosts = (rec: Scene['rec']) => rec.strokes.some((s) => s.style === PAL.pink && s.dash);
+const playTo = (level: number, round: number, seed = 5) => {
+  const g = build(level, seed);
+  for (let k = 0; k < round; k++) {
+    setAll(g[k]);
+    h.click(START);
+    h.advance(2.8);
+    h.advance(1);
+  }
+  return g;
+};
+
+describe('Stage Lift UX', () => {
+  it('the goal is drawn on the stage at the start of every round, fades after 3 s, and is not drawn during the show', () => {
+    const R = scene();
+    h.start(2, 5);
+    expect(words(frame(R))).toContain(GOALS[1]);
+    expect(words(frame(R, 2.0))).toContain(GOALS[1]);
+    expect(words(frame(R, 1.7))).not.toContain(GOALS[1]);
+    playTo(2, 1);
+    expect(words(frame(R, 0.3))).toContain(GOALS[1]);
+    expect(words(frame(R, 3.8))).not.toContain(GOALS[1]);
+    playTo(2, 2);
+    expect(h.hud()).toMatch(/Round 3 of 3/);
+    expect(words(frame(R, 0.3))).toContain(GOALS[1]);
+    setAll(build(2, 5)[2]);
+    h.click(START);
+    expect(words(frame(R, 0.1))).not.toContain(GOALS[1]);
+  });
+
+  it('each level has its own short goal line', () => {
+    expect(new Set(GOALS).size).toBe(5);
+    const R = scene();
+    for (const level of LEVELS) {
+      h.start(level, 5);
+      expect(words(frame(R))).toContain(GOALS[level - 1]);
+    }
+  });
+
+  it('every fader grip is at least 18 px, drawn at the knob, and the grab zones of neighbouring faders do not overlap', () => {
+    expect(HANDLE_RADIUS).toBeGreaterThanOrEqual(18);
+    const R = scene();
+    for (const level of LEVELS) {
+      h.start(level, 5);
+      const n = build(level, 5)[0].keys.length;
+      const { arcs } = frame(R);
+      for (let i = 0; i < n; i++) {
+        expect(arcs.some((a) => Math.abs(a.x - trackX(i, n)) < 0.01 && Math.abs(a.y - knobY(0)) < 0.01 && a.r >= 18)).toBe(true);
+      }
+      // the engine grabs the first handle within radius + 14 of the pointer: a neighbour's centre must lie outside that
+      expect(trackX(1, n) - trackX(0, n)).toBeGreaterThan(HANDLE_RADIUS + 14);
+      expect(trackX(n - 1, n)).toBeLessThanOrEqual(632 - 16 + 0.01);
+    }
+  });
+
+  it('level 1 round 1 pulses a drag cue until the first touch, and no other level or round shows it', () => {
+    const R = scene();
+    h.start(1, 5);
+    expect(words(frame(R))).toContain('drag ⇕');
+    h.setSlider(3, 0);
+    expect(words(frame(R))).not.toContain('drag ⇕');
+    h.start(1, 5);
+    playTo(1, 1);
+    expect(words(frame(R, 0.3))).not.toContain('drag ⇕');
+    h.start(2, 5);
+    expect(words(frame(R))).not.toContain('drag ⇕');
+  });
+
+  it('the scene text is at least 11 px in every level, before and during the show and on a miss; every control is labelled', () => {
+    const R = scene();
+    for (const level of LEVELS) {
+      h.start(level, 5);
+      const g = build(level, 5);
+      let rec = frame(R, 0.5);
+      expect(Math.min(...rec.texts.map((t) => t.size))).toBeGreaterThanOrEqual(11);
+      setAll(g[0], g[0].ans[g[0].keys[0]] < 9 ? 1 : -1);
+      h.click(START);
+      for (const dt of [0.3, 0.5, 0.5, 0.5]) {
+        rec = frame(R, dt);
+        expect(Math.min(...rec.texts.map((t) => t.size))).toBeGreaterThanOrEqual(11);
+      }
+      for (const el of document.body.querySelectorAll('button, input')) expect(el.getAttribute('aria-label')).toBeTruthy();
+    }
+  });
+
+  it('each round has its own wash of stage light, and the boss round has a still red frame', () => {
+    const R = scene();
+    const washes = ['rgba(77,225,255,0.05)', 'rgba(170,90,255,0.1)', 'rgba(255,60,90,0.11)'];
+    h.start(1, 5);
+    for (let k = 0; k < 3; k++) {
+      if (k > 0) playTo(1, k);
+      const rec = frame(R, 0.3);
+      expect(washes.map((w) => rec.rects.includes(w))).toEqual(washes.map((_, i) => i === k));
+      expect(rec.strokes.some((s) => s.style === 'rgba(255,60,90,0.35)')).toBe(k === 2);
+      if (k > 0) h.start(1, 5);
+    }
+  });
+
+  it('Showtime answers at once: the banner shows within 100 ms of the button', () => {
+    const R = scene();
+    h.start(1, 5);
+    setAll(build(1, 5)[0]);
+    h.click(START);
+    expect(words(frame(R, 0.1))).toContain('SHOWTIME!');
+  });
+
+  it('a miss says in plain words whether the pillar must stand lower or higher, and never how much', () => {
+    for (const level of [1, 2, 3, 4, 5]) {
+      h.start(level, 5);
+      const g = build(level, 5);
+      setAll(g[0], g[0].ans[g[0].keys[0]] < 9 ? 1 : -1);
+      h.click(START);
+      h.advance(2.8);
+      expect(h.feedback()).toMatch(/Change your settings so that pillar stands (lower|higher)\./);
+    }
+  });
+
+  for (const level of LEVELS) {
+    it(`level ${level}: the card ghosts are live in round 1, show for 1.5 s after a test lift in round 2, and never in round 3`, () => {
+      const R = scene();
+      h.start(level, 5);
+      expect(ghosts(frame(R))).toBe(true);
+      const g = playTo(level, 1);
+      expect(h.hud()).toMatch(/Round 2 of 3/);
+      expect(ghosts(frame(R, 0.3))).toBe(false);
+      setAll(g[1]);
+      expect(ghosts(frame(R))).toBe(false);
+      h.setSlider(-9, 0);
+      expect(ghosts(frame(R))).toBe(false);
+      setAll(g[1]);
+      h.click(LIFT);
+      expect(ghosts(frame(R, 0.3))).toBe(true);
+      expect(ghosts(frame(R, 1.0))).toBe(true);
+      expect(ghosts(frame(R, 0.5))).toBe(false);
+      h.click(LIFT);
+      expect(h.feedback()).toMatch(/No charges left/);
+      expect(ghosts(frame(R, 0.5))).toBe(false);
+      h.click(START);
+      h.advance(2.8);
+      h.advance(1);
+      expect(h.hud()).toMatch(/Round 3 of 3 · BOSS/);
+      expect(ghosts(frame(R, 0.3))).toBe(false);
+      setAll(build(level, 5)[2]);
+      expect(ghosts(frame(R))).toBe(false);
+      h.click(LIFT);
+      expect(h.feedback()).toMatch(/No charges left/);
+      expect(ghosts(frame(R, 0.5))).toBe(false);
+    });
+  }
 });

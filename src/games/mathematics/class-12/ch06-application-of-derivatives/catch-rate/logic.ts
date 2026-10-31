@@ -139,8 +139,8 @@ export const flowEnd = (r: Round, w: number) => (judge(r, w) ? 1 : output(r, w) 
 /** After a miss: what the winch did, never the speed that works. */
 export function missText(r: Round, w: number): string {
   const slow = output(r, w) < r.target;
-  if (isMoney(r)) return `The rate was set, and the money flowed ${slow ? 'too slowly: the meter fell short of the target line at the bell' : 'too fast: the meter overflowed and the alarm rang'}.`;
-  return `The winch ran too ${slow ? 'slowly, so the rescue crew arrived late' : 'fast, so the rescue crew overshot'}.`;
+  if (isMoney(r)) return `The rate was set, and the money flowed ${slow ? 'too slowly: the meter fell short of the target line at the bell. Try a higher rate.' : 'too fast: the meter overflowed and the alarm rang. Try a lower rate.'}`;
+  return `The winch ran too ${slow ? 'slowly, so the rescue crew arrived late. Turn the winch faster.' : 'fast, so the rescue crew overshot. Turn the winch slower.'}`;
 }
 export const spotText = (r: Round, w: number) => `Test run at w = ${w}: the result changes at ${rateText(r, output(r, w))}.`;
 

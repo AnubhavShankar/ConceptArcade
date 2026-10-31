@@ -125,6 +125,7 @@ function twice(g: G) {
 
 /** The right-hand panel of level 5: the hole, the machine A, the pose, the live result and the express machine with its current k and m. */
 function identityPanel(g: G, r: Round, M: Mat, v: Record<string, number>, showLive: boolean) {
+  // The RESULT block is the paid test slide: it is drawn only while the helper is on.
   const X = 550;
   const block = (title: string, N: Mat, y: number, color: string, alpha = 1) => {
     text(g, title, X, y, color === PAL.white ? PAL.dim : color, 12);
@@ -135,12 +136,8 @@ function identityPanel(g: G, r: Round, M: Mat, v: Record<string, number>, showLi
   block('THE HOLE', r.H, 52, PAL.yellow);
   block('MACHINE A', r.M!, 108, PAL.white);
   block('POSE P', r.P!, 164, PAL.white);
-  text(g, showLive ? 'RESULT NOW' : r.assist === 1 ? 'RESULT (dim)' : 'RESULT OFF', X, 220, PAL.cyan, 12);
-  if (showLive || r.assist === 1) {
-    g.globalAlpha = showLive ? 1 : 0.3;
-    rows(M, r).forEach((row, i) => text(g, row, X, 236 + i * 16, PAL.cyan, 11));
-    g.globalAlpha = 1;
-  }
+  text(g, showLive ? 'RESULT NOW' : 'RESULT OFF', X, 220, PAL.cyan, 12);
+  if (showLive) rows(M, r).forEach((row, i) => text(g, row, X, 236 + i * 16, PAL.cyan, 11));
   text(g, 'EXPRESS kA − mI', X, 282, PAL.orange, 12);
   text(g, `k = ${num(v.k)}, m = ${num(v.m)}`, X, 298, PAL.orange, 11);
 }
@@ -169,7 +166,7 @@ const GOALS = [
   'Set a and b so A·P equals the hole',
   'Turn Blocky so his corners land in the hole',
   'Set the shear k and the order so Blocky fits the hole',
-  '',
+  'Set k and m so one pass of kA − mI fits the hole',
 ];
 
 function level(n: number, random: () => number): DialLevel<Round> {
@@ -206,7 +203,7 @@ function level(n: number, random: () => number): DialLevel<Round> {
     judge: (r, v) => judge(r, v),
     miss: (r, v) => missText(r, v),
     win: (r) => `Through! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The live outline is on.' : r.assist === 1 ? (r.kind === 'identity' ? 'The live outline is dim: a test slide costs a charge.' : 'No live outline: a test slide shows it for a moment and costs a charge.') : 'Boss round: no live outline, no test slide.'}`,
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The live outline is on.' : r.assist === 1 ? 'No live outline: a test slide shows it for a moment and costs a charge.' : 'Boss round: no live outline, no test slide.'}`,
     hit: (r) => (r.kind === 'identity' ? [GRID.cx, GRID.cy] : [GRID.cx + r.H[0][0] * scaleFor(r), GRID.cy - r.H[1][0] * scaleFor(r)]),
     delay: VERDICT,
     draw: ({ g, r, k, v, t, rt, shot, A }) => {
@@ -216,12 +213,11 @@ function level(n: number, random: () => number): DialLevel<Round> {
       const M = outline(r, v);
       const mood: Mood = shot ? (rt > VERDICT ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
       const res = corners(M);
-      // Levels 1 to 4: the live outline (Blocky at his result and the RESULT matrix) is the paid test slide. It is live in round 1, shows for a moment after a
-      // test slide in round 2, and never in round 3. A miss in round 2 or 3 plays a fixed jam: Blocky never lands where his setting put him. Level 5 keeps its reviewed drawing.
-      const legacy = r.kind === 'identity';
+      // All levels: the live outline (Blocky at his result and the RESULT matrix) is the paid test slide. It is live in round 1, shows for a moment after a
+      // test slide in round 2, and never in round 3. A miss in round 2 or 3 plays a fixed jam: Blocky never lands where his setting put him.
       const helper = helperOn(r.assist, shot !== null && shot.ok, flash.since(t, k));
-      A.canvas.dataset.live = !legacy && helper ? '1' : '0';
-      const generic = !legacy && shot !== null && !shot.ok && r.assist > 0;
+      A.canvas.dataset.live = helper ? '1' : '0';
+      const generic = shot !== null && !shot.ok && r.assist > 0;
       if (shot && generic) {
         // A fixed stand-in (the hole's outline at 0.6) slides to the wall and jams, the same for every wrong setting.
         const p = Math.min(1, rt / 1.0);
@@ -246,16 +242,12 @@ function level(n: number, random: () => number): DialLevel<Round> {
             g.stroke();
           }
         }
-      } else if (legacy ? r.assist === 0 : helper) blocky(g, res, s, t, mood, 'rgba(111,127,208,0.75)');
-      else if (legacy && r.assist === 1) {
-        g.globalAlpha = 0.3;
-        blocky(g, res, s, t, mood, 'rgba(111,127,208,0.75)');
-        g.globalAlpha = 1;
-      } else if (r.P) blocky(g, corners(r.P), s, t, mood, 'rgba(111,127,208,0.5)');
-      if (!legacy && !(shot && rt > VERDICT)) text(g, GOALS[n - 1], GRID.cx, 30, PAL.yellow, 12);
+      } else if (helper) blocky(g, res, s, t, mood, 'rgba(111,127,208,0.75)');
+      else if (r.P) blocky(g, corners(r.P), s, t, mood, 'rgba(111,127,208,0.5)');
+      if (!(shot && rt > VERDICT)) text(g, GOALS[n - 1], GRID.cx, r.kind === 'identity' ? 51 : 30, PAL.yellow, 12);
       // The matrices, read-only
       const X = 480;
-      const showLive = legacy ? r.assist === 0 || shot !== null : helper;
+      const showLive = helper;
       if (r.kind === 'identity') {
         twice(g);
         identityPanel(g, r, M, v, showLive);

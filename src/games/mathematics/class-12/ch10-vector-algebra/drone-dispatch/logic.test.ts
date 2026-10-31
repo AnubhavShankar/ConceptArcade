@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createRng } from '@core/random';
-import { MISS_GAP, RANGE, buildRounds, compass, explain, intel, judge, missOffset, missText, spotText, type Pt, type Round } from './logic';
+import { MISS_GAP, RANGE, buildRounds, compass, explain, intel, judge, missOffset, missText, opposite, ratioNow, spotText, type Pt, type Round } from './logic';
 
 const seeds = Array.from({ length: 60 }, (_, i) => i * 7919 + 13);
 const all = (level: number) => seeds.flatMap((s) => buildRounds(level, createRng(s)));
@@ -89,7 +89,7 @@ describe('no miss text in any level contains a digit', () => {
           expect(msg).not.toMatch(/\d/);
           expect(msg.length).toBeGreaterThan(25);
           if (level === 1) {
-            expect(msg).toMatch(/^The drone landed (north|south|east|west|north-east|north-west|south-east|south-west) of the pad\.$/);
+            expect(msg).toMatch(/^The drone landed (north|south|east|west|north-east|north-west|south-east|south-west) of the pad\. Aim more (north|south|east|west|north-east|north-west|south-east|south-west)\.$/);
             expect(msg).not.toMatch(/away/);
           }
         }
@@ -99,7 +99,24 @@ describe('no miss text in any level contains a digit', () => {
   it('level 1 miss text still says which side of the pad the drone came down', () => {
     const r = buildRounds(1, createRng(5))[0];
     const L: Pt = [r.ans[0] + 2, r.ans[1] - 3];
-    expect(missText(r, L)).toBe('The drone landed south-east of the pad.');
+    expect(missText(r, L)).toBe('The drone landed south-east of the pad. Aim more north-west.');
+  });
+});
+
+describe('the UX pass: change words and the live ratio', () => {
+  it('opposite turns a compass word round, and a miss tells you to aim the other way', () => {
+    expect(opposite('north-west')).toBe('south-east');
+    expect(opposite('east')).toBe('west');
+    expect(opposite('south')).toBe('north');
+  });
+  it('the live ratio of level 3 reads PR : RQ on the line and says so off it; it is the same fact the paid test flight gives', () => {
+    for (const r of all(3).slice(0, 30)) {
+      const g = (a: number, b: number): number => (b === 0 ? a : g(b, a % b));
+      expect(ratioNow(r, r.ans)).toBe(`PR : RQ = ${r.m / g(r.m, r.n)} : ${r.n / g(r.m, r.n)}`);
+      expect(spotText(r, r.ans)).toContain(ratioNow(r, r.ans));
+      // a point off the line says so
+      expect(ratioNow(r, [r.ans[0] + 1, r.ans[1] + 1].map((x) => x) as Pt)).toMatch(/PR : RQ|not on the line PQ|at [PQ]/);
+    }
   });
 });
 
@@ -148,7 +165,7 @@ describe('level 4, Crosswind: the triangle law', () => {
       for (const p of grid) {
         if (judge(r, p)) continue;
         const msg = missText(r, p);
-        expect(msg).toMatch(/^Dash came down on a rooftop [a-z-]+ of the target\.$/);
+        expect(msg).toMatch(/^Dash came down on a rooftop [a-z-]+ of the target\. Aim more [a-z-]+\.$/);
         expect(msg).not.toMatch(/\d/);
         const c = compass(r, p);
         expect(words).toContain(c.word);

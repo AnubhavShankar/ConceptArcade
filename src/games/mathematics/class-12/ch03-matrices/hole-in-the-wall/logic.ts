@@ -191,12 +191,10 @@ export function firstMismatch(r: Round, v: Record<string, number>): { vertex: nu
   }
   return null;
 }
-const at = (p: [number, number], r: Round) => `(${[surdText, surdText].map((f, i) => (r.kind === 'rotate' ? f(p[i]) : num(p[i]))).join(', ')})`;
-/** After a miss: what happened to Blocky, never the setting that fits. Level 5 keeps its reviewed text. Levels 1 to 4 print no coordinates: round 1 (live helper) names the first vertex that jammed, rounds 2 and 3 say only that a corner missed (naming the vertex would be part of the paid test slide). */
+/** After a miss: what happened to Blocky, never the setting that fits. No level prints a coordinate: round 1 (live helper) names the first vertex that jammed, rounds 2 and 3 say only that a corner missed (naming the vertex would be part of the paid test slide). */
 export function missText(r: Round, v: Record<string, number>): string {
   const m = firstMismatch(r, v);
   if (!m) return 'Blocky did not fit.';
-  if (r.kind === 'identity') return `Blocky went through the machine and vertex ${m.vertex} came out at ${at(m.at, r)}, but the hole’s corner is not there: he jammed in the wall.`;
   if (r.assist > 0) return 'Blocky jammed in the wall: at least one corner landed outside the hole. Use a test slide, or redo the multiplication, and compare each corner with the hole.';
   return `Vertex ${m.vertex} landed outside the hole, so Blocky jammed in the wall. Compare that corner of your outline with the hole’s corner.`;
 }

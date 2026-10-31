@@ -8,6 +8,9 @@ import { fmt } from '@core/judge';
 import { glow, line, orb, text, waveColor } from '@core/neon';
 import { BRIGHT_SLIDERS, BRIGHT_START, E, HC, LINE_START, NEEDLE_MAX, SLIDERS, lineSides, STOP_START, THRESHOLD_START, stopKind, stopTurnFraction, streamsText, thresholdFly, brightIntel, brightMiss, brightReading, brightRounds, brightWin, d1, judgeBright, judgeLine, judgeStop, judgeThreshold, kMax, lineExplain, lineMiss, lineReading, lineRounds, needleReading, photonEv, stopExplain, stopMiss, stopReading, stopRounds, streamKind, thresholdExplain, thresholdMiss, thresholdReading, thresholdRounds, turnFraction, voltsText, type BrightRound, type LineRound, type StopRound, type ThresholdRound } from './logic';
 
+/** How long the level 3 goal line stays on the canvas at the start of a round, in seconds (it fades over the last half second). */
+export const GOAL_SECONDS = 3.5;
+
 const colour = (lam: number, a = 1) => (lam < 380 ? `rgba(200,170,255,${a})` : waveColor(Math.min(760, lam), a));
 
 function thresholdLevel(random: () => number): DialLevel<ThresholdRound> {
@@ -163,14 +166,25 @@ function stopLevel(random: () => number): DialLevel<StopRound> {
 }
 
 function lineLevel(random: () => number): DialLevel<LineRound> {
-  const GX = 40;
-  const PXF = 31;
+  // The graph fills the left of the scene (x up to GR). The two drag handles sit on tracks in the panel on the right, away from the graph, so that
+  // the handles (and their readouts) never mark a point of the player's own line: the line is drawn only by the helper.
+  const GX = 36;
+  const PXF = 22;
+  const GR = GX + 18 * PXF;
   const Y0 = 170;
   const PXV = 43;
   const yv = (vv: number) => Y0 - vv * PXV;
   const xf = (f: number) => GX + f * PXF;
   const slope = (h: number) => ((h * 1e-34 * 1e14) / (E * 1e-19)); // V per 10¹⁴ Hz
   const flash = paidFlash();
+  const TX0 = 480;
+  const TX1 = 605;
+  const H_TRACK_Y = 150;
+  const PHI_TRACK_Y = 250;
+  const trackX = (x: number, min: number, max: number) => TX0 + ((x - min) / (max - min)) * (TX1 - TX0);
+  const fromTrack = (px: number, min: number, max: number) => min + ((px - TX0) / (TX1 - TX0)) * (max - min);
+  let seenRound = -1;
+  let roundT0 = 0;
   return {
     hero: {
       name: 'Ruler',
@@ -185,8 +199,8 @@ function lineLevel(random: () => number): DialLevel<LineRound> {
       { key: 'phi', aria: 'Work function in electron volts', label: 'Work function', unit: 'eV', step: SLIDERS.phi.step, min: SLIDERS.phi.min, max: SLIDERS.phi.max, start: LINE_START.phi, text: (x) => x.toFixed(2) },
     ],
     handles: [
-      { dial: 'h', at: (_r, v) => [xf(16), yv(slope(v.h) * 16 - v.phi)], drag: (_r, _px, py, v) => ((((Y0 - py) / PXV + v.phi) / 16) * (E * 1e-19)) / (1e-34 * 1e14), radius: 22 },
-      { dial: 'phi', at: (_r, v) => [xf(0.8), yv(slope(v.h) * 0.8 - v.phi)], drag: (_r, _px, py, v) => slope(v.h) * 0.8 - (Y0 - py) / PXV, radius: 22 },
+      { dial: 'h', at: (_r, v) => [trackX(v.h, SLIDERS.h.min, SLIDERS.h.max), H_TRACK_Y], drag: (_r, px) => fromTrack(px, SLIDERS.h.min, SLIDERS.h.max), radius: 22 },
+      { dial: 'phi', at: (_r, v) => [trackX(v.phi, SLIDERS.phi.min, SLIDERS.phi.max), PHI_TRACK_Y], drag: (_r, px) => fromTrack(px, SLIDERS.phi.min, SLIDERS.phi.max), radius: 22 },
     ],
     test: { button: '🔦 Test shot', aria: 'Test shot: compare the line with the measured points', read: (r, v) => (flash.paid(), lineReading(r, v.h, v.phi)) },
     fire: { button: '📏 Fit', aria: 'Check the line against the measured points' },
@@ -197,18 +211,39 @@ function lineLevel(random: () => number): DialLevel<LineRound> {
     hit: (r) => [xf(r.f2), yv(r.v2)],
     delay: 1.0,
     draw: ({ g, r, k, v, t, rt, shot, A }) => {
+      if (k !== seenRound) {
+        seenRound = k;
+        roundT0 = t;
+      }
       // axes
-      line(g, GX, Y0, 620, Y0, PAL.white, 2);
+      line(g, GX, Y0, GR + 6, Y0, PAL.white, 2);
       line(g, GX, 30, GX, 320, PAL.white, 2);
-      text(g, 'frequency (10¹⁴ Hz)', 330, 336, PAL.dim, 11);
-      text(g, 'stopping potential V₀ (V)', 40, 24, PAL.dim, 11, 'left');
+      text(g, 'frequency (10¹⁴ Hz)', (GX + GR) / 2, 336, PAL.dim, 11);
+      text(g, 'stopping potential V₀ (V)', GX + 6, 24, PAL.dim, 11, 'left');
       for (let f = 2; f <= 18; f += 2) {
         line(g, xf(f), Y0 - 4, xf(f), Y0 + 4, PAL.dim, 1.5);
-        text(g, `${f}`, xf(f), Y0 + 18, PAL.dim, 10);
+        text(g, `${f}`, xf(f), Y0 + 18, PAL.dim, 11);
       }
       for (const val of [-2, -1, 1, 2, 3]) {
         line(g, GX - 4, yv(val), GX + 4, yv(val), PAL.dim, 1.5);
-        text(g, `${val}`, GX - 8, yv(val) + 4, PAL.dim, 10, 'right');
+        text(g, `${val}`, GX - 8, yv(val) + 4, PAL.dim, 11, 'right');
+      }
+      // the goal, on the canvas at the start of the round
+      const age = t - roundT0;
+      if (!shot && age < GOAL_SECONDS) {
+        g.save();
+        g.globalAlpha = Math.min(1, (GOAL_SECONDS - age) / 0.5);
+        text(g, 'Goal: a line through both yellow points', (GX + GR) / 2, 46, PAL.white, 12);
+        g.restore();
+      }
+      // the two dials, on tracks in the panel on the right (nothing here follows the line)
+      for (const [y, head, min, max, val, unit] of [
+        [H_TRACK_Y, 'h  (× 10⁻³⁴ J s)', SLIDERS.h.min, SLIDERS.h.max, v.h, ''],
+        [PHI_TRACK_Y, 'φ  (eV)', SLIDERS.phi.min, SLIDERS.phi.max, v.phi, ' eV'],
+      ] as [number, string, number, number, number, string][]) {
+        line(g, TX0, y, TX1, y, PAL.dim, 4);
+        text(g, head, (TX0 + TX1) / 2, y - 40, PAL.cyan, 11);
+        text(g, `${val.toFixed(2)}${unit}`, Math.max(TX0 + 22, Math.min(TX1 - 22, trackX(val, min, max))), y + 42, PAL.cyan, 11);
       }
       // the measured points
       for (const [f, vv] of [[r.f1, r.v1], [r.f2, r.v2]] as [number, number][]) {
@@ -224,7 +259,7 @@ function lineLevel(random: () => number): DialLevel<LineRound> {
       // the player's line: live in round 1, for a moment after a test shot in round 2, never in round 3; a win shows it, a miss does not
       const live = helperOn(r.assist, !!shot?.ok, flash.since(A.clock, k));
       const col = shot ? (shot.ok ? PAL.green : PAL.red) : PAL.cyan;
-      if (live) glow(g, col, 8, () => line(g, xf(0), yv(-v.phi), xf(18), yv(slope(v.h) * 18 - v.phi), col, 3));
+      if (live) glow(g, col, 8, () => line(g, GX, yv(-v.phi), GR, yv(slope(v.h) * 18 - v.phi), col, 3));
       else if (shot && rt > 0.2) {
         // a miss without the live line: a fixed-length arrow at each measured point toward the side the line passes, and no line
         const sides = lineSides(r, shot.v.h, shot.v.phi);
@@ -233,12 +268,9 @@ function lineLevel(random: () => number): DialLevel<LineRound> {
           line(g, xf(f), yv(vv) - s * 12, xf(f), yv(vv) - s * 40, PAL.red, 3);
           text(g, s > 0 ? '▲' : '▼', xf(f), yv(vv) - s * 52 + 5, PAL.red, 14);
         });
-      } else text(g, 'line hidden', 330, 60, PAL.dim, 12);
-      // the intercept and the slope handles are drawn by the engine; label them
-      text(g, `φ = ${v.phi.toFixed(2)} eV`, xf(0) + 70, yv(-v.phi) + 20, PAL.cyan, 11);
-      text(g, `h = ${v.h.toFixed(2)}`, xf(16) - 30, yv(slope(v.h) * 16 - v.phi) - 14, PAL.cyan, 11);
-      orb(g, 560, 70, 14, PAL.pink, t, shot ? (shot.ok ? 'cheer' : 'worried') : 'happy');
-      if (rt > 1.0) glow(g, shot!.ok ? PAL.green : PAL.red, 12, () => text(g, shot!.ok ? 'THE LINE FITS' : 'MISSES THE POINTS', 330, 52, shot!.ok ? PAL.green : PAL.red, 16));
+      } else if (!shot) text(g, 'line hidden', (GX + GR) / 2, 70, PAL.dim, 12);
+      orb(g, 545, 56, 14, PAL.pink, t, shot ? (shot.ok ? 'cheer' : 'worried') : 'happy');
+      if (rt > 1.0) glow(g, shot!.ok ? PAL.green : PAL.red, 12, () => text(g, shot!.ok ? 'THE LINE FITS' : 'MISSES THE POINTS', (GX + GR) / 2, 52, shot!.ok ? PAL.green : PAL.red, 16));
     },
   };
 }

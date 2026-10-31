@@ -7,18 +7,18 @@ import { defineGame } from '@core/define';
 import { pointerToLocal } from '@core/sim';
 import type { GameContext } from '@core/types';
 import {
-  EXIT, GROUND, MARLO, goalLine, roundTint, tapCue, crew, drone, duck, duckPose, jointPoint, jointRing, kinkFx, leakFx, marlo, pillars, puddle, scenery, sign, slideAng, splashRing, stars, stopFx, tube, zoomLens, jointU,
+  EXIT, MARLO, goalLine, roundTint, tapCue, crew, drone, duck, duckPose, jointPoint, jointRing, faultFx, marlo, pillars, scenery, sign, splashRing, stars, tube, zoomLens,
   type DuckPose,
 } from './art';
 import {
-  buildRounds, complete, firstFault, flagText, hintLine, jointAria, jointTime, judge, missText, nextFlag, verdictTime, winText, zoomText, zoomWindow,
+  buildRounds, complete, faultText, firstFault, flagText, hintLine, jointAria, jointTime, judge, missText, nextFlag, verdictTime, winText, zoomText, zoomWindow,
   type Fault, type Flag, type Level,
 } from './logic';
 
 const ROLE = 'a lifeguard who inspects a new tube slide joint by joint before the park opens';
 const STORY = [
   'The blueprint gives the slide as a function f(x) in pieces, and the slide is enclosed, so only the formula can tell where it is broken. At each joint, the end of the piece on the left, the start of the piece on the right and the value there must all agree. If they do not, the slide has a gap there.',
-  'Now a joined joint can still hide a kink: the two pieces meet, but at different slopes. A kink throws the duck out. Flag each joint fine, kink or gap.',
+  'Now a joined joint can still hide a kink: the two pieces meet, but at different slopes. A kink is a fault too. Flag each joint fine, kink or gap.',
   'These slides are made with the greatest integer [x] and with moduli like |cos x|. [x] steps at every integer. A modulus folds the slide where the inside changes sign, but not at a peak.',
   'The chief inspector’s slides mix pieces, [x] and moduli. Some joints are traps that look broken but are smooth.',
 ];
@@ -156,15 +156,6 @@ function mountLevel(ctx: GameContext, level: Level) {
     roundTint(g, cur(), t);
     pillars(g);
     tube(g);
-    // the one fault, at its own joint
-    if (run && fault) {
-      const [x, y] = jointPoint(fault.joint, n);
-      const ang = slideAng(jointU(fault.joint, n));
-      const age = rt - jointTime(r, fault.joint);
-      if (fault.what === 'leak' && age >= 0) leakFx(g, x, y, ang, age);
-      else if ((fault.what === 'kink' || fault.what === 'wrongfix') && age >= 0) kinkFx(g, x, y, ang, age);
-      else if (fault.what === 'needless' && age >= -0.15) stopFx(g, x, y, ang, age);
-    }
     for (let i = 0; i < n; i++) jointRing(g, i, n, r.joints[i].cText, shown[i] ?? null, level, !run && i === last, t);
     sign(g, r);
     if (!run) goalLine(g, GOAL, 200, 22, t - roundT0);
@@ -195,33 +186,34 @@ function mountLevel(ctx: GameContext, level: Level) {
         run.fx.spray = A.clock;
         A.burst(pose.x, pose.y + 8, PAL.cyan, 2, 60);
       }
-      if (pose.landedAt !== null && rt >= pose.landedAt && !run.fx.landed) {
+      if (!fault && pose.landedAt !== null && rt >= pose.landedAt && !run.fx.landed) {
         run.fx.landed = true;
-        if (fault?.what === 'kink' || fault?.what === 'wrongfix') A.burst(pose.x, pose.y, PAL.yellow, 14, 120);
-        else A.burst(pose.x, 300, PAL.cyan, 26, 180);
+        A.burst(pose.x, 300, PAL.cyan, 26, 180);
+      }
+      if (fault && pose.state === 'stuck' && !run.fx.landed) {
+        run.fx.landed = true;
+        A.burst(pose.x, pose.y, PAL.dim, 12, 90);
       }
       const vt = verdictTime(r, fault);
       if (rt >= vt && !run.fx.verdict) {
         run.fx.verdict = true;
         if (!fault) A.float('SLIDE APPROVED!', 250, 76, PAL.green);
-        else {
-          const [x, y] = jointPoint(fault.joint, n);
-          A.float(fault.what === 'leak' ? 'LEAK!' : fault.what === 'needless' ? 'WRONG REPAIR!' : 'KINK!', x, y - 56, fault.what === 'needless' ? PAL.orange : PAL.red);
-        }
       }
     }
-    if (pose.state === 'float' && (!fault || fault.what === 'leak') && pose.landedAt !== null) {
-      if (fault) puddle(g, pose.x, GROUND, rt - pose.landedAt);
-      splashRing(g, pose.x, pose.y, rt - pose.landedAt);
-    }
+    if (pose.state === 'float' && !fault && pose.landedAt !== null) splashRing(g, pose.x, pose.y, rt - pose.landedAt);
     duck(g, pose.x, pose.y, pose.ang, 0.78, t, pose.mood);
-    if (pose.state === 'float' && (!fault || fault.what === 'leak')) {
+    if (pose.state === 'float' && !fault) {
       g.fillStyle = 'rgba(27,121,176,0.65)';
       g.beginPath();
       g.ellipse(pose.x, pose.y + 9, 19, 5, 0, 0, Math.PI * 2);
       g.fill();
     }
-    if (pose.state === 'float' && fault && fault.what !== 'leak') stars(g, pose.x + 8, pose.y - 24, t);
+    if (pose.state === 'stuck') stars(g, pose.x + 8, pose.y - 24, t);
+    // the one fault marker: where the first wrong joint is, the same for every kind of fault
+    if (run && fault) {
+      const [x, y] = jointPoint(fault.joint, n);
+      faultFx(g, x, y, rt - jointTime(r, fault.joint), faultText(r, fault.joint));
+    }
 
     // Marlo
     let mood: 'happy' | 'worried' | 'cheer' | 'facepalm' = 'happy';
@@ -229,10 +221,7 @@ function mountLevel(ctx: GameContext, level: Level) {
     if (run) {
       const vt = verdictTime(r, fault);
       blow = rt < 0.3;
-      if (rt >= vt) {
-        mood = !fault ? 'cheer' : fault.what === 'needless' ? 'facepalm' : 'worried';
-        if (fault?.what === 'needless' && rt < vt + 0.45 && (rt - vt) % 0.22 < 0.11) blow = true;
-      }
+      if (rt >= vt) mood = !fault ? 'cheer' : 'worried';
     }
     marlo(g, MARLO.x, MARLO.y, t, { mood, blow });
 
@@ -249,7 +238,8 @@ function mountLevel(ctx: GameContext, level: Level) {
     }
     A.canvas.dataset.zoom = zj >= 0 ? '1' : '0';
     A.canvas.dataset.zoomJoint = String(zj);
-    A.canvas.dataset.fault = fault ? `${fault.what}:${fault.joint}` : '';
+    A.canvas.dataset.fault = fault ? `joint:${fault.joint}` : '';
+    A.canvas.dataset.duck = run ? `${pose.state}:${Math.round(pose.x)},${Math.round(pose.y)}` : '';
     A.canvas.dataset.crew = run ? run.flags.map((f, i) => (f === 'gap' || f === 'kink' ? `${i}:${f}` : '')).filter(Boolean).join(',') : '';
   });
   A.mountAll();

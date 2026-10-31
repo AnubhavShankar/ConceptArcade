@@ -327,4 +327,4 @@ export function intel(r: Round): string {
 }
 /** Levels 4 and 5: what the helper does in this round (ghosts show where your return portal would send each traveller). */
 export const aidLine = (r: Round) =>
-  r.assist === 0 ? 'Ghost travellers show where your return portal would send everyone.' : r.assist === 1 ? 'The ghosts are dim: a test walk costs a charge.' : 'Boss round: no ghosts, no test walk.';
+  r.assist === 0 ? 'Ghost travellers show where your return portal would send everyone.' : r.assist === 1 ? 'The ghosts show for a moment after a test walk, which costs a charge.' : 'Boss round: no ghosts, no test walk.';

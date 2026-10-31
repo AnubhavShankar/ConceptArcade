@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import game from '../src/games/mathematics/class-12/ch05-continuity-and-differentiability/dock-drift/index';
+import { GOAL, HANDLE_RADIUS } from '../src/games/mathematics/class-12/ch05-continuity-and-differentiability/dock-drift/index';
 import { DIAL, buildRounds, heightText, missEnd, type Round } from '../src/games/mathematics/class-12/ch05-continuity-and-differentiability/dock-drift/logic';
 import { createRng } from '../src/core/random';
 import { arcadeHarness, shellTests } from './helpers/arcade-harness';
@@ -260,11 +261,11 @@ describe('Dock Drift', () => {
     expect(during).toContain('PING');
     expect(during).toContain(low < r.ans ? '▲' : '▼');
     expect(during).not.toContain(low < r.ans ? '▼' : '▲');
-    h.advance(1.2);
+    h.advance(0.9);
     const later = pingMarks(frame(rec));
     expect(later).not.toContain('PING');
     expect(later).toContain(low < r.ans ? '▲' : '▼');
-    h.advance(0.6);
+    h.advance(0.5);
     expect(pingMarks(frame(rec))).toEqual([]);
     // round 3: no charge, so no ping marks
     h.setSlider(r.ans);
@@ -289,5 +290,152 @@ describe('Dock Drift', () => {
     expect(marks).toContain('◎');
     expect(marks).not.toContain('▲');
     expect(marks).not.toContain('▼');
+  });
+});
+
+// ---- UX pass: the goal line, grip, cue, text size, round tints, plain-words miss text ------------------------------------------------------------------------
+
+/** A canvas recorder: strings with their font size, rectangle fills, arcs and strokes. */
+const scene = () => {
+  const rec = { texts: [] as { s: string; size: number }[], rects: [] as string[], arcs: [] as { x: number; y: number; r: number }[], strokes: [] as string[] };
+  const store: Record<string, unknown> = {};
+  const proxy = new Proxy(store, {
+    get: (_t, p) => {
+      if (p === 'fillText') return (s: string) => rec.texts.push({ s: String(s), size: Number(/(\d+(\.\d+)?)px/.exec(String(store.font))?.[1] ?? 99) });
+      if (p === 'fillRect') return () => rec.rects.push(String(store.fillStyle));
+      if (p === 'arc') return (x: number, y: number, r: number) => rec.arcs.push({ x, y, r });
+      if (p === 'stroke' || p === 'strokeRect') return () => rec.strokes.push(String(store.strokeStyle));
+      return () => undefined;
+    },
+    set: (_t, p, v) => {
+      store[String(p)] = v;
+      return true;
+    },
+  });
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(proxy as never);
+  const clear = () => {
+    rec.texts.length = 0;
+    rec.rects.length = 0;
+    rec.arcs.length = 0;
+    rec.strokes.length = 0;
+  };
+  return { rec, clear };
+};
+type Scene = ReturnType<typeof scene>;
+/** Run `dt` seconds, then record exactly one frame. */
+const snap = (R: Scene, dt = 0.05) => {
+  if (dt > 0.05) h.advance(dt - 0.05);
+  R.clear();
+  h.advance(0.05);
+  return R.rec;
+};
+const says = (rec: Scene['rec']) => rec.texts.map((t) => t.s);
+const clampY = (m: number) => 176 - m * 11;
+
+describe('Dock Drift UX', () => {
+  it('the goal is drawn on the scene at the start of every round, fades after 3 s, and is not drawn during the release', () => {
+    for (const level of [1, 4]) {
+      const R = scene();
+      h.start(level, 5);
+      expect(says(snap(R))).toContain(GOAL);
+      expect(says(snap(R, 2.0))).toContain(GOAL);
+      expect(says(snap(R, 1.7))).not.toContain(GOAL);
+      playTo(level, 1);
+      expect(says(snap(R, 0.3))).toContain(GOAL);
+      expect(says(snap(R, 3.8))).not.toContain(GOAL);
+      h.start(level, 5);
+      h.setSlider(wrong(build(level, 5)[0]));
+      h.click(RELEASE);
+      expect(says(snap(R, 0.2))).not.toContain(GOAL);
+    }
+  });
+
+  it('round 3 shows the goal at its start too', () => {
+    const R = scene();
+    h.start(2, 5);
+    playTo(2, 2);
+    expect(h.hud()).toMatch(/Round 3 of 3 · BOSS/);
+    expect(says(snap(R, 0.3))).toContain(GOAL);
+  });
+
+  it('the clamp has a grip ring of radius 18 or more, and the player’s own height is written beside it with its unit', () => {
+    expect(HANDLE_RADIUS).toBeGreaterThanOrEqual(18);
+    const R = scene();
+    for (const level of ALL) {
+      h.start(level, 5);
+      const r = build(level, 5)[0];
+      let rec = snap(R);
+      expect(rec.arcs.some((a) => Math.abs(a.x - 532) < 0.01 && Math.abs(a.y - clampY(r.start)) < 0.01 && a.r >= 18)).toBe(true);
+      expect(says(rec)).toContain(`${heightText(r.start)} m`);
+      h.setSlider(3);
+      rec = snap(R);
+      expect(says(rec)).toContain('+3 m');
+      expect(rec.arcs.some((a) => Math.abs(a.y - clampY(3)) < 0.01 && a.r >= 18)).toBe(true);
+    }
+  });
+
+  it('level 1 round 1 pulses a drag cue until the first touch, and no other level or round shows it', () => {
+    const R = scene();
+    h.start(1, 5);
+    expect(says(snap(R))).toContain('drag ⇕');
+    h.setSlider(2);
+    expect(says(snap(R))).not.toContain('drag ⇕');
+    h.start(1, 5);
+    playTo(1, 1);
+    expect(says(snap(R, 0.3))).not.toContain('drag ⇕');
+    h.start(2, 5);
+    expect(says(snap(R))).not.toContain('drag ⇕');
+  });
+
+  it('the scene text is at least 11 px in every level, before, during and after a release, and with the ping and the laser showing; every control is labelled', () => {
+    const R = scene();
+    for (const level of ALL) {
+      h.start(level, 5);
+      const r = build(level, 5)[0];
+      let rec = snap(R, 0.5);
+      expect(Math.min(...rec.texts.map((t) => t.size))).toBeGreaterThanOrEqual(11);
+      h.setSlider(wrong(r));
+      h.click(PING);
+      rec = snap(R, 0.3);
+      expect(says(rec)).toContain('PING');
+      expect(Math.min(...rec.texts.map((t) => t.size))).toBeGreaterThanOrEqual(11);
+      h.click(RELEASE);
+      for (const dt of [0.2, 0.4, 0.4, 0.4, 0.4, 0.6, 0.6]) {
+        rec = snap(R, dt);
+        expect(Math.min(...rec.texts.map((t) => t.size))).toBeGreaterThanOrEqual(11);
+      }
+      h.setSlider(r.ans);
+      h.click(RELEASE);
+      for (const dt of [0.3, 0.5, 0.5, 0.5, 0.5, 0.6]) {
+        rec = snap(R, dt);
+        expect(Math.min(...rec.texts.map((t) => t.size))).toBeGreaterThanOrEqual(11);
+      }
+      for (const el of document.body.querySelectorAll('button, input')) expect(el.getAttribute('aria-label')).toBeTruthy();
+    }
+  });
+
+  it('each round has its own wash of light, and the boss round a still red frame', () => {
+    const R = scene();
+    const washes = ['rgba(77,225,255,0.05)', 'rgba(170,90,255,0.1)', 'rgba(255,60,90,0.11)'];
+    for (let k = 0; k < 3; k++) {
+      h.start(1, 5);
+      playTo(1, k);
+      const rec = snap(R, 0.3);
+      expect(washes.map((w) => rec.rects.includes(w))).toEqual(washes.map((_, i) => i === k));
+      expect(rec.strokes.includes('rgba(255,60,90,0.35)')).toBe(k === 2);
+    }
+  });
+
+  it('a miss says in plain words which way to slide the clamp, never how far', () => {
+    for (const level of ALL) {
+      const r = build(level, 5)[0];
+      for (const height of [r.ans < 12 ? r.ans + 1 : r.ans - 1, r.ans > -12 ? r.ans - 3 : r.ans + 3]) {
+        h.start(level, 5);
+        h.setSlider(height);
+        h.click(RELEASE);
+        h.advance(2.8);
+        expect(h.feedback()).toContain(height > r.ans ? 'Slide the clamp down.' : 'Slide the clamp up.');
+      }
+    }
   });
 });

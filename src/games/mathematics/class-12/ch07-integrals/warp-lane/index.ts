@@ -7,7 +7,8 @@ import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel, type SceneInput } from '@core/dialgame';
 import { ULANE, HIT, LANE_C, XLAND, Ux, barrier, bez, gauge, ghostPose, kart, mouth, racePose, ring, ringY, scenery, trackY, tube, tubeIn, tubeOut, uAt } from './art';
-import { RANGE, START, buildRounds, hintText, judge, missText, outcome, sixths, testText, verdictTime, winText, type Level, type Round } from './logic';
+import { RANGE, START, buildRounds, hintText, judge, missText, outcome, sixths, testText, uv, verdictTime, winText, type Level, type Round } from './logic';
+import { GRIP_MIN, goalLine, grip, tint } from './ux';
 
 const ARIA = 'A kart racer on a twisty track with warp pipes that lead down to a straight u-lane, where the player places the warp mouths.';
 const ROLE = 'a kart racer who takes warp pipes through u-land to cut the twisty track short';
@@ -29,6 +30,13 @@ const HEROES = [
     objective: 'Clear the master’s warps, in three rounds.',
   },
 ];
+
+/** Where the three grips sit: the entry above the lane, the exit below it (far enough apart that two grips at the same u never overlap), the boost on its gauge. */
+const HANDLE_Y = { lo: ULANE.y - 20, hi: ULANE.y + 20, k: 309 };
+const BOOST = { mid: 160, half: 100 };
+const boostX = (k: number) => BOOST.mid + (k / 12) * BOOST.half;
+/** The round's goal, one short line on the scene. */
+const GOAL = 'Goal: match u = g(x) at both limits, then set the boost';
 
 function level(n: Level, random: () => number): DialLevel<Round> {
   const rounds = buildRounds(n, random);
@@ -64,6 +72,7 @@ function level(n: Level, random: () => number): DialLevel<Round> {
     }
 
     scenery(g, r, t);
+    tint(g, s.k, t);
     tube(g, tubeIn(r, v), PAL.green, t, pose?.brokenTube ?? false);
     tube(g, tubeOut(r, v), PAL.orange, t, false);
     ring(g, XLAND.x0, ringY(r, 'in'), t, pose?.swirlIn ?? 0, PAL.green);
@@ -117,6 +126,15 @@ function level(n: Level, random: () => number): DialLevel<Round> {
     // Zip: parked and idling while the player sets the warp, then the race
     if (pose) kart(g, pose.x, pose.y, t, { mood: pose.mood, scale: pose.scale, flip: pose.flip, rot: pose.rot, flame: pose.flame, wheel: pose.wheel, visorDown: pose.visorDown, stars: pose.stars });
     else kart(g, XLAND.park, trackY(r, XLAND.park) - 11.2, t, { mood: 'happy', scale: 0.8, flame: 0.1, wheel: t * 2, idle: true });
+
+    // The grips of the three handles, each with the player's own setting beside it (the boost is written on its gauge), and the round's goal.
+    if (!shot) {
+      const cue = n === 1 && s.k === 0;
+      grip(g, A.canvas, t, { x: Ux(v.lo), y: HANDLE_Y.lo, r: GRIP_MIN, dir: 'h', read: `entry u = ${uv(v.lo)}`, side: v.lo > 18 ? 'left' : 'right', cue, glass: true });
+      grip(g, A.canvas, t, { x: Ux(v.hi), y: HANDLE_Y.hi, r: GRIP_MIN, dir: 'h', read: `exit u = ${uv(v.hi)}`, side: v.hi > 18 ? 'left' : 'right', glass: true });
+      grip(g, A.canvas, t, { x: boostX(v.k), y: HANDLE_Y.k, r: GRIP_MIN, dir: 'h', read: '', side: 'right', glass: true });
+    }
+    goalLine(g, GOAL, A.t, shot !== null, 64);
   }
 
   return {
@@ -129,8 +147,9 @@ function level(n: Level, random: () => number): DialLevel<Round> {
       { key: 'k', aria: 'Warp boost factor, in sixths', label: 'Boost', unit: '', step: 1, min: RANGE.k.min, max: RANGE.k.max, start: START.k, text: (v) => `×${sixths(v)}` },
     ],
     handles: [
-      { dial: 'lo', at: (_r, v) => [Ux(v.lo), ULANE.y - 14], drag: (_r, px) => uAt(px), radius: 16 },
-      { dial: 'hi', at: (_r, v) => [Ux(v.hi), ULANE.y + 14], drag: (_r, px) => uAt(px), radius: 16 },
+      { dial: 'lo', at: (_r, v) => [Ux(v.lo), HANDLE_Y.lo], drag: (_r, px) => uAt(px), radius: GRIP_MIN },
+      { dial: 'hi', at: (_r, v) => [Ux(v.hi), HANDLE_Y.hi], drag: (_r, px) => uAt(px), radius: GRIP_MIN },
+      { dial: 'k', at: (_r, v) => [boostX(v.k), HANDLE_Y.k], drag: (_r, px) => Math.max(RANGE.k.min, Math.min(RANGE.k.max, Math.round(((px - BOOST.mid) / BOOST.half) * 12))), radius: GRIP_MIN },
     ],
     test: { button: '🏁 Test lap', aria: 'Test lap: check the entry, the exit and the boost', read: (r, v) => testText(r, v) },
     fire: { button: '🏎 Race', aria: 'Race through the warp' },

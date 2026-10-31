@@ -108,14 +108,14 @@ export function hex(g: G, x: number, y: number, t: number, o: { mood: HexMood; p
       g.lineWidth = 1;
       g.stroke();
       for (let k = 0; k < 3; k++) {
-        g.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(t * 13 + k * 2));
+        g.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(t * 5 + k * 2));
         g.fillStyle = k === 1 ? PAL.yellow : PAL.cyan;
         g.fillRect(w[0] - 1.5 + k * 3, w[1] - 1, 1.6, 1.6);
       }
       g.globalAlpha = 1;
       dot(g, w[0] + 1, w[1] - 3.4 + tap, 1.9, '#d9a88a');
       // the holo screen the deck projects, flickering, with tiny waves
-      const fl = 0.7 + 0.3 * Math.sin(t * 17);
+      const fl = 0.7 + 0.3 * Math.sin(t * 7);
       g.globalAlpha = fl;
       line(g, w[0], w[1] - 3, w[0] + 3, w[1] - 8, 'rgba(77,225,255,0.5)', 1);
       line(g, w[0] + 9, w[1] - 3, w[0] + 23, w[1] - 8, 'rgba(77,225,255,0.5)', 1);
@@ -224,7 +224,7 @@ export function hatch(g: G, cx: number, open: number, light: HatchLight, t: numb
   g.fillStyle = '#3b4252';
   g.fillRect(cx - 26 - open * 12, 5, 26, 12);
   g.fillRect(cx + open * 12, 5, 26, 12);
-  const on = light === 'alarm' ? Math.sin(t * 22) > 0 : light === 'idle' ? Math.sin(t * 2) > -0.2 : true;
+  const on = light === 'alarm' ? Math.sin(t * 12) > 0 :light === 'idle' ? Math.sin(t * 2) > -0.2 : true;
   const col = light === 'green' ? PAL.green : light === 'alarm' ? PAL.red : PAL.yellow;
   if (on) glow(g, col, 8, () => dot(g, cx + 20, 11, 2.6, col));
   else dot(g, cx + 20, 11, 2.6, '#33384f');
@@ -326,9 +326,15 @@ export function door(g: G, cx: number, cy: number, r: number, o: { open: number;
   g.strokeStyle = '#6a7390';
   g.lineWidth = 1.2;
   g.stroke();
-  if (o.screen === 'open') text(g, 'LOCK OPEN', cx, sy + 11.5, PAL.green, 8);
-  else if (o.screen === 'alarm') {
-    if (Math.sin(o.t * 22) > -0.3) text(g, 'ALARM', cx, sy + 12, PAL.red, 10);
+  // the words are 11 px, wider than the little screen, so they sit on a wider plate of the same dark glass
+  if (o.screen === 'open') {
+    g.fillStyle = '#05100c';
+    rr(g, cx - 34, sy, 68, 16, 3);
+    g.fill();
+    g.stroke();
+    text(g, 'LOCK OPEN', cx, sy + 12, PAL.green, 11);
+  } else if (o.screen === 'alarm') {
+    if (Math.sin(o.t * 12) > -0.3) text(g, 'ALARM', cx, sy + 12.5, PAL.red, 11);
   } else {
     g.strokeStyle = PAL.yellow;
     g.lineWidth = 1.6;
@@ -348,7 +354,7 @@ export function lasers(g: G, cx: number, cy: number, r: number, t: number, off: 
   if (from >= x1) return;
   for (let i = 0; i < 5; i++) {
     const y = cy - 48 + i * 24;
-    g.globalAlpha = 0.6 + 0.4 * Math.abs(Math.sin(t * 19 + i * 1.7));
+    g.globalAlpha = 0.6 + 0.4 * Math.abs(Math.sin(t * 6 + i * 1.7));
     glow(g, PAL.red, 8, () => line(g, from, y, x1, y, PAL.red, 2));
     g.fillStyle = '#7a1c24';
     g.fillRect(x1, y - 3, 5, 6);
@@ -369,7 +375,8 @@ export function scopeFrame(g: G, S: { x0: number; x1: number; y0: number; y1: nu
   g.fill();
   for (let i = 1; i < 8; i++) line(g, S.x0 + ((S.x1 - S.x0) * i) / 8, S.y0, S.x0 + ((S.x1 - S.x0) * i) / 8, S.y1, 'rgba(93,255,154,0.12)', 1);
   for (let j = 1; j < 4; j++) line(g, S.x0, S.y0 + ((S.y1 - S.y0) * j) / 4, S.x1, S.y0 + ((S.y1 - S.y0) * j) / 4, 'rgba(93,255,154,0.12)', 1);
-  text(g, 'LOCK SIGNAL', S.x0 + 8, S.y0 + 13, PAL.dim, 9, 'left');
+  // the label sits above the bezel, so the signal never runs through it
+  text(g, 'LOCK SIGNAL', S.x0, S.y0 - 11, PAL.dim, 11, 'left');
 }
 
 /** One tone slot: a small screen, the tone drawn at the player's amplitude (1 reaches 26 px), the name underneath and the amplitude above. */
@@ -384,7 +391,7 @@ export function slot(g: G, x: number, w: number, top: number, midY: number, name
   const pts: [number, number][] = [];
   for (let i = 0; i <= 48; i++) pts.push([x + 6 + ((w - 12) * i) / 48, midY - wave((2 * Math.PI * i) / 48)]);
   polyline(g, pts, PAL.cyan, 1.8, 5);
-  text(g, ampText, x + 4, top - 5, PAL.yellow, 11, 'left');
+  text(g, ampText, x + 4, top - 5, PAL.yellow, 12, 'left');
   text(g, name, x + w / 2, top + 76, PAL.white, 11);
 }
 
@@ -410,7 +417,7 @@ export function meter(g: G, M: { x: number; y0: number; y1: number; w: number },
     const y = yOf(i / 12);
     line(g, M.x - (i % 6 === 0 ? 8 : 4), y, M.x - 1, y, PAL.dim, i % 6 === 0 ? 1.6 : 1);
   }
-  ['0', '1/2', '1', '3/2', '2'].forEach((s, i) => text(g, s, M.x - 11, yOf(i / 2) + 3.5, PAL.dim, 10, 'right'));
+  ['0', '1/2', '1', '3/2', '2'].forEach((s, i) => text(g, s, M.x - 11, yOf(i / 2) + 3.5, PAL.dim, 11, 'right'));
   if (o.sealed) {
     // two steel plates leave a slot for the fuse bar; rivets along both edges
     g.fillStyle = SLEEVE;
@@ -430,9 +437,9 @@ export function meter(g: G, M: { x: number; y0: number; y1: number; w: number },
     const y = yOf(o.mark);
     line(g, M.x - 3, y, M.x + M.w + 3, y, PAL.green, 2, [4, 3]);
     g.fillStyle = 'rgba(8,12,40,0.85)';
-    rr(g, M.x + M.w + 4, y - 7, 26, 14, 3);
+    rr(g, M.x + M.w + 4, y - 8, 30, 16, 3);
     g.fill();
-    text(g, 'NET', M.x + M.w + 17, y + 3.5, PAL.green, 9);
+    text(g, 'NET', M.x + M.w + 19, y + 4, PAL.green, 11);
   }
   // the fuse bar, the drag handle
   const fy = yOf(o.k / 12);

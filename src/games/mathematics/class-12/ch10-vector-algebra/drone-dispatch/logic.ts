@@ -141,12 +141,17 @@ function onLine(r: Round, v: Pt): { ratio: string; external: boolean } | null {
   const w: Pt = [r.E[0] - r.D[0], r.E[1] - r.D[1]];
   const a: Pt = [v[0] - r.D[0], v[1] - r.D[1]];
   if (w[0] * a[1] - w[1] * a[0] !== 0) return null;
-  const t = (a[0] * w[0] + a[1] * w[1]) / (w[0] * w[0] + w[1] * w[1]);
+  const num = a[0] * w[0] + a[1] * w[1];
+  const den = w[0] * w[0] + w[1] * w[1];
+  const t = num / den;
   if (t === 0 || t === 1) return { ratio: t === 0 ? 'at P' : 'at Q', external: false };
-  const pr = Math.abs(t);
-  const rq = Math.abs(1 - t);
-  return { ratio: `${one(pr)} : ${one(rq)}`, external: t < 0 || t > 1 };
+  // PR : RQ = |t| : |1 − t| = |num| : |den − num|, in whole numbers and lowest terms (a rounded decimal could not tell 1 : 2 from 2 : 5)
+  const pr = Math.abs(num);
+  const rq = Math.abs(den - num);
+  const g = gcd(pr, rq);
+  return { ratio: `${pr / g} : ${rq / g}`, external: t < 0 || t > 1 };
 }
+const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
 
 /** A test flight: where the tapped vector or point leads, never the right one. */
 export function spotText(r: Round, v: Pt): string {
@@ -158,23 +163,41 @@ export function spotText(r: Round, v: Pt): string {
   return `Test flight with ${pt(v)}: that point is on the line PQ and divides it ${o.external ? 'externally' : 'internally'}, ${o.ratio === 'at P' || o.ratio === 'at Q' ? o.ratio : `PR : RQ = ${o.ratio}`}.`;
 }
 
-/** After a miss: the effect, never the right vector. */
+/** The compass word turned round ("north-west" becomes "south-east"): which way to aim to undo a miss, never by how much. */
+export const opposite = (word: string) =>
+  word
+    .split('-')
+    .map((w) => ({ north: 'south', south: 'north', east: 'west', west: 'east' })[w] ?? w)
+    .join('-');
+
+/** Level 3, the live helper of round 1: the ratio PR : RQ of the tapped point, or that it is off the line PQ. */
+export function ratioNow(r: Round, v: Pt): string {
+  const o = onLine(r, v);
+  if (!o) return 'not on the line PQ';
+  return o.ratio === 'at P' || o.ratio === 'at Q' ? o.ratio : `PR : RQ = ${o.ratio}`;
+}
+
+/** After a miss: the effect and the way to change it, never the right vector. */
 export function missText(r: Round, v: Pt): string {
   if (r.kind === 'join') {
     const L: Pt = [r.D[0] + v[0], r.D[1] + v[1]];
     const ew = L[0] === r.E[0] ? '' : L[0] < r.E[0] ? 'west' : 'east';
     const ns = L[1] === r.E[1] ? '' : L[1] < r.E[1] ? 'south' : 'north';
-    return `The drone landed ${ns && ew ? `${ns}-${ew}` : ns || ew} of the pad.`;
+    const word = ns && ew ? `${ns}-${ew}` : ns || ew;
+    return `The drone landed ${word} of the pad. Aim more ${opposite(word)}.`;
   }
   if (r.kind === 'mag') {
     const aligned = v[0] * r.d[1] - v[1] * r.d[0] === 0 && v[0] * r.d[0] + v[1] * r.d[1] > 0;
-    if (!aligned) return 'The thrust does not point along the direction given: the drone flew off course.';
-    return `The thrust points the right way but it is ${size(v) < r.M ? 'too short' : 'too long'} for the size wanted.`;
+    if (!aligned) return 'The thrust does not point along the direction given: the drone flew off course. Turn the arrow towards that direction.';
+    return `The thrust points the right way but it is ${size(v) < r.M ? 'too short' : 'too long'} for the size wanted. ${size(v) < r.M ? 'Tap further out along it.' : 'Tap closer in along it.'}`;
   }
-  if (isTriangle(r.kind)) return `Dash came down on a rooftop ${compass(r, v).word} of the target.`;
+  if (isTriangle(r.kind)) {
+    const word = compass(r, v).word;
+    return `Dash came down on a rooftop ${word} of the target. Aim more ${opposite(word)}.`;
+  }
   const o = onLine(r, v);
-  if (!o) return 'The relay you chose is not on the line through P and Q, so it cannot divide PQ at all.';
-  return `The relay is on the line PQ but it divides it ${o.external ? 'externally' : 'internally'}, not in the ratio required.`;
+  if (!o) return 'The relay you chose is not on the line through P and Q, so it cannot divide PQ at all. Tap a point on that line.';
+  return `The relay is on the line PQ but it divides it ${o.external ? 'externally' : 'internally'}, not in the ratio required. Slide it along PQ.`;
 }
 
 /** After a hit: the working. */

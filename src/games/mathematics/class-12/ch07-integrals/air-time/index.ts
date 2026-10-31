@@ -1,13 +1,17 @@
 // Inspirations (code comment only): Tony Hawk's Pro Skater and motocross stunt games (land the flip or crash), Trials (physics wipe-outs), and nitro-boost
 // racing games (boost to clear a gap). The player drags the landing ramp (spin rounds) or the nitro cut-off cone (boost rounds) along the course, then launches.
-// Blaze spins by exactly F(x) − F(p) in the air, so a clean flight really ends upright and a bad one really comes down at the wrong attitude.
+// A clean flight spins by exactly F(x) − F(p) and ends upright. A miss shows its direction only, with fixed effects: a spin always a little short of or past the
+// trick (never the player's true total), and a canyon or billboard crash that is the same whatever the setting. The way-under and way-over faults of the logic are
+// drawn like under and over, so a miss never says how far off the setting was.
 import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel, type SceneInput } from '@core/dialgame';
+import { FLASH } from '@core/aidflash';
 import { backdrop, num } from '@core/mathkit';
 import { glow, line, text } from '@core/neon';
 import { bike, checkFlag, crowd, dirt, kicker, landingRamp, portrait, rider, rr, sign, speedo, spinGauge, starsAround, towers, type CrowdMode, type G, type Mood, type Pose } from './art';
 import { BOOST_LAND, SPIN_LAND, V0, buildRounds, fault, hintText, judge, landTime, missText, speedText, testText, value, winText, type Fault, type Round } from './logic';
+import { goalLine, grip, tint } from './ux';
 
 const ARIA = 'A stunt rider on a dirt bike at a kicker ramp, with a landing ramp or a nitro cone the player places along the course.';
 const ROLE = 'a stunt rider on a dirt bike at a freestyle show';
@@ -34,6 +38,19 @@ const SPIN = { x0: 90, span: 470, ground: 280, kickTop: 208, landTop: 228 };
 const Xs = (r: Round, x: number) => SPIN.x0 + ((x - r.p) / (r.hi - r.p)) * SPIN.span;
 const BOOST = { x0: 50, span: 390, road: 250, lip: 460, padX0: 540, padX1: 600, sign: 608 };
 const Xb = (r: Round, x: number) => BOOST.x0 + ((x - r.p) / (r.hi - r.p)) * BOOST.span;
+/** The ramp or cone handle's grab radius, in scene pixels (about 44 px on a phone). */
+export const HANDLE_RADIUS = 18;
+/** The round's goal as one short line on the scene (the target is a given fact of the round, so it is not the answer). */
+export const goalFor = (r: Round) => (r.kind === 'spin' ? `Goal: spin exactly ${r.label}` : `Goal: reach ${speedText(r)}`);
+/** How far short of the trick a too-little-spin flight turns, and how far past it a too-much-spin flight turns, in radians. Fixed, whatever the setting. */
+const SHORT = 0.5;
+const PAST = 0.45;
+/** Where the bike comes down when the nitro is cut too early or too late. Fixed, whatever the setting. */
+const SHORT_LAND = 490;
+const LONG_LAND = 700;
+type Dir = 'under' | 'over';
+/** A spin miss reduced to its direction. */
+const dirOf = (ft: Fault | null): Dir | null => (ft === 'under' || ft === 'wayUnder' ? 'under' : ft === 'over' || ft === 'wayOver' ? 'over' : null);
 const SC = 0.65; // the bike is drawn smaller in the canyon scene
 const BLEND0 = 1.15; // a losing flight eases into its landing pose over the last 0.2 s
 
@@ -82,12 +99,17 @@ function flightPos(r: Round, q: number, s: number): [number, number] {
   return [lerp(x0, xl, s), lerp(SPIN.kickTop, SPIN.landTop, s) - 4 * H * s * (1 - s)];
 }
 
-/** The spin jump `rt` seconds after the launch, for the ramp set at q. */
-function spinFrame(r: Round, q: number, rt: number, ft: Fault | null): Frame {
+/**
+ * The spin jump `rt` seconds after the launch, for the ramp set at q. A clean jump turns by the true F(x) − F(p). A miss (`ft` is its direction) turns a fixed
+ * amount a little short of or past the trick, so the picture never shows how far off the setting was. Too little spin comes down nose first (front wheel
+ * first, over the handlebars); too much comes down on the rear wheel with the nose up and loops out.
+ */
+function spinFrame(r: Round, q: number, rt: number, ft: Dir | null): Frame {
   const xp = Xs(r, r.p);
   const xl = Xs(r, q) + 15;
   const xs = Xs(r, q);
   const wheel = rt * 35;
+  const tn = (s: number) => (ft ? -s * (r.target + (ft === 'under' ? -SHORT : PAST)) : turn(r, q, s));
   if (rt < 0.35) {
     const x = lerp(40, xp, rt / 0.35);
     return frame(x, kickerY(x) - 20, -0.4, 'ride', wheel);
@@ -95,13 +117,13 @@ function spinFrame(r: Round, q: number, rt: number, ft: Fault | null): Frame {
   if (rt < SPIN_LAND) {
     const s = (rt - 0.35) / 1.0;
     const [x, cy] = flightPos(r, q, s);
-    let ang = turn(r, q, s) - 0.4 * Math.max(0, 1 - s / 0.2);
+    let ang = tn(s) - 0.4 * Math.max(0, 1 - s / 0.2);
     if (ft && rt > BLEND0) {
-      // The flight is exact; a losing one eases from where it is into the landing it is going to make (the pose the verdict names).
+      // A losing flight eases from where it is into the landing it is going to make (the pose the verdict names).
       const s0 = BLEND0 - 0.35;
-      const a0 = wrapPi(turn(r, q, s0));
-      const touch = ft === 'under' ? -0.45 : ft === 'over' ? 0.5 : a0 >= 0 ? Math.PI : -Math.PI;
-      ang = lerp(a0 + (turn(r, q, s) - turn(r, q, s0)), touch, ease((rt - BLEND0) / (SPIN_LAND - BLEND0)));
+      const a0 = wrapPi(tn(s0));
+      const touch = ft === 'over' ? -0.45 : 0.5;
+      ang = lerp(a0 + (tn(s) - tn(s0)), touch, ease((rt - BLEND0) / (SPIN_LAND - BLEND0)));
     }
     return frame(x, cy - 20, ang, 'air', wheel, { nitro: false });
   }
@@ -118,14 +140,16 @@ function spinFrame(r: Round, q: number, rt: number, ft: Fault | null): Frame {
     const bump = tl < 0.12 ? Math.sin((Math.PI * tl) / 0.12) : 0;
     return frame(xl, top - 20, 0, tl < 0.45 ? 'stand' : 'fist', wheel, { compress: bump, mood: tl < 0.1 ? 'happy' : 'cheer' });
   }
-  if (ft === 'under') {
+  if (ft === 'over') {
+    // too much spin: rear wheel first, nose up, loops out from under the rider
     const x = xl - 40 * ease(tl / 0.7);
     const side = ease((tl - 0.5) / 0.3);
     const f = frame(x, rampY(xs, x) - 20 + 8 * side, lerp(-0.45, -0.1, ease(tl / 0.5)), 'air', wheel * (1 - ease(tl / 0.4)), { squash: 1 - 0.5 * side, mood: tl < 0.5 ? 'worried' : 'dizzy' });
     if (tl >= 0.3) f.sep = lie(xl - 52, (tl - 0.3) / 0.4, [x - 7, f.by - 14], 'dizzy', -1);
     return f;
   }
-  if (ft === 'over') {
+  {
+    // too little spin: nose first, the rider goes over the handlebars
     const tumble = ease(tl / 0.7);
     const by = rampY(xs, xl) - 22 - 12 * Math.sin(Math.PI * clamp01(tl / 0.7));
     const f = frame(xl, by, 0.5 + (0.4 + 2 * Math.PI) * tumble, 'air', 0, { compress: tl < 0.15 ? 0.6 : 0, mood: tl < 0.9 ? 'worried' : 'dizzy' });
@@ -137,20 +161,10 @@ function spinFrame(r: Round, q: number, rt: number, ft: Fault | null): Frame {
     if (u >= 1) f.sep.ang = Math.PI / 2;
     return f;
   }
-  // wayUnder / wayOver: lands upside down, bounces once, lies wheels-up with the rider dizzy beside it
-  const a0 = wrapPi(turn(r, q, BLEND0 - 0.35));
-  const T = a0 >= 0 ? Math.PI : -Math.PI;
-  const f = frame(xl, rampY(xs, xl) - 16 - 18 * Math.sin(Math.PI * clamp01(tl / 0.4)), T, 'air', 0, { mood: tl < 0.5 ? 'worried' : 'dizzy' });
-  if (tl >= 0.3) f.sep = lie(xl - 30, (tl - 0.3) / 0.3, [xl - 6, f.by - 14], 'dizzy', -1);
-  return f;
 }
 
-/** Where the bike lands in the canyon scene for a speed ratio: the pad centre at 1, short of the pad for less, past the pad for more. */
-function landXFor(ratio: number): number {
-  const dev = Math.log(ratio);
-  if (Math.abs(dev) < 1e-9) return 585;
-  return dev < 0 ? 520 - 60 * Math.min(1, -dev * 2) : 615 + 150 * Math.min(1, dev * 2);
-}
+/** Where the bike comes down in the canyon scene: the pad centre for a clean jump, and a fixed spot short of or past the pad for a miss. */
+const landXFor = (ft: Fault | null) => (ft === 'short' ? SHORT_LAND : ft === 'long' ? LONG_LAND : 585);
 const FLY0 = 1.0;
 const FLY = BOOST_LAND - FLY0;
 const X1 = BOOST.lip - 12;
@@ -165,7 +179,7 @@ interface BoostOut {
 function boostFrame(r: Round, q: number, rt: number, ft: Fault | null): BoostOut {
   const road = BOOST.road;
   const mk = (x: number, contact: number, ang: number, pose: Pose, extra: Partial<Frame> = {}): Frame => frame(x, contact - 20 * SC, ang, pose, rt * 40, { scale: SC, ...extra });
-  const landX = landXFor(value(r, q) / r.target);
+  const landX = landXFor(ft);
   if (rt < FLY0) {
     const x = lerp(Xb(r, r.p) - 30, X1, rt / FLY0);
     return { f: mk(x, road, 0, 'ride', { nitro: x < Xb(r, q) }), hit: -1, contact: road };
@@ -247,17 +261,22 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
   let testQ = 0;
   let lastK = -1;
   let lastQ = 0;
+  let roundT0 = 0;
+  let moved = false;
   const fx: Fx = { shot: null, landed: false, splash: false, smash: false };
+  /** The first-touch cue: level 1, round 1, until the ramp or cone is first moved or grabbed. */
+  const cueOn = (s: SceneInput<Round>) => n === 1 && s.k === 0 && !moved;
 
   function drawSpin(s: SceneInput<Round>) {
     const { g, r, t, rt, shot, A } = s;
     const q = s.v.q;
-    const ft = shot ? fault(r, q) : null;
+    const dir = shot ? dirOf(fault(r, q)) : null;
     const xs = Xs(r, q);
     const win = !!shot && shot.ok;
     const done = !!shot && rt >= SPIN_LAND;
     const mode: CrowdMode = done ? (win ? 'cheer' : 'groan') : 'idle';
     backdrop(g);
+    tint(g, s.k);
     towers(g, SPIN.ground);
     crowd(g, t, mode, 262);
     dirt(g, SPIN.ground);
@@ -266,28 +285,37 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
     // metre marks, with the kicker's own mark
     for (let x = r.lo; x <= r.hi; x++) {
       line(g, Xs(r, x), 291, Xs(r, x), 297, PAL.dim, 1.5);
-      text(g, num(x), Xs(r, x), 309, PAL.dim, 10);
+      text(g, num(x), Xs(r, x), 309, PAL.dim, 11);
     }
     line(g, SPIN.x0, 288, SPIN.x0, 297, PAL.green, 2);
-    text(g, `${num(r.p)} kicker`, SPIN.x0, 321, PAL.green, 10);
+    text(g, `${num(r.p)} kicker`, SPIN.x0, 323, PAL.green, 11);
     sign(g, 10, 8, 300, 40, 'SPIN RATE', `ω(x) = ${r.rate}`);
-    // helpers: live in round 1, for 1.8 s after a test run in round 2, never in round 3
-    const testing = !shot && r.assist === 1 && t - testAt < 1.8;
+    // helpers: live in round 1, for 1.5 s after a test run in round 2, never in round 3
+    const testing = !shot && r.assist === 1 && t - testAt < FLASH;
     const gaugeQ = testing ? testQ : q;
     if (r.assist === 0 || testing) {
       const total = value(r, gaugeQ);
-      spinGauge(g, 560, 60, 34, (total * 180) / Math.PI, 0);
+      spinGauge(g, 556, 68, 40, (total * 180) / Math.PI, 0);
       if (!shot) {
         rider(g, Xs(r, gaugeQ) + 15, SPIN.landTop - 20, wrapPi(-total), t, { pose: 'stand', mood: 'happy', nitro: false, wheel: 0, compress: 0, alpha: 0.35 });
       }
     }
     let f: Frame;
-    if (shot) f = spinFrame(r, q, rt, ft);
+    if (shot) f = spinFrame(r, q, rt, dir);
     else {
       f = idle(t, frame(40, kickerY(40) - 20, -0.4, 'ride', 0));
       puff(g, f.bx - 30, f.by - 1, t);
     }
     drawFrame(g, t, f);
+    // what the picture shows, for the tests: the bike's attitude and place while a jump plays
+    if (shot) Object.assign(A.canvas.dataset, { ang: f.ang.toFixed(3), bx: f.bx.toFixed(1) });
+    else delete A.canvas.dataset.ang;
+    if (!shot) {
+      // the ramp's grip, with the player's own setting beside it, and the goal of the round
+      if (q !== r.start) moved = true;
+      grip(g, A.canvas, t, { x: xs + 15, y: SPIN.landTop - 6, r: HANDLE_RADIUS, dir: 'h', read: `x = ${num(q)} m`, side: 'below', cue: cueOn(s) });
+      goalLine(g, goalFor(r), t - roundT0, false);
+    }
     // one-time effects at the moment of landing
     if (shot && fx.shot !== shot) Object.assign(fx, { shot, landed: false });
     if (shot && rt >= SPIN_LAND && !fx.landed) {
@@ -298,9 +326,8 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
         A.float(r.target > 3 * Math.PI ? 'DOUBLE BACKFLIP!' : 'BACKFLIP!', clampX(lx), SPIN.landTop - 96, PAL.yellow);
         A.float('WOOO!', 160, 240, PAL.yellow);
       } else {
-        if (ft === 'wayUnder' || ft === 'wayOver') A.burst(lx, SPIN.landTop, PAL.yellow, 24, 180);
-        else A.burst(lx, SPIN.landTop, '#c9a27a', 14, 110);
-        const say = ft === 'under' ? ['LOOPED OUT!', PAL.orange] : ft === 'over' ? ['OVER THE BARS!', PAL.red] : ['UPSIDE DOWN!', PAL.red];
+        A.burst(lx, SPIN.landTop, '#c9a27a', 14, 110);
+        const say = dir === 'over' ? ['LOOPED OUT!', PAL.orange] : ['OVER THE BARS!', PAL.red];
         A.float(say[0], clampX(lx), SPIN.landTop - 96, say[1]);
         A.float('OOOH…', 160, 240, PAL.dim);
       }
@@ -317,6 +344,7 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
     const win = !!shot && shot.ok;
     const done = !!shot && rt >= BOOST_LAND;
     backdrop(g);
+    tint(g, s.k);
     crowd(g, t, done ? (win ? 'cheer' : 'groan') : 'idle', road - 4, 20, 430, 9, BOOST.lip);
     // road, canyon, pad
     g.fillStyle = '#2a2d3d';
@@ -337,10 +365,10 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
     // metre marks under the road
     for (let x = r.lo; x <= r.hi; x++) {
       line(g, Xb(r, x), road + 16, Xb(r, x), road + 22, PAL.dim, 1.5);
-      text(g, num(x), Xb(r, x), 278, PAL.dim, 10);
+      text(g, num(x), Xb(r, x), 280, PAL.dim, 11);
     }
     line(g, Xb(r, r.p), road + 16, Xb(r, r.p), road + 22, PAL.green, 2);
-    text(g, `${num(r.p)} nitro starts`, Xb(r, r.p), 292, PAL.green, 10);
+    text(g, `${num(r.p)} nitro starts`, Xb(r, r.p), 296, PAL.green, 11);
     // nitro strip with pulsing chevrons, and the cut-off cone (the drag handle)
     const a = Xb(r, r.p);
     const b = Xb(r, q);
@@ -378,13 +406,13 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
     g.fillStyle = '#a0703c';
     rr(g, -16, -74, 32, 46, 3);
     g.fill();
-    text(g, 'BIG', 0, -56, PAL.white, 10);
-    text(g, 'AIR', 0, -42, PAL.yellow, 10);
+    text(g, 'BIG', 0, -56, PAL.white, 11);
+    text(g, 'AIR', 0, -42, PAL.yellow, 11);
     g.restore();
     sign(g, 10, 8, 300, 56, 'NITRO RATE', `k(x) = ${r.rate}`, `start 40 km/h · needs ${speedText(r)}`);
-    // speedometer helper: live in round 1, for 1.8 s after a test run in round 2, never in round 3
-    const testing = !shot && r.assist === 1 && t - testAt < 1.8;
-    if (r.assist === 0 || testing) speedo(g, 560, 64, 36, V0 * value(r, testing ? testQ : q), V0 * r.target);
+    // speedometer helper: live in round 1, for 1.5 s after a test run in round 2, never in round 3
+    const testing = !shot && r.assist === 1 && t - testAt < FLASH;
+    if (r.assist === 0 || testing) speedo(g, 560, 76, 44, V0 * value(r, testing ? testQ : q), V0 * r.target);
     // the bike
     let f: Frame;
     if (out) f = out.f;
@@ -397,6 +425,14 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
       for (let i = 0; i < 5; i++) line(g, out.f.bx - 24 - i * 3, out.f.by - 14 + i * 6, out.f.bx - 30 - (6 + 30 * grow) - i * 3, out.f.by - 14 + i * 6, 'rgba(255,255,255,0.5)', 1.4);
     }
     drawFrame(g, t, f);
+    if (shot) Object.assign(A.canvas.dataset, { bx: f.bx.toFixed(1), by: f.by.toFixed(1) });
+    else delete A.canvas.dataset.bx;
+    if (!shot) {
+      // the cone's grip, with the player's own setting beside it, and the goal of the round
+      if (q !== r.start) moved = true;
+      grip(g, A.canvas, t, { x: Xb(r, q), y: BOOST.road - 14, r: HANDLE_RADIUS, dir: 'h', read: `x = ${num(q)} m`, side: 'above', cue: cueOn(s) });
+      goalLine(g, goalFor(r), t - roundT0, false);
+    }
     if (shot && fx.shot !== shot) Object.assign(fx, { shot, landed: false, splash: false, smash: false });
     if (out && !fx.smash && out.hit >= 0) {
       fx.smash = true;
@@ -457,6 +493,7 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
     draw: (s) => {
       if (s.k !== lastK) {
         lastK = s.k;
+        roundT0 = s.t;
         testAt = -10;
         testPending = false;
       }

@@ -163,7 +163,7 @@ export function missEnd(r: Entry, h: number): number {
 
 export const intel = (r: Round) => `Rail: ${r.text}. Orbit lets go at x = ${r.x0Text}, and the wall is ${r.d} m further on. Set the clamp at the height where Orbit reaches the wall, measured from the release height.`;
 
-export const hintText = (r: Round) => `${intel(r)} ${r.assist === 0 ? 'Round 1: the guide laser shows the drift line.' : r.assist === 1 ? 'No laser: a sensor ping costs a charge.' : 'Boss round: no laser, no ping.'}`;
+export const hintText = (r: Round) => `${intel(r)} ${r.assist === 0 ? 'Round 1: the guide laser shows the drift line.' : r.assist === 1 ? 'No laser: a sensor ping costs a charge and shows its arrow for 1.5 s.' : 'Boss round: no laser, no ping.'}`;
 
 /** Where the player's clamp is, in words. */
 export const where = (h: number) => (h > 0 ? `${h} m up` : h < 0 ? `${-h} m down` : 'level with the release point');
@@ -171,8 +171,8 @@ export const where = (h: number) => (h > 0 ? `${h} m up` : h < 0 ? `${-h} m down
 /** What the player's setting did (h is the player's height; never the right answer or the slope). */
 export function missText(r: Entry, h: number): string {
   return fault(r, h) === 'high'
-    ? `With the clamp ${where(h)} Orbit drifted in underneath it, bonked the hull and tumbled away.`
-    : `With the clamp ${where(h)} Orbit drifted in above it, bonked the hull and tumbled away.`;
+    ? `With the clamp ${where(h)} Orbit drifted in underneath it, bonked the hull and tumbled away. Slide the clamp down.`
+    : `With the clamp ${where(h)} Orbit drifted in above it, bonked the hull and tumbled away. Slide the clamp up.`;
 }
 
 /** The charge: the direction only. */

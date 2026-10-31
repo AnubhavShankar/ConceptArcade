@@ -1,0 +1,82 @@
+{
+  "$schema": "../../../../../../schema/game.schema.json",
+  "subject": "physics",
+  "classLevel": 12,
+  "order": 1,
+  "mechanic": "predict-then-reveal",
+  "author": {
+    "name": "Concept Arcade maintainers",
+    "github": "AnubhavShankar"
+  },
+  "id": "bohr-orbits",
+  "title": "Snap the Electron",
+  "summary": "Photograph a hydrogen electron on its Bohr orbit with attosecond flashes from a space station, then zoom in on the matter waves of planets.",
+  "chapter": {
+    "number": 12,
+    "name": "Atoms"
+  },
+  "ncertRef": "Section 12.4, Bohr model of the hydrogen atom",
+  "concepts": [
+    "Bohr orbit radii rₙ = n²a₀",
+    "Orbital speed vₙ = v₁/n",
+    "Orbital period grows as n³",
+    "Quantisation mvr = nħ",
+    "De Broglie waves: orbit n holds n wavelengths",
+    "The quantum number of a planet"
+  ],
+  "learningOutcome": "The student can find a Bohr orbit’s radius n²a₀, its speed v₁/n and its period, which grows as n³, and use mvr = nħ to show that a planet’s quantum number has dozens of zeros.",
+  "estimatedMinutes": 25,
+  "levels": [
+    {
+      "title": "Ring flash",
+      "tier": "concept",
+      "kind": "foundation",
+      "adds": "Baseline: the allowed Bohr orbits have radius rₙ = n²a₀ with a₀ = 0.53 Å, and orbit n holds n matter waves (Ex 12.7; Example 12.3; §12.6).",
+      "hints": [
+        "The orbit of level n has a radius n² times the ground orbit, a₀ = 0.53 Å.",
+        "The first excited state is level 2, the second is level 3. Orbit n holds exactly n matter waves, since 2πr = nλ.",
+        "Level 3, for example, sits at 3² × 0.53 Å = 4.77 Å, not 3 × 0.53 Å."
+      ]
+    },
+    {
+      "title": "Camera trap",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: on level n the speed is v₁/n and one lap takes T = 2πr/v, so the flash time fixes where the electron is (Ex 12.6).",
+      "hints": [
+        "On level n the electron moves at v₁/n, with v₁ = 2.19 × 10⁶ m/s, round a circle of radius n²a₀.",
+        "One lap takes T = 2πr/v. Divide the flash time by T to get the laps done.",
+        "Drop the whole laps. The part of a lap left over, times 360°, is the angle past the gate."
+      ]
+    },
+    {
+      "title": "Twin atoms",
+      "tier": "application",
+      "kind": "concept",
+      "adds": "New idea: r grows as n² and v falls as 1/n, so a lap takes n³ times as long as on the ground orbit: T ∝ n³ (Ex 12.6).",
+      "hints": [
+        "T ∝ n³: one lap on level 2 lasts as long as 8 laps on level 1, and one lap on level 3 as long as 27.",
+        "B’s laps = A’s laps × (n_A/n_B)³.",
+        "Keep only the part of a lap left over, and multiply it by 360°."
+      ]
+    },
+    {
+      "title": "Powers of ten",
+      "tier": "challenge",
+      "kind": "concept",
+      "adds": "Apply it: mvr = nħ holds for any orbit, so the quantum number of a moon or a planet has dozens of zeros (Ex 12.9; §12.6).",
+      "hints": [
+        "n = mvr/ħ, with ħ = 1.055 × 10⁻³⁴ J s. Multiply m, v and r first.",
+        "Write n as a × 10ᵇ with a from 1 to just under 10. A zoom of ×10ᵇ leaves a waves in the window.",
+        "For the Earth: mvr = 6.0 × 10²⁴ × 3.0 × 10⁴ × 1.5 × 10¹¹ = 2.7 × 10⁴⁰ J s."
+      ]
+    }
+  ],
+  "misconceptions": [
+    "Bohr’s rule only works for hydrogen and never for a planet",
+    "The electron moves faster on higher levels",
+    "The radius of level n is n times the radius of the first orbit",
+    "The period grows as n², like the radius",
+    "Any radius is allowed if the electron has the right speed"
+  ]
+}

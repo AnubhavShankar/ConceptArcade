@@ -148,10 +148,10 @@ export function twelfths(k: number): string {
 
 export const matchIntel = (r: MatchRow) => `Lock signal: f(x) = ${r.name}. Tones offered: ${r.bands.map(([b]) => b).join(', ')}. Set each amplitude so the tones add up to the signal exactly.`;
 export const matchHint = (r: MatchRound) =>
-  `${matchIntel(r)} ${r.assist === 0 ? 'Round 1: your mix shows live on the scope.' : r.assist === 1 ? 'Your mix is hidden: a scope peek costs a charge.' : 'Boss round: no peek.'}`;
+  `${matchIntel(r)} ${r.assist === 0 ? 'Round 1: your mix shows live on the scope.' : r.assist === 1 ? 'Your mix is hidden: a scope peek costs a charge and shows it for 1.5 s.' : 'Boss round: no peek.'}`;
 export function matchMiss(r: MatchRow, a: number[]): string {
   const count = runs(gaps(r, a));
-  return `The mix did not match the lock signal: the scope flagged ${count} gap${count === 1 ? '' : 's'} in red, the alarm went off and the turret fired a stun dart.`;
+  return `The mix did not match the lock signal: the scope flagged ${count} gap${count === 1 ? '' : 's'} in red, the alarm went off and the turret fired a stun dart. Check each tone’s amplitude against the identity.`;
 }
 export const peekText = (r: MatchRow, a: number[]) => `Scope peek: your mix ${judgeMatch(r, a) ? 'lies right on' : 'does not lie on'} the lock signal.`;
 export const matchWin = (r: MatchRow) => `Lock open! ${r.identity} So ∫ ${r.name} dx = ${r.integral} + C.`;
@@ -159,11 +159,11 @@ export const matchWin = (r: MatchRow) => `Lock open! ${r.identity} So ∫ ${r.na
 export const fuseIntel = (r: FuseRow) =>
   `The lock signal f(x) = ${r.name} charges the capacitor from x = 0 to x = π/2, and discharges where it is negative. Set the fuse rating to the net charge, ∫ f dx from 0 to π/2.`;
 export const fuseHint = (r: FuseRound) =>
-  `${fuseIntel(r)} ${r.assist === 0 ? 'Round 1: the charge meter shows the charge as it builds.' : r.assist === 1 ? 'The meter is dark: a probe costs a charge.' : 'Boss round: no probe.'}`;
+  `${fuseIntel(r)} ${r.assist === 0 ? 'Round 1: the charge meter shows the charge as it builds.' : r.assist === 1 ? 'The meter is dark: a probe costs a charge and shows its arrow for 1.5 s.' : 'Boss round: no probe.'}`;
 export function fuseMiss(r: FuseRow, k: number): string {
   return k < r.ans
-    ? `The capacitor ended with more charge than the ${twelfths(k)} fuse could take: it blew, the alarm went off and the turret fired.`
-    : `The capacitor ended below the ${twelfths(k)} rating, so the fuse never tripped and the backup alarm went off.`;
+    ? `The capacitor ended with more charge than the ${twelfths(k)} fuse could take: it blew, the alarm went off and the turret fired. Raise the fuse rating.`
+    : `The capacitor ended below the ${twelfths(k)} rating, so the fuse never tripped and the backup alarm went off. Lower the fuse rating.`;
 }
 export const probeText = (r: FuseRow, k: number) => `Probe: the net charge will be ${k < r.ans ? 'more than' : k > r.ans ? 'less than' : 'exactly'} your ${twelfths(k)} rating.`;
 export const fuseWin = (r: FuseRow) => `Fuse tripped, vault open! ${r.work}`;

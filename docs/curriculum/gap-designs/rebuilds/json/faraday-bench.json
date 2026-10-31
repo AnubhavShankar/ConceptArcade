@@ -1,8 +1,8 @@
 {
   "$schema": "../../../../../../schema/game.schema.json",
   "id": "faraday-bench",
-  "title": "The Glowing Hoop",
-  "summary": "Play a stage illusionist: tilt, flip and pick wire hoops over a hidden magnet so the changing flux lights a floating bulb just right.",
+  "title": "The Deep-Sea Beacon",
+  "summary": "Dive to a shipwreck: tilt, flip and size wire hoops over a seabed magnet so the changing flux lights a sealed beacon just right.",
   "subject": "physics",
   "classLevel": 12,
   "chapter": {
@@ -24,7 +24,7 @@
   "estimatedMinutes": 25,
   "levels": [
     {
-      "title": "Lights out",
+      "title": "Pad switch-off",
       "tier": "concept",
       "kind": "foundation",
       "adds": "Baseline: Φ = BA cos θ through a tilted hoop; when the field dies, ε = NΔΦ/Δt lights the bulb only while the flux changes (Section 6.3, Example 6.2).",
@@ -35,7 +35,7 @@
       ]
     },
     {
-      "title": "The magic tube",
+      "title": "The charging sleeve",
       "tier": "concept",
       "kind": "concept",
       "adds": "New idea: inside a long solenoid B = μ₀nI, so a rising current changes the flux and ε = Nμ₀nA ΔI/Δt (Ex 6.3).",
@@ -57,7 +57,7 @@
       ]
     },
     {
-      "title": "The finale",
+      "title": "The flux program",
       "tier": "application",
       "kind": "concept",
       "adds": "Apply it: the emf is the slope of the flux graph, so the steepest step, rising or falling, flashes brightest (Section 6.4).",

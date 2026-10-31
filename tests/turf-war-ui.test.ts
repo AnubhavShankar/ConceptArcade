@@ -4,6 +4,8 @@ import game from '../src/games/mathematics/class-12/ch08-application-of-integral
 import { buildRounds, height, type Round } from '../src/games/mathematics/class-12/ch08-application-of-integrals/turf-war/logic';
 import { createRng } from '../src/core/random';
 import { arcadeHarness, shellTests } from './helpers/arcade-harness';
+import { canvasRecorder } from './helpers/canvas-rec';
+import { GRIP_MIN } from '../src/games/mathematics/class-12/ch08-application-of-integrals/turf-war/ux';
 
 const h = arcadeHarness(game, 'turf-war', 6);
 const build = (level: number, seed: number) => buildRounds(level, createRng(seed));
@@ -180,5 +182,92 @@ describe('Turf War levels 5 and 6', () => {
     expect(h.feedback()).toMatch(/Ink gauge at 2: .* of paint is down/);
     h.click('Ink gauge: read the paint laid at this setting');
     expect(h.feedback()).toMatch(/No charges left/);
+  });
+});
+
+describe('Turf War UX pass', () => {
+  const GAUGE = 'Ink gauge: read the paint laid at this setting';
+  const LEVELS = [1, 2, 3, 4, 5, 6];
+  /** One 50 ms frame, recorded, after letting `dt` seconds pass. */
+  const frame = (R: ReturnType<typeof canvasRecorder>, dt: number) => {
+    if (dt > 0.05) h.advance(dt - 0.05);
+    R.clear();
+    h.advance(0.05);
+    return R.rec;
+  };
+  const counter = (R: ReturnType<typeof canvasRecorder>, dt: number) => frame(R, dt).at.some((a) => /^painted /.test(a.s));
+  /** Win rounds 1 to k so the next round is on screen. */
+  const playTo = (level: number, seed: number, k: number) => {
+    h.start(level, seed);
+    const g = build(level, seed);
+    for (let i = 0; i < k; i++) {
+      h.setSlider(g[i].ans);
+      h.click('Seal the turf');
+      h.advance(2.8);
+      h.advance(1);
+    }
+    return g;
+  };
+  for (const level of LEVELS) {
+    it(`level ${level}: the goal line is drawn at round start and fades; the handle is at least ${GRIP_MIN} px`, () => {
+      const R = canvasRecorder();
+      h.start(level, 5);
+      const rec = frame(R, 0.05);
+      const goals = rec.at.filter((a) => /^Goal: lay exactly /.test(a.s));
+      expect(goals.length).toBe(1);
+      expect(goals[0].y).toBeGreaterThanOrEqual(12);
+      expect(GRIP_MIN).toBeGreaterThanOrEqual(18);
+      expect(rec.arcs.some((a) => a.r >= 18)).toBe(true);
+      // the player's own setting is written beside the handle, with its unit
+      expect(rec.at.some((a) => /^(b|x|y) = \d+( · drag)?$|^\d+ quarter waves( · drag)?$/.test(a.s))).toBe(true);
+      expect(frame(R, 4).at.some((a) => /^Goal: /.test(a.s))).toBe(false);
+    });
+    it(`level ${level}: the paint counter is live in round 1, shows 1.5 s after an ink gauge in round 2, never in round 3`, () => {
+      const R = canvasRecorder();
+      h.start(level, 5);
+      expect(counter(R, 0.1)).toBe(true);
+      expect(h.$('canvas')!.dataset.helper).toBe('1');
+      const g = playTo(level, 5, 1);
+      expect(h.hud()).toMatch(/Round 2 of 3/);
+      expect(h.note()).toMatch(/shows for a moment after an ink gauge/);
+      expect(counter(R, 0.3)).toBe(false);
+      expect(h.$('canvas')!.dataset.helper).toBe('0');
+      h.setSlider(g[1].ans === g[1].max ? g[1].ans - 1 : g[1].ans + 1);
+      expect(counter(R, 0.3)).toBe(false);
+      h.click(GAUGE);
+      expect(counter(R, 0.3)).toBe(true);
+      expect(counter(R, 0.8)).toBe(true);
+      expect(counter(R, 0.8)).toBe(false);
+      expect(h.$('canvas')!.dataset.helper).toBe('0');
+      // a miss does not bring the counter back
+      h.click('Seal the turf');
+      h.advance(3.6);
+      expect(counter(R, 0.3)).toBe(false);
+      const g2 = playTo(level, 5, 2);
+      expect(h.hud()).toMatch(/BOSS/);
+      h.setSlider(g2[2].ans);
+      expect(counter(R, 0.3)).toBe(false);
+      expect(h.$('canvas')!.dataset.helper).toBe('0');
+    });
+  }
+  it('level 1, round 1: the handle pulses with a "drag" cue until the first touch; round 2 has none', () => {
+    const R = canvasRecorder();
+    h.start(1, 5);
+    expect(frame(R, 0.1).at.some((a) => / · drag$/.test(a.s))).toBe(true);
+    h.pointer('pointerdown', 320, 170);
+    h.pointer('pointerup', 320, 170);
+    expect(frame(R, 0.1).at.some((a) => / · drag$/.test(a.s))).toBe(false);
+    h.start(2, 5);
+    expect(frame(R, 0.1).at.some((a) => / · drag$/.test(a.s))).toBe(false);
+  });
+  it('a miss says which way to move the edge, in words, never by how much', () => {
+    for (const [level, short, long] of [[1, /Raise the top\./, /Lower the top\./], [2, /Roll further\./, /Roll back\./], [5, /Raise the top edge\./, /Lower the top edge\./], [6, /Move the edge out\./, /Pull the edge in\./]] as const) {
+      h.start(level, 5);
+      const r = build(level, 5)[0];
+      h.setSlider(r.ans === r.max ? r.ans - 1 : r.ans + 1);
+      h.click('Seal the turf');
+      h.advance(3.6);
+      expect(h.feedback()).toMatch(r.ans === r.max ? short : long);
+    }
   });
 });

@@ -159,7 +159,7 @@ describe('Splash Patrol controls', () => {
     expect(h.hud()).toMatch(/Charges ⚡/);
   });
 
-  it('a win says Slide approved! with the working, a miss names the joint and what happened', () => {
+  it('a win says Slide approved! with the working, a miss names the joint where the first fault is', () => {
     h.start(2, 5);
     const g = build(2, 5);
     setFlags(g[0]);
@@ -171,7 +171,7 @@ describe('Splash Patrol controls', () => {
     setWrong(g[1]);
     h.click(SEND);
     h.advance(2.8);
-    expect(h.feedback()).toMatch(/dropped out|flew over the side|test was stopped/);
+    expect(h.feedback()).toMatch(/^Sir Quacks stopped at the joint at x = /);
     expect(h.hearts()).toBe(2);
   });
 
@@ -389,41 +389,88 @@ describe('Splash Patrol never leaks the shape of f', () => {
   });
 });
 
-describe('a fault shows only the one joint the player got wrong', () => {
-  it('the one fault of every wrong assignment is the first wrong joint, with only that joint’s effect and only the crews the player ordered', () => {
-    const KINK_FX = 'rgba(255,155,61,0.85)';
+/** Every joint right except joint `i`, which gets flag `f`. */
+function setOneWrong(r: Round, i: number, f: Exclude<Flag, null>) {
+  setFlags(r);
+  const b = buttons()[i];
+  for (let k = 0; k < 4 && b.dataset.flag !== f; k++) press(b);
+}
+const FAULT_TAG = /^⚠ FAULT at x = /;
+
+describe('a miss says where the first fault is, and nothing else', () => {
+  it('the one fault of every wrong assignment is the first wrong joint: one marker "⚠ FAULT at x = …" there, the duck stops there, and only the crews the player ordered work', () => {
     for (const level of LEVELS) {
       for (const seed of [5, 19, 33]) {
         const R = recorder();
         h.start(level, seed);
         const g = build(level, seed);
-        {
-          const k = 0;
-          setAllWrong(g[k]);
-          const flags = buttons().map((b) => (b.dataset.flag === 'none' ? null : b.dataset.flag)) as Flag[];
-          const fault = firstFault(g[k], flags)!;
-          expect(fault).not.toBeNull();
+        setAllWrong(g[0]);
+        const flags = buttons().map((b) => (b.dataset.flag === 'none' ? null : b.dataset.flag)) as Flag[];
+        const fault = firstFault(g[0], flags)!;
+        expect(fault).not.toBeNull();
+        h.click(SEND);
+        let tags = 0;
+        for (let step = 0; step < 46; step++) {
+          const rec = frame(R);
+          expect(h.$('canvas')!.dataset.fault).toBe(`joint:${fault.joint}`);
+          const crew = flags.map((f, i) => (f === 'gap' || f === 'kink' ? `${i}:${f}` : '')).filter(Boolean).join(',');
+          expect(h.$('canvas')!.dataset.crew).toBe(crew);
+          const marks = rec.at.filter((a) => FAULT_TAG.test(a.s));
+          expect(marks.length).toBeLessThanOrEqual(1);
+          for (const m of marks) expect(m.s).toBe(`⚠ FAULT at x = ${g[0].joints[fault.joint].cText}`);
+          tags = Math.max(tags, marks.length);
+          // none of the old kind-specific effects
+          expect(rec.at.some((a) => /STOP|LEAK|KINK|WRONG REPAIR/.test(a.s))).toBe(false);
+        }
+        expect(tags).toBe(1);
+        expect(h.$('canvas')!.dataset.duck).toMatch(/^stuck:/);
+        h.advance(0.5);
+        expect(h.phase()).not.toBe('resolve');
+      }
+    }
+  });
+
+  it('two wrong flags at the same joint give the same miss text, the same marker and the same duck, frame by frame', () => {
+    for (const level of LEVELS) {
+      const g = build(level, 5);
+      const r = g[0];
+      const flagSet: Exclude<Flag, null>[] = level === 1 ? ['fine', 'gap'] : ['fine', 'kink', 'gap'];
+      for (let i = 0; i < r.joints.length; i++) {
+        const wrong = flagSet.filter((f) => f !== want(level, r.joints[i]));
+        if (wrong.length < 2) continue;
+        const runs = wrong.map((f) => {
+          const R = recorder();
+          h.start(level, 5);
+          setOneWrong(r, i, f);
           h.click(SEND);
-          let sawFx = false;
-          let stops = 0;
+          const trace: string[] = [];
           for (let step = 0; step < 46; step++) {
             const rec = frame(R);
-            expect(h.$('canvas')!.dataset.fault).toBe(`${fault.what}:${fault.joint}`);
-            const crew = flags.map((f, i) => (f === 'gap' || f === 'kink' ? `${i}:${f}` : '')).filter(Boolean).join(',');
-            expect(h.$('canvas')!.dataset.crew).toBe(crew);
-            const kinks = rec.strokes.filter((s) => s.style === KINK_FX);
-            expect(kinks.length).toBeLessThanOrEqual(1);
-            if (kinks.length) sawFx = true;
-            stops = Math.max(stops, rec.at.filter((a) => a.s === 'STOP').length);
-            expect(rec.at.filter((a) => a.s === 'STOP').length).toBeLessThanOrEqual(1);
+            const c = h.$('canvas')!;
+            trace.push(`${c.dataset.fault}|${c.dataset.duck}|${rec.at.filter((a) => FAULT_TAG.test(a.s)).map((a) => `${a.s}@${Math.round(a.x)},${Math.round(a.y)}`).join(';')}`);
           }
           h.advance(0.5);
-          expect(h.phase()).not.toBe('resolve');
-          if (fault.what === 'kink' || fault.what === 'wrongfix') expect(sawFx).toBe(true);
-          if (fault.what === 'needless') expect(stops).toBe(1);
-          else expect(stops).toBe(0);
+          return { text: h.feedback(), trace, hearts: h.hearts() };
+        });
+        for (const x of runs.slice(1)) {
+          expect(x.text).toBe(runs[0].text);
+          expect(x.trace).toEqual(runs[0].trace);
+          expect(x.hearts).toBe(runs[0].hearts);
         }
+        expect(runs[0].hearts).toBe(2);
       }
+    }
+  });
+
+  it('every miss costs one heart and its text holds no word of the kind of fault', () => {
+    for (const level of LEVELS) {
+      h.start(level, 5);
+      const g = build(level, 5);
+      setWrong(g[0]);
+      h.click(SEND);
+      h.advance(2.8);
+      expect(h.hearts()).toBe(2);
+      expect(h.feedback()).not.toMatch(/leak|bent|bend|welder|needless|dropped|flew|whistle|nobody/i);
     }
   });
 
@@ -447,7 +494,7 @@ describe('the duck’s ride fits the 2.4 s resolve and never leaves the screen',
       for (const pool of POOLS[level]) {
         for (const row of pool) {
           const r: Round = { ...row, level, assist: 0 };
-          const faults = [null, ...row.joints.flatMap((_, joint) => (['leak', 'kink', 'needless', 'wrongfix'] as const).map((what) => ({ joint, what })))];
+          const faults = [null, ...row.joints.map((_, joint) => ({ joint }))];
           for (const f of faults) {
             for (let rt = 0; rt <= RESOLVE; rt += 0.05) {
               const p = duckPose(r, f, rt);
@@ -458,12 +505,12 @@ describe('the duck’s ride fits the 2.4 s resolve and never leaves the screen',
             }
             const end = duckPose(r, f, RESOLVE - 0.01);
             if (!f) expect(end.state).toBe('float');
-            else if (f.what === 'needless') expect(end.state).toBe('stuck');
             else {
-              expect(end.state).toBe('float');
-              expect(end.landedAt).not.toBeNull();
-              expect(end.landedAt!).toBeLessThan(RESOLVE - 0.2);
-              expect(end.landedAt!).toBeGreaterThan(verdictTime(r, f) - 0.26);
+              // every fault is the same: the duck stops at its joint, still on the slide
+              expect(end.state).toBe('stuck');
+              expect(end.landedAt).toBeNull();
+              expect(end.u).toBeLessThan(1);
+              expect(verdictTime(r, f)).toBeLessThan(RESOLVE - 0.5);
             }
           }
         }
@@ -475,12 +522,9 @@ describe('the duck’s ride fits the 2.4 s resolve and never leaves the screen',
     const r: Round = { ...POOLS[2][1][0], level: 2, assist: 0 };
     for (let rt = 0; rt < 0.8; rt += 0.05) {
       const win = duckPose(r, null, rt);
-      for (const what of ['leak', 'kink', 'wrongfix'] as const) {
-        const p = duckPose(r, { joint: 0, what }, rt);
-        expect([p.x, p.y, p.ang, p.state]).toEqual([win.x, win.y, win.ang, win.state]);
-      }
-    }
-  });
+      const p = duckPose(r, { joint: 0 }, rt);
+      expect([p.x, p.y, p.ang, p.state]).toEqual([win.x, win.y, win.ang, win.state]);
+    }  });
 });
 
 describe('Splash Patrol UX', () => {
@@ -535,7 +579,7 @@ describe('Splash Patrol UX', () => {
 });
 
 describe('no console error while every kind of fault plays out', () => {
-  it('leak, kink, wrong repair and a win animate cleanly', () => {
+  it('a fault at any joint and a win animate cleanly', () => {
     const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     for (const level of LEVELS) {
       for (const seed of [5, 21]) {

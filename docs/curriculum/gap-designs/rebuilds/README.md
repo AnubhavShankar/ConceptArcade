@@ -62,11 +62,24 @@ Name the brief `rebuilds/chNN-<id>.md`.
 
 | Chapter | Game id | Brief | Status |
 |---|---|---|---|
-| 2 | capacitor-bench | `../20-capacitor-bench.md` | built ("Lightning on Set") |
-| 3 | drift-lab | `ch03-drift-lab.md` | draft: no JSON, not reviewed |
-| 5 | magnet-bench | `ch05-magnet-bench.md` | brief and JSON written; not reviewed, not built |
-| 6 | faraday-bench | `ch06-faraday-bench.md` | brief and JSON written; not reviewed, not built. Its stage illusionist with a hidden electromagnet clashes with magnet-bench's "Floating Act": change one setting before building |
-| 7 | phasor-bench | `ch07-phasor-bench.md` | brief and JSON written; not reviewed, not built |
+| 1 | coulomb-balance | `ch01-coulomb-balance.md` | built "Float the Bead" |
+| 1 | quantum-of-charge | `ch01-quantum-of-charge.md` | built "The Quark Hunt" |
+| 2 | capacitor-bench | `../20-capacitor-bench.md` | built "Lightning on Set" |
+| 3 | drift-lab | `ch03-drift-lab.md` | built "The Slowest Race" |
+| 3 | resistance-bench | `ch03-resistance-bench.md` | built "Line Down" |
+| 4 | force-lab | `ch04-force-lab.md` | built "Beam Hall" |
+| 4 | field-maker | `ch04-field-maker.md` | built "Turtle Compass" |
+| 4 | ampere-lab | `ch04-ampere-lab.md` | built "First Plasma" |
+| 5 | magnet-bench | `ch05-magnet-bench.md` | built "The Floating Act" |
+| 5 | magnet-dipole-bench | `ch05-magnet-dipole-bench.md` | built "Pebble in Orbit" (brief finished 2026-10-31) |
+| 6 | faraday-bench | `ch06-faraday-bench.md` | built "The Deep-Sea Beacon" (setting moved to a shipwreck dive) |
+| 6 | lenz-lab | `ch06-lenz-lab.md` | built "Night Shift at Magnet Park" |
+| 7 | phasor-bench | `ch07-phasor-bench.md` | built "Chai Before the Whistle" |
+| 7 | reactance-lab | `ch07-reactance-lab.md` | built "Lights of the High Pass" |
+| 7 | lcr-bench | `ch07-lcr-bench.md` | built "Main Stage Soundcheck" |
+| 12 | bohr-orbits | `ch12-bohr-orbits.md` | built "Snap the Electron" (redesign) |
+
+All built games: own tests green, not seen on screen. **Resumed 2026-10-31** (owner: finish the work left, two at a time): the half-done rebuilds were finished and the remaining briefs built. Not yet briefed: the other ~33 old games of chapters 1 to 8.
 
 **Paused 2026-10-30.** The owner said: "Let's close this with whatever is done… We'll resume some day else." The designers for chapters 1 to 8 and for the bohr-orbits redesign were stopped partway; no brief beyond the four above was written. The three rebuild builds that had started (phasor-bench, magnet-bench, faraday-bench) were stopped, and their folders were restored to the committed versions.
 

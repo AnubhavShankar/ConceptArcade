@@ -148,23 +148,25 @@ export const intel = (r: Round) =>
     ? `Kicker at x = ${num(r.p)} m. In the air Blaze spins at ω(x) = ${r.rate} radians per metre. Place the landing ramp so the total spin from the kicker is exactly ${r.label}, ${r.target > 3 * Math.PI ? 'a double backflip' : 'one backflip'}.`
     : `The nitro fires from x = ${num(r.p)} m and raises the speed at the rate k(x) = ${r.rate} per metre, so the speed is multiplied by e^(∫k dx). The bike starts at 40 km/h; cut the nitro where it reaches ${speedText(r)} (×${r.label}).`;
 
-export const hintText = (r: Round) => `${intel(r)} ${r.assist === 0 ? 'Round 1: the gauge shows your setting live.' : r.assist === 1 ? 'The gauge is off: a test run costs a charge.' : 'Boss round: no gauge, no test run.'}`;
+export const hintText = (r: Round) => `${intel(r)} ${r.assist === 0 ? 'Round 1: the gauge shows your setting live.' : r.assist === 1 ? 'The gauge is off: a test run costs a charge and shows it for 1.5 s.' : 'Boss round: no gauge, no test run.'}`;
 
-/** What the player's setting did (q is the player's setting; never the right answer). */
+/**
+ * What the player's setting did (q is the player's setting; never the right answer). A miss gives its direction only: too little or too much, never how far
+ * off (the logic's way-under and way-over faults read exactly like under and over), and says in plain words which way to move.
+ * Too little spin comes down nose first (a backflip that stops short is still turning forward); too much comes down on the rear wheel.
+ */
 export function missText(r: Entry, q: number): string {
   switch (fault(r, q)) {
     case 'under':
-      return `With the landing ramp at x = ${num(q)} m Blaze had not spun far enough: the bike came down rear wheel first with its nose up and looped out from under the rider.`;
-    case 'over':
-      return `With the landing ramp at x = ${num(q)} m Blaze spun too far: the bike came down nose first and threw the rider over the handlebars.`;
     case 'wayUnder':
-      return `With the landing ramp at x = ${num(q)} m Blaze was still upside down from too little spin and landed on the helmet.`;
+      return `With the landing ramp at x = ${num(q)} m Blaze had not spun far enough: the bike came down nose first and threw the rider over the handlebars. Move the ramp to the right for more spin.`;
+    case 'over':
     case 'wayOver':
-      return `With the landing ramp at x = ${num(q)} m Blaze spun so far past the trick that the bike landed upside down.`;
+      return `With the landing ramp at x = ${num(q)} m Blaze spun too far: the bike came down rear wheel first with its nose up and looped out from under the rider. Move the ramp to the left for less spin.`;
     case 'short':
-      return `Cutting the nitro at x = ${num(q)} m left the bike too slow: it fell short of the landing pad and dropped into the canyon.`;
+      return `Cutting the nitro at x = ${num(q)} m left the bike too slow: it fell short of the landing pad and dropped into the canyon. Move the cone to the right for more speed.`;
     case 'long':
-      return `Cutting the nitro at x = ${num(q)} m made the bike too fast: it flew over the landing pad and smashed into the billboard.`;
+      return `Cutting the nitro at x = ${num(q)} m made the bike too fast: it flew over the landing pad and smashed into the billboard. Move the cone to the left for less speed.`;
     default:
       return 'The jump worked.';
   }

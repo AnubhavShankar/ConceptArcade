@@ -97,8 +97,8 @@ describe('level 5: A² = kA − mI', () => {
       expect(text).toContain(`m = ${num(r.ans.m)}`);
       expect(text).toContain(matText(mul(r.M!, r.M!)));
       const wrong = { k: r.ans.k + 1, m: r.ans.m };
-      expect(missText(r, wrong)).toMatch(/vertex \d came out at/);
-      expect(missText(r, wrong)).not.toMatch(/k =|m =|trace|determinant/);
+      expect(missText(r, wrong)).toMatch(r.assist === 0 ? /^Vertex \d landed outside the hole/ : /^Blocky jammed in the wall: at least one corner/);
+      expect(missText(r, wrong)).not.toMatch(/came out at|k =|m =|trace|determinant|\(|\[/);
       expect(machineText(r)).toContain('kA − mI');
     }
   });
@@ -121,14 +121,13 @@ describe('arithmetic and words', () => {
     expect(formText([0, 0, 4])).toBe('4');
     expect(formText([1, 1, -2])).toBe('x + y − 2');
   });
-  it('a miss never prints a coordinate; round 1 names the first vertex that jammed, rounds 2 and 3 do not (level 5 keeps its reviewed text)', () => {
+  it('a miss never prints a coordinate in any level; round 1 names the first vertex that jammed, rounds 2 and 3 do not', () => {
     for (const level of [1, 2, 3, 4, 5]) {
       for (const r of all(level).slice(0, 30)) {
         const wrong = Object.fromEntries(DIALS[r.kind].map((d) => [d.key, r.ans[d.key] === d.max ? d.max - 1 : r.ans[d.key] + 1]));
-        if (level === 5) expect(missText(r, wrong)).toMatch(/vertex \d came out at/);
-        else if (r.assist === 0) expect(missText(r, wrong)).toMatch(/^Vertex \d landed outside the hole/);
+        if (r.assist === 0) expect(missText(r, wrong)).toMatch(/^Vertex \d landed outside the hole/);
         else expect(missText(r, wrong)).toMatch(/^Blocky jammed in the wall: at least one corner/);
-        if (level < 5) expect(missText(r, wrong)).not.toMatch(/\(|\[|came out at/);
+        expect(missText(r, wrong)).not.toMatch(/\(|\[|came out at/);
         expect(missText(r, wrong)).not.toMatch(/α =|x =|y =|a =|b =/);
         expect(spotText(r, wrong)).toMatch(/\[/);
         expect(explain(r).length).toBeGreaterThan(30);

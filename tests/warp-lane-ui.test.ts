@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import game from '../src/games/mathematics/class-12/ch07-integrals/warp-lane/index';
-import { GHOST, HIT, LANE_C, XLAND, Ux, ghostPose, racePose, tubeIn, tubeOut, uAt } from '../src/games/mathematics/class-12/ch07-integrals/warp-lane/art';
+import { GHOST, HIT, LANE_C, ULANE, XLAND, Ux, ghostPose, racePose, tubeIn, tubeOut, uAt } from '../src/games/mathematics/class-12/ch07-integrals/warp-lane/art';
 import { POOLS, RANGE, buildRounds, hintText, judge, missText, outcome, sixths, uv, winText, type Level, type Round, type Row } from '../src/games/mathematics/class-12/ch07-integrals/warp-lane/logic';
 import { createRng } from '../src/core/random';
 import { arcadeHarness, shellTests } from './helpers/arcade-harness';
+import { canvasRecorder } from './helpers/canvas-rec';
+import { GRIP_MIN } from '../src/games/mathematics/class-12/ch07-integrals/warp-lane/ux';
 
 const h = arcadeHarness(game, 'warp-lane', 4);
 const LEVELS: Level[] = [1, 2, 3, 4];
@@ -415,6 +417,71 @@ describe('Warp Lane plays what the player’s own setting did', () => {
       expect(h.hearts()).toBe(2);
     }
     expect(err).not.toHaveBeenCalled();
+  });
+});
+
+describe('Warp Lane UX', () => {
+  const frame2 = (R: ReturnType<typeof canvasRecorder>, dt: number) => {
+    if (dt > 0.05) h.advance(dt - 0.05);
+    R.clear();
+    h.advance(0.05);
+    return R.rec;
+  };
+  for (const level of LEVELS) {
+    it(`level ${level}: the goal line is drawn at round start and fades; the three grips are at least ${GRIP_MIN} px and the settings are written beside them`, () => {
+      const R = canvasRecorder();
+      h.start(level, 5);
+      const rec = frame2(R, 0.05);
+      const goal = rec.at.filter((a) => /^Goal: /.test(a.s));
+      expect(goal.length).toBe(1);
+      expect(goal[0].y).toBeGreaterThanOrEqual(12);
+      expect(GRIP_MIN).toBeGreaterThanOrEqual(18);
+      for (const y of [ULANE.y - 20, ULANE.y + 20, 309]) expect(rec.arcs.some((a) => a.y === y && a.r >= 18), `grip at y ${y}`).toBe(true);
+      const read = rec.at.map((a) => a.s);
+      expect(read.some((s) => /^entry u = 0( · drag)?$/.test(s))).toBe(true);
+      expect(read).toContain('exit u = 0');
+      expect(read).toContain('boost ×0');
+      expect(frame2(R, 4).at.some((a) => /^Goal: /.test(a.s))).toBe(false);
+    });
+  }
+  it('the readouts follow the player’s own setting', () => {
+    const R = canvasRecorder();
+    h.start(1, 5);
+    set(7, -3, 0);
+    const drawn = frame2(R, 0.1).at.map((a) => a.s);
+    expect(drawn.some((s) => /^entry u = 7( · drag)?$/.test(s))).toBe(true);
+    expect(drawn).toContain('exit u = −3');
+  });
+  it('round 2 shows no ghost before a test lap (and none after it), round 3 none, and the round 2 hint says so', () => {
+    const R = recorder();
+    h.start(1, 5);
+    playTo(1, 1);
+    expect(h.hud()).toMatch(/Round 2 of 3/);
+    expect(h.note()).toMatch(/No ghost: a test lap costs a charge/);
+    expect(ghostSeen(R, 2)).toBe(false);
+    h.click(TEST);
+    expect(ghostSeen(R, 2)).toBe(false);
+    expect(flag()).toBe('0');
+  });
+  it('dragging the boost grip on its gauge sets the boost, snapped to a whole sixth and kept inside the range', () => {
+    h.start(1, 5);
+    h.pointer('pointerdown', 160, 309);
+    h.pointer('pointermove', 210, 309);
+    expect(h.sliders()[2].value).toBe('6');
+    h.pointer('pointermove', 60, 309);
+    expect(h.sliders()[2].value).toBe('-12');
+    h.pointer('pointermove', 400, 309);
+    expect(h.sliders()[2].value).toBe('12');
+    h.pointer('pointerup', 0, 0);
+  });
+  it('a miss says what to change, never the answer: move a mouth, or a stronger or weaker boost', () => {
+    const r = build(1, 5)[0];
+    for (const [kind, want] of [['entry', /move the entry mouth\.$/], ['exit', /move the exit mouth\.$/], ['fast', /Try a weaker boost\.$/], ['slow', /Try a stronger boost\.$/]] as const) {
+      h.start(1, 5);
+      fire(r, kind);
+      h.advance(2.8);
+      expect(h.feedback(), kind).toMatch(want);
+    }
   });
 });
 

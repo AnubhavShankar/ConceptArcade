@@ -1,10 +1,12 @@
 // Inspirations: Temple Run and Fruit Ninja (match your speed to the thing in front of you at the right instant) and Trials-style physics
 // timing. Rhea runs the rescue crew's winch: set its speed w so that the quantity the rescue depends on changes at exactly the target rate.
+import { helperOn, paidFlash } from '@core/aidflash';
 import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel } from '@core/dialgame';
-import { backdrop, cuboid, face, track, trackHandle, verdict } from '@core/mathkit';
+import { TRACK, backdrop, cuboid, face, track, trackHandle, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
+import { goalLine, grip, tint } from './ux';
 import { alarm, fuelDial, jar, lifeboat, night, queue, RIM, TARGET } from './harbour';
 import { DIAL, FLOW, buildRounds, explain, flowEnd, intel, judge, missText, output, rateText, spotText, type Round } from './logic';
 
@@ -87,7 +89,7 @@ function scene(g: G, r: Round, clock: number, flow: Flow) {
         g.arc(395 + 120 * u, 170 - Math.sin(u * Math.PI) * 40, 4, 0, Math.PI * 2);
         g.fill();
       }
-      text(g, 'earns R(x), spends C(x)', 340, 258, PAL.white, 10);
+      text(g, 'earns R(x), spends C(x)', 340, 258, PAL.white, 11);
       jar(g, 545, 236, flow.frac, clock, 'net funds ₹');
       if (flow.frac > RIM) alarm(g, 545, 100, clock);
       break;
@@ -206,23 +208,28 @@ function glowLine(g: G, x1: number, y1: number, x2: number, y2: number) {
 function level(n: number, random: () => number): DialLevel<Round> {
   const hero = HEROES[n - 1];
   const budget = n === 4;
+  const flash = paidFlash();
   return {
     hero: { name: 'Rhea', role: budget ? 'a rescue-base operator whose budget must flow at the right rate' : 'a rescue-crew operator who runs a winch whose speed changes a size, an angle or a length', story: hero.story, objective: hero.objective },
     rounds: buildRounds(n, random),
     charges: [1, 1, 0],
     dials: [{ key: 'w', aria: budget ? 'Rate w' : 'Winch speed w', label: budget ? 'Rate w' : 'Winch speed w', unit: budget ? '' : 'per second', step: 1, min: DIAL.min, max: DIAL.max, start: DIAL.min, text: (v) => `${v}` }],
     handles: [trackHandle('w', () => DIAL.min, () => DIAL.max)],
-    test: { button: '🔧 Test run', aria: budget ? 'Test run: read the money rate at this setting' : 'Test run: read the result rate at this winch speed', read: (r, v) => spotText(r, v.w) },
+    test: { button: '🔧 Test run', aria: budget ? 'Test run: read the money rate at this setting' : 'Test run: read the result rate at this winch speed', read: (r, v) => (flash.paid(), spotText(r, v.w)) },
     fire: budget ? { button: '⛵ Start the run', aria: 'Start the run' } : { button: '🪢 Run the winch', aria: 'Run the winch' },
     judge: (r, v) => judge(r, v.w),
     miss: (r, v) => missText(r, v.w),
     win: (r) => `${budget ? 'Funded on time!' : 'Rescued on time!'} ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The racing gauge is on.' : r.assist === 1 ? 'The gauge is dim: a test run costs a charge.' : 'Boss round: no gauge, no test run.'}`,
+    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The racing gauge is on.' : r.assist === 1 ? 'The gauge lights for a moment after a test run, which costs a charge.' : 'Boss round: no gauge, no test run.'}`,
     hit: () => [450, 150],
     delay: VERDICT,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, v, t, rt, shot, k, A }) => {
       backdrop(g);
+      tint(g, k, t);
       const w = v.w;
+      // The helper (the racing gauge, and the live money meter of level 4) is live in round 1, shows for 1.5 s after a paid test run in round 2, never in round 3.
+      const helper = helperOn(r.assist, shot?.ok === true, shot ? Infinity : flash.since(t, k));
+      A.canvas.dataset.helper = helper ? '1' : '0';
       const out = output(r, w);
       const mood: Mood = shot ? (rt > VERDICT ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
       const clock = shot ? rt : t;
@@ -230,14 +237,12 @@ function level(n: number, random: () => number): DialLevel<Round> {
       // Running costs: a meter that ends at the target line, short of it or over the rim; a miss shows only the side, never how far.
       let frac = 0;
       if (budget && shot) frac = TARGET * flowEnd(r, w) * Math.min(1, rt / 1.2);
-      else if (budget && r.assist === 0) frac = TARGET * Math.min(FLOW.over, out / r.target) * ((clock * 0.5) % 1);
+      else if (budget && helper) frac = TARGET * Math.min(FLOW.over, out / r.target) * ((clock * 0.5) % 1);
       scene(g, r, clock, { frac, w });
-      text(g, r.scene, 330, budget ? 22 : 30, PAL.white, 11);
-      if (budget) text(g, r.fnText ?? '', 330, 38, PAL.white, 12);
-      text(g, `target ${rateText(r, r.target)}`, 330, budget ? 56 : 48, PAL.yellow, 13);
-      const live = r.assist === 0 || shot !== null;
-      if (live || r.assist === 1) {
-        g.globalAlpha = live ? 1 : 0.3;
+      text(g, r.scene, 330, budget ? 38 : 36, PAL.white, 11);
+      if (budget) text(g, r.fnText ?? '', 330, 54, PAL.white, 12);
+      text(g, `target ${rateText(r, r.target)}`, 330, budget ? 72 : 54, PAL.yellow, 13);
+      if (helper || shot) {
         const prog = (clock * 0.5) % 1;
         const mine = Math.min(1.15, (shot ? flowEnd(r, w) : out / r.target) * prog);
         g.fillStyle = 'rgba(255,255,255,0.1)';
@@ -247,11 +252,15 @@ function level(n: number, random: () => number): DialLevel<Round> {
         g.fillRect(100, 272, 440 * prog, 8);
         g.fillStyle = shot ? (shot.ok ? PAL.green : PAL.red) : PAL.cyan;
         g.fillRect(100, 286, 440 * Math.min(1, mine), 8);
-        text(g, 'target', 70, 280, PAL.yellow, 10, 'right');
-        text(g, 'you', 70, 294, PAL.cyan, 10, 'right');
-        g.globalAlpha = 1;
-      } else text(g, 'gauge off', 320, 286, PAL.dim, 12);
+        text(g, 'target', 70, 280, PAL.yellow, 11, 'right');
+        text(g, 'you', 70, 294, PAL.cyan, 11, 'right');
+      } else text(g, r.assist === 2 ? 'gauge off' : 'gauge off: a test run lights it', 320, 286, PAL.dim, 12);
       track(g, DIAL.min, DIAL.max);
+      if (!shot) {
+        const hx = TRACK.x0 + ((w - DIAL.min) / (DIAL.max - DIAL.min)) * (TRACK.x1 - TRACK.x0);
+        grip(g, A.canvas, t, { x: hx, y: TRACK.y, r: 20, dir: 'h', read: `w = ${w} ${r.inUnit} per ${r.per ?? 's'}`, side: hx > 400 ? 'left' : 'right', cue: n === 1 && k === 0 });
+      }
+      goalLine(g, budget ? 'Goal: set w so the money flows at the target rate' : 'Goal: set w so the result changes at the target rate', A.t, shot !== null);
       if (shot && rt > VERDICT) verdict(g, shot.ok, budget ? 'FUNDED ON TIME' : 'RESCUED ON TIME', 'WRONG RATE');
     },
   };

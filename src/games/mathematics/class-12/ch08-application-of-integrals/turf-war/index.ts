@@ -1,5 +1,6 @@
 // Inspirations: Splatoon (cover the turf with ink) and Paper.io (the player is the pen that claims ground). Inky is a paint-roller squid kid and is also the
 // handle: the player drags Inky along the turf, laying paint behind. The paint is area, so the part below the axis counts as paint, never as a negative.
+import { helperOn, paidFlash } from '@core/aidflash';
 import { PAL, type Arcade } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel, type HandleSpec } from '@core/dialgame';
@@ -7,13 +8,19 @@ import { backdrop, face, verdict } from '@core/mathkit';
 import { line, text } from '@core/neon';
 import type { GameContext } from '@core/types';
 import { area, arcHeight, buildRounds, CURVES, explain, height, hitPoint, intel, judge, missText, needText, pastFence, ROUND_DIAL_MAX, show, spotText, type Round } from './logic';
+import { goalLine, grip, tint } from './ux';
 
 type G = CanvasRenderingContext2D;
+type Flash = ReturnType<typeof paidFlash>;
 type Mood = 'happy' | 'worried' | 'cheer';
 const VERDICT = 1.9;
 const RUN = 1.4;
 const F = { x0: 70, x1: 580, top: 62, bottom: 262 };
 const E = { cx: 320, cy: 170, u: 12 };
+/** The drag handle's radius in scene pixels (at least 18, about 44 px on a phone). */
+export const HANDLE_R = 24;
+
+const hintText = (r: Round) => `${intel(r)} ${r.assist === 0 ? 'The paint counter is live.' : r.assist === 1 ? 'The counter shows for a moment after an ink gauge, which costs a charge.' : 'Boss round: no counter, no gauge.'}`;
 
 const HEROES = [
   { story: 'The turf is an ellipse x²/a² + y²/b² = 1. Its area is πab, which is four times the area of its first quadrant. The width a is fixed by the arena; Inky drags the top of the ellipse up to set the height b.', objective: 'Drag Inky to the height b where the ellipse holds exactly the paint the turf needs, in three rounds. The paint counter shows in round 1; an ink gauge costs a charge.' },
@@ -44,7 +51,7 @@ function tank(g: G, fill: number, over: boolean, t: number) {
   const yg = TANK.y1 - GOAL * h;
   line(g, TANK.x - 8, yg, TANK.x + TANK.w + 8, yg, PAL.green, 2, [5, 4]);
   text(g, 'need', TANK.x - 12, yg + 4, PAL.green, 11, 'right');
-  text(g, 'paint tank', TANK.x + TANK.w / 2, TANK.y1 + 16, PAL.dim, 10);
+  text(g, 'paint tank', TANK.x + TANK.w / 2, TANK.y1 + 16, PAL.dim, 11);
   if (over && fill >= 1) {
     g.fillStyle = PAL.red;
     for (let i = 0; i < 4; i++) {
@@ -55,15 +62,23 @@ function tank(g: G, fill: number, over: boolean, t: number) {
   }
 }
 
-/** The counter: live in round 1, dim in round 2, off in the boss round, and never a number while a shot plays. */
-function readout(g: G, r: Round, painted: number, shot: boolean) {
-  g.globalAlpha = r.assist === 1 && !shot ? 0.3 : 1;
+/** The counter: live in round 1, on for 1.5 s after an ink gauge in round 2, off in the boss round, and never a number while a shot plays. */
+function readout(g: G, r: Round, painted: number, shot: boolean, helper: boolean) {
   if (shot) text(g, 'sealing the turf…', 500, 40, PAL.dim, 12);
-  else if (r.assist < 2) text(g, `painted ${show(r, Math.round(painted * 10) / 10)}`, 500, 40, PAL.yellow, 13);
+  else if (helper) text(g, `painted ${show(r, Math.round(painted * 10) / 10)}`, 500, 40, PAL.yellow, 13);
   else text(g, 'counter off', 500, 40, PAL.dim, 12);
-  g.globalAlpha = 1;
   text(g, `need ${needText(r)}`, 500, 58, PAL.green, 13);
 }
+
+/** The counter shows in round 1 and for FLASH seconds after a paid ink gauge in round 2; the same rule for all six levels. */
+function counterOn(A: Arcade, r: Round, k: number, t: number, shot: boolean, flash: Flash): boolean {
+  const on = !shot && helperOn(r.assist, false, flash.since(t, k));
+  A.canvas.dataset.helper = on ? '1' : '0';
+  return on;
+}
+
+/** The round's goal as one line at the top of the scene. */
+const goal = (r: Round) => `Goal: lay exactly ${needText(r)} of paint`;
 
 /** Fixed fill levels for the verdict: the direction of the miss, never its size. */
 function tankFill(r: Round, val: number, ok: boolean, sweep: number) {
@@ -105,19 +120,20 @@ const S5 = { wall: 130, bottom: 292, top: 56 };
 const y5 = (v: number) => S5.bottom - (v / 6) * (S5.bottom - S5.top);
 const bulge = (u: number) => 110 + 80 * Math.sin(0.4 + 2.4 * u);
 
-function sidewaysLevel(): Pick<DialLevel<Round>, 'handles' | 'hit' | 'draw'> {
+function sidewaysLevel(flash: Flash): Pick<DialLevel<Round>, 'handles' | 'hit' | 'draw'> {
   return {
-    handles: [{ dial: 'v', at: (_r, v) => [S5.wall + 26, y5(v.v)], drag: (_r, _px, py) => ((S5.bottom - py) / (S5.bottom - S5.top)) * 6, radius: 24 }],
+    handles: [{ dial: 'v', at: (_r, v) => [S5.wall + 26, y5(v.v)], drag: (_r, _px, py) => ((S5.bottom - py) / (S5.bottom - S5.top)) * 6, radius: HANDLE_R }],
     hit: hitPoint,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, v, t, rt, shot, k, A }) => {
       backdrop(g);
+      tint(g, k, t);
       const val = shot ? shot.v.v : v.v;
       const sweep = shot ? Math.min(1, rt / RUN) : 1;
       const hv = val * sweep;
       const { wall, bottom, top } = S5;
       line(g, wall, bottom, wall + 250, bottom, PAL.dim, 1.5);
       line(g, wall, top - 14, wall, bottom, PAL.dim, 3);
-      text(g, 'y-axis (left wall)', wall, top - 22, PAL.dim, 10);
+      text(g, 'y-axis (left wall)', wall, top - 22, PAL.dim, 11);
       for (let i = 1; i <= 6; i++) line(g, wall - 5, y5(i), wall + 5, y5(i), PAL.dim, 1.5);
       g.fillStyle = 'rgba(255,77,141,0.5)';
       g.beginPath();
@@ -141,17 +157,19 @@ function sidewaysLevel(): Pick<DialLevel<Round>, 'handles' | 'hit' | 'draw'> {
       text(g, `x = ${CURVES[r.p[0]].fx}`, wall + bulge(1) + 12, top + 6, PAL.cyan, 12, 'left');
       const reach = wall + bulge(val / 6) + 16;
       line(g, wall, y5(val), reach, y5(val), PAL.yellow, 1.5, [4, 4]);
-      text(g, `y = ${val}`, reach + 6, y5(val) + 4, PAL.yellow, 11, 'left');
       const rolling = shot !== null && sweep < 1;
       if (rolling) {
         line(g, wall + 40, y5(hv), wall + bulge(hv / 6), y5(hv), PAL.cyan, 5);
         drips(g, wall + 40, wall + bulge(hv / 6), y5(hv), t);
       }
-      readout(g, r, area(r, val), shot !== null);
+      readout(g, r, area(r, val), shot !== null, counterOn(A, r, k, t, shot !== null, flash));
       const over = shot !== null && !shot.ok && area(r, val) > r.T;
       tank(g, shot ? tankFill(r, val, shot.ok, sweep) : 0, over && sweep >= 1, t);
+      // the handle's grip, with the player's own setting to its left, away from Inky's roller
+      if (!shot) grip(g, A.canvas, t, { x: wall + 26, y: y5(val), dir: 'v', read: `y = ${val}`, side: 'left' });
       const mood: Mood = shot ? (rt > RUN ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
       inky(g, wall + 26, y5(hv) + (shot ? 0 : Math.sin(t * 3) * 1.5), t, mood, shot ? rt * 4 : 0);
+      goalLine(g, goal(r), A.t, shot !== null);
       if (shot && rt > VERDICT - 0.3) verdict(g, shot.ok, 'TURF SEALED', over ? 'SPILLED ON THE RIVAL' : 'BARE PATCHES');
     },
   };
@@ -165,13 +183,14 @@ const arcY = (a: number, x: number) => S6.bottom - S6.U * arcHeight(a, x);
 /** The right edge of the paint can only reach the end of the fence. */
 let arcade: Arcade | null = null;
 
-function roundLevel(): Pick<DialLevel<Round>, 'handles' | 'hit' | 'draw'> {
+function roundLevel(flash: Flash): Pick<DialLevel<Round>, 'handles' | 'hit' | 'draw'> {
   return {
-    handles: [{ dial: 'v', at: (_r, v) => [x6(v.v), S6.bottom], drag: (_r, px) => (px - S6.x0) / S6.U, radius: 24 }],
+    handles: [{ dial: 'v', at: (_r, v) => [x6(v.v), S6.bottom], drag: (_r, px) => (px - S6.x0) / S6.U, radius: HANDLE_R }],
     hit: hitPoint,
-    draw: ({ g, r, v, t, rt, shot, A }) => {
+    draw: ({ g, r, v, t, rt, shot, k, A }) => {
       arcade = A;
       backdrop(g);
+      tint(g, k, t);
       const a = r.p[0];
       const val = shot ? shot.v.v : v.v;
       const sweep = shot ? Math.min(1, rt / RUN) : 1;
@@ -180,7 +199,7 @@ function roundLevel(): Pick<DialLevel<Round>, 'handles' | 'hit' | 'draw'> {
       const { x0, bottom, U } = S6;
       line(g, x0 - 12, bottom, x6(ROUND_DIAL_MAX) + 24, bottom, PAL.dim, 1.5);
       line(g, x0, bottom, x0, bottom - 252, PAL.dim, 3);
-      text(g, 'centre line', x0, bottom - 262, PAL.dim, 10);
+      text(g, 'centre line', x0, bottom - 262, PAL.dim, 11);
       for (let i = 1; i <= ROUND_DIAL_MAX; i++) line(g, x6(i), bottom - 4, x6(i), bottom + 4, PAL.dim, 1.5);
       g.fillStyle = 'rgba(255,77,141,0.5)';
       g.beginPath();
@@ -209,17 +228,19 @@ function roundLevel(): Pick<DialLevel<Round>, 'handles' | 'hit' | 'draw'> {
       text(g, `x² + y² = ${a * a}`, x6(a * 0.75) + 8, bottom - U * a * 0.75 - 8, PAL.cyan, 12, 'left');
       const ex = x6(val);
       line(g, ex, bottom, ex, arcY(a, Math.min(val, a)) - 12, PAL.yellow, 1.5, [4, 4]);
-      text(g, `x = ${val}`, ex, bottom + 20, PAL.yellow, 11);
       const rolling = shot !== null && sweep < 1;
       if (rolling) {
         line(g, x6(hc), bottom - 6, x6(hc), arcY(a, hc), PAL.cyan, 5);
         drips(g, x6(hc) + 4, x6(hc) + 14, arcY(a, hc) - 8, t);
       }
-      readout(g, r, area(r, val), shot !== null);
+      readout(g, r, area(r, val), shot !== null, counterOn(A, r, k, t, shot !== null, flash));
       const over = shot !== null && !shot.ok && area(r, val) > r.T;
       tank(g, shot ? tankFill(r, val, shot.ok, sweep) : 0, over && sweep >= 1, t);
       const mood: Mood = shot ? (rt > RUN ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
+      if (shot) text(g, `x = ${val}`, ex, bottom + 20, PAL.yellow, 11);
+      else grip(g, A.canvas, t, { x: x6(val), y: bottom, dir: 'h', read: `x = ${val}`, side: 'below' });
       inky(g, x6(hq) - 8, bottom + (shot ? 0 : Math.sin(t * 3) * 1.5), t, mood, shot ? rt * 4 : 0);
+      goalLine(g, goal(r), A.t, shot !== null);
       if (shot && rt > VERDICT - 0.3) verdict(g, shot.ok, 'TURF SEALED', over ? 'SPILLED ON THE RIVAL' : 'BARE PATCHES');
     },
   };
@@ -277,19 +298,20 @@ function inky(g: G, x: number, y: number, t: number, mood: Mood, roll: number) {
 /** Levels 5 and 6: the edge of the turf is the dial, from 1 to the end of the turf, and the scene is its own. */
 function newLevel(n: 5 | 6, random: () => number): DialLevel<Round> {
   const hero = HEROES[n - 1];
-  const scene = n === 5 ? sidewaysLevel() : roundLevel();
+  const flash = paidFlash();
+  const scene = n === 5 ? sidewaysLevel(flash) : roundLevel(flash);
   return {
     hero: { name: 'Inky', role: 'a paint-roller squid kid who covers a turf with exactly the paint it needs', story: hero.story, objective: hero.objective },
     rounds: buildRounds(n, random),
     charges: [1, 1, 0],
     dials: [{ key: 'v', aria: 'Roller setting', label: n === 5 ? 'Top edge at y' : 'Right edge at x', unit: '', step: 1, min: (r: Round) => r.min, max: (r: Round) => (n === 5 ? r.max : ROUND_DIAL_MAX), start: (r: Round) => r.start, text: (v: number) => (n === 5 ? `y = ${v}` : `x = ${v}`) }],
     handles: scene.handles,
-    test: { button: '🎯 Ink gauge', aria: 'Ink gauge: read the paint laid at this setting', read: (r, v) => spotText(r, v.v) },
+    test: { button: '🎯 Ink gauge', aria: 'Ink gauge: read the paint laid at this setting', read: (r, v) => (flash.paid(), spotText(r, v.v)) },
     fire: { button: '🖌️ Seal the turf', aria: 'Seal the turf' },
     judge: (r, v) => judge(r, v.v),
     miss: (r, v) => missText(r, v.v),
     win: (r) => `Turf sealed! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The paint counter is live.' : r.assist === 1 ? 'The counter is dim: an ink gauge costs a charge.' : 'Boss round: no counter, no gauge.'}`,
+    hint: hintText,
     hit: scene.hit,
     delay: VERDICT,
     draw: scene.draw,
@@ -317,8 +339,9 @@ function level(n: number, random: () => number): DialLevel<Round> {
   const edge = (r: Round, v: number) => (r.kind === 'sine' ? (v * Math.PI) / 2 : v);
   const handle: HandleSpec<Round> =
     kind === 'ellipse'
-      ? { dial: 'v', at: (_r, v) => [E.cx, E.cy - v.v * E.u], drag: (_r, _px, py) => (E.cy - py) / E.u, radius: 24 }
-      : { dial: 'v', at: (r, v) => [X(r, edge(r, v.v)), Y(r, 0)], drag: (r, px) => ((px - X(r, 0)) / (X(r, 1) - X(r, 0))) / (r.kind === 'sine' ? Math.PI / 2 : 1), radius: 24 };
+      ? { dial: 'v', at: (_r, v) => [E.cx, E.cy - v.v * E.u], drag: (_r, _px, py) => (E.cy - py) / E.u, radius: HANDLE_R }
+      : { dial: 'v', at: (r, v) => [X(r, edge(r, v.v)), Y(r, 0)], drag: (r, px) => ((px - X(r, 0)) / (X(r, 1) - X(r, 0))) / (r.kind === 'sine' ? Math.PI / 2 : 1), radius: HANDLE_R };
+  const flash = paidFlash();
   const labels = ['Ellipse height b', 'Roller at x', 'Quarter waves n', 'Roller at x'];
   return {
     hero: { name: 'Inky', role: 'a paint-roller squid kid who covers a turf with exactly the paint it needs', story: hero.story, objective: hero.objective },
@@ -326,16 +349,17 @@ function level(n: number, random: () => number): DialLevel<Round> {
     charges: [1, 1, 0],
     dials: [{ key: 'v', aria: 'Roller setting', label: labels[n - 1], unit: '', step: 1, min: (r: Round) => r.min, max: (r: Round) => r.max, start: (r: Round) => r.start, text: (v: number) => (kind === 'ellipse' ? `b = ${v}` : kind === 'sine' ? `${v} quarter waves` : `x = ${v}`) }],
     handles: [handle],
-    test: { button: '🎯 Ink gauge', aria: 'Ink gauge: read the paint laid at this setting', read: (r, v) => spotText(r, v.v) },
+    test: { button: '🎯 Ink gauge', aria: 'Ink gauge: read the paint laid at this setting', read: (r, v) => (flash.paid(), spotText(r, v.v)) },
     fire: { button: '🖌️ Seal the turf', aria: 'Seal the turf' },
     judge: (r, v) => judge(r, v.v),
     miss: (r, v) => missText(r, v.v),
     win: (r) => `Turf sealed! ${explain(r)}`,
-    hint: (r) => `${intel(r)} ${r.assist === 0 ? 'The paint counter is live.' : r.assist === 1 ? 'The counter is dim: an ink gauge costs a charge.' : 'Boss round: no counter, no gauge.'}`,
+    hint: hintText,
     hit: hitPoint,
     delay: VERDICT,
-    draw: ({ g, r, v, t, rt, shot }) => {
+    draw: ({ g, r, v, t, rt, shot, k, A }) => {
       backdrop(g);
+      tint(g, k, t);
       const val = shot ? shot.v.v : v.v;
       const sweep = shot ? Math.min(1, rt / RUN) : 1;
       // A miss shows itself only once the roller has finished, and only on the player's own strip: all orange with a splash at the player's own edge when over, fixed bare patches when short.
@@ -402,24 +426,24 @@ function level(n: number, random: () => number): DialLevel<Round> {
           if (overT) splash(g, X(r, hi), z, rt - RUN);
           else bare(g, [0.18, 0.4, 0.62, 0.84].map((f, i) => [X(r, lo) + (X(r, hi) - X(r, lo)) * f, z + (i % 2 ? 3 : -9) + 4.5] as [number, number]));
         }
-        if (r.kind === 'sine') for (let i = 0; i <= 8; i++) text(g, i === 0 ? '0' : `${i}`, X(r, (i * Math.PI) / 2), z + (i % 2 ? 15 : 28), PAL.dim, 9);
-        else for (let i = Math.ceil(at(r).x0); i <= at(r).x1; i++) text(g, String(i), X(r, i), z + 14, PAL.dim, 9);
+        if (r.kind === 'sine') for (let i = 0; i <= 8; i++) text(g, i === 0 ? '0' : `${i}`, X(r, (i * Math.PI) / 2), z + (i % 2 ? 15 : 28), PAL.dim, 11);
+        else for (let i = Math.ceil(at(r).x0); i <= at(r).x1; i++) text(g, String(i), X(r, i), z + 14, PAL.dim, 11);
         px = X(r, lo + (hi - lo) * (shot ? sweep : 1));
         py = z;
         line(g, X(r, hi), F.top, X(r, hi), F.bottom, PAL.yellow, 1.5, [4, 4]);
       }
-      // The counter
-      // Round 1 shows it live and round 2 dim before the roller is sent; while a shot plays it shows no number in any round.
-      const live = r.assist === 0 && !shot;
-      const dim = r.assist === 1 && !shot;
-      g.globalAlpha = dim ? 0.3 : 1;
-      if (shot) text(g, 'sealing the turf…', 500, 40, PAL.dim, 12);
-      else if (live || dim) text(g, `painted ${show(r, Math.round(painted * 10) / 10)}`, 500, 40, PAL.yellow, 13);
-      else text(g, 'counter off', 500, 40, PAL.dim, 12);
-      g.globalAlpha = 1;
-      text(g, `need ${show(r, r.T)}`, 500, 58, PAL.green, 13);
+      // The counter: live in round 1, 1.5 s after an ink gauge in round 2, never in round 3; while a shot plays it shows no number in any round.
+      readout(g, r, painted, shot !== null, counterOn(A, r, k, t, shot !== null, flash));
       const mood: Mood = shot ? (rt > RUN ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
+      // The grip sits under Inky, with the player's own setting beside it and a "drag" cue on level 1, round 1.
+      if (!shot) {
+        const own = kind === 'ellipse' ? `b = ${val}` : kind === 'sine' ? `${val} quarter waves` : `x = ${val}`;
+        const hx = kind === 'ellipse' ? E.cx : X(r, edge(r, val));
+        const hy = kind === 'ellipse' ? E.cy - val * E.u : Y(r, 0);
+        grip(g, A.canvas, t, { x: hx, y: hy, dir: kind === 'ellipse' ? 'v' : 'h', read: own, side: kind === 'ellipse' ? 'right' : 'below', cue: n === 1 && k === 0 });
+      }
       inky(g, px, py + (kind === 'ellipse' && !shot ? -6 : 0), t, mood, shot ? rt * 4 : 0);
+      goalLine(g, goal(r), A.t, shot !== null);
       if (shot && rt > VERDICT - 0.3) verdict(g, shot.ok, 'TURF SEALED', overT ? 'SPILLED ON THE RIVAL' : 'BARE PATCHES');
     },
   };

@@ -5,10 +5,12 @@ import { helperOn, paidFlash } from '@core/aidflash';
 import { fmt } from '@core/judge';
 import { glow, line, text } from '@core/neon';
 import { bug, eye, lensIcon, meter } from './art';
-import { D, SLIDERS, buildGame, compound, eyeSees, explainRound, judgeMag, judgeScope, magRange, magReading, magnifier, missText, resultLine, scopeReading } from './logic';
+import { D, SLIDERS, buildGame, compound, eyeSees, explainRound, judgeMag, judgeScope, magRange, magReading, magSide, magnifier, missText, resultLine, scopeReading } from './logic';
 
 const W = 640;
 const H = 340;
+/** How long the round's goal line stays on the canvas, in seconds (it fades over the last half second). */
+export const GOAL_SECONDS = 3.5;
 
 export default defineGame({
   mount(ctx) {
@@ -45,7 +47,7 @@ export default defineGame({
         A.button('🔦 Test shot', 'Test shot: measure the picture at this distance', () => {
           if (!A.spend()) return;
           flash.paid();
-          A.say(magReading(rounds[ri()].f, u), true);
+          A.say(magReading(rounds[ri()], u), true);
         }, 'secondary'),
         A.button('📸 Snap!', 'Take the photo at this distance', () => {
           const r = rounds[ri()];
@@ -64,13 +66,27 @@ export default defineGame({
         const r = rounds[i];
         A.hint.textContent = `Magnifying glass: f = ${r.f} cm. Your eye focuses on images from ${D} cm to infinity. ${r.assist === 0 ? 'The eye view is live.' : r.assist === 1 ? 'The eye view shows for a moment after a test shot.' : 'The eye view is off: work it out.'}`;
       };
+      let seenRound = -1;
+      let roundT0 = 0;
       A.scene((g, t) => {
         if (A.phase === 'between') return;
         const r = rounds[ri()];
+        if (ri() !== seenRound) {
+          seenRound = ri();
+          roundT0 = t;
+        }
         const sc = scFor();
         const resolving = A.phase === 'resolve' && attempt !== null;
         const uu = resolving ? attempt!.u : u;
         const o = magnifier(r.f, uu);
+        // the goal, on the canvas at the start of the round
+        const age = t - roundT0;
+        if (A.phase === 'play' && age < GOAL_SECONDS) {
+          g.save();
+          g.globalAlpha = Math.min(1, (GOAL_SECONDS - age) / 0.5);
+          text(g, 'Goal: the biggest picture that is still sharp', 215, 24, PAL.white, 12);
+          g.restore();
+        }
         // round 1 live, round 2 for a moment after a test shot, round 3 never; a win shows it, a miss does not
         const won = resolving && attempt!.ok;
         const live = helperOn(r.assist, won, flash.since(A.clock, ri()));
@@ -81,6 +97,8 @@ export default defineGame({
         line(g, fx, AX - 5, fx, AX + 5, PAL.dim, 2);
         text(g, 'F', fx, AX + 20, PAL.dim, 11);
         bug(g, lensX - uu * sc, AX, 11, t, resolving ? (attempt!.ok ? 'cheer' : 'worried') : 'happy');
+        // the player's own setting, with its unit, beside its handle
+        text(g, `${fmt(uu)} cm`, Math.max(40, lensX - uu * sc), AX - 58, PAL.yellow, 11);
         eye(g, 372, AX - 10, t, resolving && !attempt!.ok ? 'worried' : 'happy');
         // the virtual image, drawn if it fits on the bench
         if (o.kind === 'virtual') {
@@ -89,13 +107,15 @@ export default defineGame({
             g.globalAlpha = 0.55;
             bug(g, ix, AX, Math.min(40, 11 * o.m), t, 'happy');
             g.globalAlpha = 1;
-            text(g, 'image', ix, AX + 18, PAL.dim, 10);
+            text(g, 'image', ix, AX + 18, PAL.dim, 11);
           } else if (live) text(g, `image ${fmt(o.v)} cm away ←`, 150, 60, PAL.dim, 11);
         }
         // the eye view: a photo frame
         g.fillStyle = 'rgba(0,0,0,0.45)';
         g.fillRect(430, 40, 200, 250);
-        const sharp = o.kind === 'virtual' ? eyeSees(o.v) : o.kind === 'infinity';
+        // sharp or not by the side of the best dial value (the same words as the miss text), not by a threshold on the true image distance
+        const side = magSide(r, uu);
+        const sharp = side === 'best' || side === 'far' || side === 'infinity';
         const good = resolving ? attempt!.ok : sharp;
         g.strokeStyle = resolving ? (attempt!.ok ? PAL.green : PAL.red) : PAL.cyan;
         g.lineWidth = 3;
@@ -106,7 +126,7 @@ export default defineGame({
         } else if (live) {
           const m = o.kind === 'virtual' ? o.M : 1;
           const rad = Math.min(92, 11 * m);
-          const blur = sharp ? 0 : Math.min(20, (D - (o.kind === 'virtual' ? o.v : D)) * 0.9);
+          const blur = sharp ? 0 : Math.max(4, Math.min(20, (D - (o.kind === 'virtual' ? o.v : D)) * 0.9));
           g.save();
           g.beginPath();
           g.rect(431, 41, 198, 248);
@@ -194,21 +214,21 @@ export default defineGame({
         text(g, `objective f = ${r.fo} cm`, objX, AX + 78, PAL.cyan, 11);
         text(g, `eyepiece f = ${r.fe} cm`, eyeX, AX + 78, PAL.pink, 11);
         bug(g, objX - uu * sc, AX, 9, t, resolving ? (attempt!.ok ? 'cheer' : 'worried') : 'happy');
-        text(g, 'Spec', objX - uu * sc, AX + 16, PAL.white, 10);
+        text(g, 'Spec', objX - uu * sc, AX + 16, PAL.white, 11);
         if (c.vo !== null && live) {
           const ix = objX + c.vo * sc;
           if (ix < W - 20) {
             g.globalAlpha = 0.8;
             bug(g, ix, AX, Math.min(34, 9 * (c.mo ?? 1)), t, 'happy', true);
             g.globalAlpha = 1;
-            text(g, 'first image', ix, AX + 52, PAL.dim, 10);
+            text(g, 'first image', ix, AX + 52, PAL.dim, 11);
           }
         }
         eye(g, Math.min(W - 40, eyeX + 62), AX - 6, t, resolving && !attempt!.ok ? 'worried' : 'happy');
         // the lock: how close are the dials? (a Fallout-style warm/cold bar)
         const closeness = Math.max(0, 1 - Math.hypot((uu - r.uSol) / 1.5, (LL - r.LSol) / 6));
         if (live) {
-          text(g, 'LOCK SIGNAL', 90, 296, PAL.dim, 10);
+          text(g, 'LOCK SIGNAL', 90, 296, PAL.dim, 11);
           meter(g, 20, 302, 140, closeness, closeness > 0.93 ? PAL.green : closeness > 0.6 ? PAL.yellow : PAL.red);
         } else text(g, 'lock signal off', 90, 308, PAL.dim, 11);
         if (live) text(g, c.M !== null && c.ve !== null ? `final image ${Number.isFinite(c.ve) ? `${fmt(c.ve)} cm` : '∞'} · ${fmt(c.M)}×` : 'no clear picture', 400, 296, c.M !== null && c.ve !== null && eyeSees(c.ve) ? PAL.green : PAL.red, 13);

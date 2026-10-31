@@ -4,6 +4,9 @@ import game from '../src/games/physics/class-12/ch02-electrostatic-potential-and
 import { DIAL, buildRounds, cueRt, fault, flashRt, verdictDelay, type Round } from '../src/games/physics/class-12/ch02-electrostatic-potential-and-capacitance/capacitor-bench/logic';
 import { createRng } from '../src/core/random';
 import { arcadeHarness, shellTests } from './helpers/arcade-harness';
+import { canvasRecorder } from './helpers/canvas-rec';
+import { RACK, RIG, crankXFor, plateW, slotX, topY } from '../src/games/physics/class-12/ch02-electrostatic-potential-and-capacitance/capacitor-bench/art';
+import { GRIP_MIN } from '../src/games/physics/class-12/ch02-electrostatic-potential-and-capacitance/capacitor-bench/ux';
 
 const h = arcadeHarness(game, 'capacitor-bench', 4);
 type L = 1 | 2 | 3 | 4;
@@ -65,7 +68,8 @@ const playTo = (level: number, round: number, seed = 5) => {
   return g;
 };
 /** The LCD's live text in each level (the fixed notch label "32 µC" and the CUE tick never match these). */
-const LCD_RE = [/^Q .* µC$/, /^C .* nF · Q .* µC$/, /^after: .* kV · .* µC$/, /^fires .* kV · .* J$/];
+/** Two-line readings are drawn as two strings (split at the dot), so each line has its own pattern. */
+const LCD_RE = [/^Q .* µC$/, /^C .* nF$/, /^after: .* kV$/, /^fires .* kV$/];
 const lcdDrawn = (level: number, texts: string[]) => texts.some((s) => LCD_RE[level - 1].test(s));
 /** Every setting of the level's dials that the scan covers (the first dial, or a pair for level 3). */
 const settings = (level: L, r: Round): Record<string, number>[] => {
@@ -377,6 +381,61 @@ describe('level 4 timing: the flash fires when the ramp reaches 3 kV per millime
   });
 });
 
+describe('Lightning on Set UX', () => {
+  const frame2 = (R: ReturnType<typeof canvasRecorder>, dt: number) => {
+    if (dt > 0.05) h.advance(dt - 0.05);
+    R.clear();
+    h.advance(0.05);
+    return R.rec;
+  };
+  /** Where each level's grips sit at the start setting: [x, y] of every handle ring that must be drawn. */
+  const GRIPS: Record<L, [number, number][]> = {
+    1: [[60 + (1 / 19) * 520, 322]],
+    2: [[crankXFor(RIG.w), topY(12)]],
+    3: [[slotX(1), RACK.y + RACK.h / 2], [118, 214]],
+    4: [[crankXFor(plateW(0.25)), topY(2)], [RIG.cx + plateW(0.25) / 2 + 3, RIG.bottom + 20]],
+  };
+  for (const level of LEVELS) {
+    it(`level ${level}: the goal line is drawn at round start and fades; every handle ring is at least ${GRIP_MIN} px; the readouts show the player’s own settings`, () => {
+      const R = canvasRecorder();
+      h.start(level, 5);
+      const rec = frame2(R, 0.05);
+      const goal = rec.at.filter((a) => /^Goal: /.test(a.s));
+      expect(goal.length).toBe(1);
+      expect(goal[0].y).toBeGreaterThanOrEqual(12);
+      expect(GRIP_MIN).toBeGreaterThanOrEqual(18);
+      for (const [x, y] of GRIPS[level]) expect(rec.arcs.some((a) => Math.abs(a.x - x) < 1 && Math.abs(a.y - y) < 1 && a.r >= 18), `ring at ${x.toFixed(0)}, ${y}`).toBe(true);
+      const read = rec.at.map((a) => a.s);
+      if (level === 1) expect(read.some((s) => /^2 kV( · drag)?$/.test(s))).toBe(true);
+      if (level === 2) expect(read).toContain('12 mm');
+      if (level === 3) expect(read).toEqual(expect.arrayContaining(['panel: none (air)', 'switch ON']));
+      if (level === 4) expect(read).toEqual(expect.arrayContaining(['2 mm', '0.25 m²']));
+      expect(frame2(R, 4).at.some((a) => /^Goal: /.test(a.s))).toBe(false);
+    });
+  }
+  it('a miss says in plain words what to change, never the answer', () => {
+    const want = [/(Raise|Lower) the charger voltage\.$/, /(Open the gap wider|Close the gap a little)\.$/, /Choose a setting that leaves (the voltage (higher|lower)|more charge|less charge)\.$/, /Try (a wider|a narrower) gap\.$|Try (bigger|smaller) plates\.$/];
+    for (const level of LEVELS) {
+      h.start(level, 5);
+      const g = build(level, 5);
+      set(g[0], false);
+      h.click(ACTION);
+      h.advance(2.8);
+      expect(h.feedback(), `level ${level}`).toMatch(want[level - 1]);
+    }
+  });
+  it('the grip is a see-through ring: the readouts are drawn only while the player is setting up, not during the take', () => {
+    const R = canvasRecorder();
+    h.start(2, 5);
+    expect(frame2(R, 0.05).at.map((a) => a.s)).toContain('12 mm');
+    h.click(ACTION);
+    h.advance(0.3);
+    const during = frame2(R, 0.05).at.map((a) => a.s);
+    expect(during.filter((s) => / mm$/.test(s)).length).toBe(1);
+    expect(during.some((s) => /^Goal: /.test(s))).toBe(false);
+  });
+});
+
 describe('Lightning on Set never leaks the answer', () => {
   for (const level of LEVELS) {
     it(`level ${level}: the LCD is live in round 1, shows for 1.5 s after a meter check in round 2, and never in round 3`, () => {
@@ -437,7 +496,7 @@ describe('Lightning on Set never leaks the answer', () => {
         const r = g[k];
         const token = tokens[level - 1](r);
         for (const x of settings(level, r)) {
-          const own = (level === 2 && x.d === (r as Extract<Round, { kind: 'gap' }>).d) || (level === 3 && x.k === (r as Extract<Round, { kind: 'panel' }>).k) || (level === 4 && x.d === (r as Extract<Round, { kind: 'flash' }>).d);
+          const own = (level === 1 && x.v === (r as Extract<Round, { kind: 'wake' }>).v) || (level === 2 && x.d === (r as Extract<Round, { kind: 'gap' }>).d) || (level === 3 && x.k === (r as Extract<Round, { kind: 'panel' }>).k) || (level === 4 && x.d === (r as Extract<Round, { kind: 'flash' }>).d);
           if (own) continue; // the readout shows the player's own setting
           apply(x);
           expect(frame(rec).some((s) => has(s, token))).toBe(false);
@@ -472,7 +531,7 @@ describe('Lightning on Set never leaks the answer', () => {
     const r = build(2, 5)[0] as Extract<Round, { kind: 'gap' }>;
     for (const d of [1, 5, 12]) {
       h.setSlider(d);
-      const mm = frame(rec).filter((s) => / mm$/.test(s));
+      const mm = frame(rec).filter((s) => / mm( · drag)?$/.test(s));
       expect(mm).toEqual([`${d} mm`]);
     }
     expect(r.d).toBeGreaterThan(0);

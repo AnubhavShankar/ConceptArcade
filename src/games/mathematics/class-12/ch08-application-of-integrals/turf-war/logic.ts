@@ -171,9 +171,17 @@ export const spotText = (r: Round, v: number) => `Ink gauge at ${r.kind === 'sin
 
 /** After a miss: the player's own edge and which way it is off, never an amount (an amount would give the answer in one step), plus the signed-integral slip when that is what happened. */
 export function missText(r: Round, v: number): string {
-  const side = area(r, v) < r.T ? 'bare patches are left' : 'paint spilled onto the rival’s turf';
+  const short = area(r, v) < r.T;
+  const side = short ? 'bare patches are left' : 'paint spilled onto the rival’s turf';
   const slip = Number.isFinite(signed(r, v)) && signed(r, v) === r.T ? ' You counted the stretch below the axis as negative paint: it is still turf, so it adds to the area.' : '';
-  return `With ${edgeText(r, v)}, ${side}.${slip}`;
+  return `With ${edgeText(r, v)}, ${side}. ${changeText(r, short)}${slip}`;
+}
+/** Which way to move the edge, in plain words and never by how much. */
+export function changeText(r: Round, short: boolean): string {
+  if (r.kind === 'ellipse') return short ? 'Raise the top.' : 'Lower the top.';
+  if (r.kind === 'sideways') return short ? 'Raise the top edge.' : 'Lower the top edge.';
+  if (r.kind === 'round') return short ? 'Move the edge out.' : 'Pull the edge in.';
+  return short ? 'Roll further.' : 'Roll back.';
 }
 
 /** After a hit: the working. */

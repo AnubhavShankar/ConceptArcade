@@ -77,6 +77,9 @@ describe('level 2: Volt’s stopping potential', () => {
   });
 });
 
+/** x of a handle on a panel track (the tracks run from x = 480 to x = 605). */
+const TX = (val: number, min: number, max: number) => 480 + ((val - min) / (max - min)) * 125;
+
 describe('level 3: Ruler’s line', () => {
   it('has two dials; the right slope with the wrong intercept misses both points, in words', () => {
     h.start(3, 5);
@@ -89,12 +92,17 @@ describe('level 3: Ruler’s line', () => {
     expect(h.feedback()).toMatch(/passes below both measured points/);
     expect(h.hearts()).toBe(2);
   });
-  it('the left handle sets the work function and the right handle sets h', () => {
+  it('the two handles sit on tracks in the panel on the right: the lower one sets the work function, the upper one sets h', () => {
     h.start(3, 5);
-    const yv = (v: number) => 170 - v * 43;
-    // starting dials: h = 5, so the slope is 0.3125 V per 10¹⁴ Hz, and φ = 3.6 eV
-    h.pointer('pointerdown', 40 + 0.8 * 31, yv(0.3125 * 0.8 - 3.6));
-    h.pointer('pointermove', 40 + 0.8 * 31, yv(0.3125 * 0.8 - 2.5));
+    // starting dials: h = 5 (a fifth of the way along its 4 to 9 track), φ = 3.6 eV (a bit over half way along its 1 to 6 track)
+    h.pointer('pointerdown', TX(3.6, 1, 6), 250 + 3);
+    h.pointer('pointermove', TX(2.5, 1, 6), 250);
+    expect(Number(h.sliders()[1].value)).toBeCloseTo(2.5, 1);
+    expect(Number(h.sliders()[0].value)).toBe(5);
+    h.pointer('pointerup', 0, 0);
+    h.pointer('pointerdown', TX(5, 4, 9), 150 - 4);
+    h.pointer('pointermove', TX(6.63, 4, 9), 150);
+    expect(Number(h.sliders()[0].value)).toBeCloseTo(6.63, 1);
     expect(Number(h.sliders()[1].value)).toBeCloseTo(2.5, 1);
   });
 });
@@ -136,8 +144,8 @@ const frame = (rec: SegRec, dt: number) => {
   h.advance(0.05);
   return { segs: [...rec.segs], strs: [...rec.strs] };
 };
-/** The player's whole line runs from the frequency axis start (x = 40) to the end of the graph (x = 40 + 18 × 31 = 598). */
-const hasLine = (f: ReturnType<typeof frame>) => f.segs.some((s) => s.a[0] === 40 && Math.abs(s.b[0] - 598) < 0.01);
+/** The player's whole line runs from the frequency axis start (x = 36) to the end of the graph (x = 36 + 18 × 22 = 432). */
+const hasLine = (f: ReturnType<typeof frame>) => f.segs.some((s) => s.a[0] === 36 && Math.abs(s.b[0] - 432) < 0.01);
 const arrows = (f: ReturnType<typeof frame>) => f.strs.filter((s) => s === '▲' || s === '▼');
 const L3 = 'Test shot: compare the line with the measured points';
 const solve3 = (g: G, k: number) => {
@@ -219,7 +227,7 @@ describe('level 3: no leaks: the helper fades, and a miss shows no line and no t
         h.advance(2.0);
         const fr = frame(rec, 0.05);
         // the player’s own labels aside, the same texts and the same short red arrows (same ends)
-        ends.push({ strs: fr.strs.filter((s) => !/^(φ = |h = )/.test(s)), red: fr.segs.filter((s) => s.style === '#ff5a5a').map((s) => [s.a, s.b]) });
+        ends.push({ strs: fr.strs.filter((s) => !/^\d+\.\d\d( eV)?$/.test(s)), red: fr.segs.filter((s) => s.style === '#ff5a5a').map((s) => [s.a, s.b]) });
         h.advance(1);
         says.push(h.feedback());
       }
@@ -240,6 +248,131 @@ describe('level 3: no leaks: the helper fades, and a miss shows no line and no t
       h.advance(2.8);
       expect(h.hearts()).toBe(hearts - 1);
     }
+  });
+});
+
+/** Everything drawn on one frame: texts with positions, arcs, and segments. */
+function geomRecorder() {
+  const out = { at: [] as { s: string; x: number; y: number }[], arcs: [] as { x: number; y: number; r: number }[], segs: [] as [number, number, number, number][] };
+  const store: Record<string, unknown> = {};
+  let cur: [number, number][] = [];
+  const proxy = new Proxy(store, {
+    get: (_t, p) => {
+      if (p === 'beginPath') return () => (cur = []);
+      if (p === 'moveTo' || p === 'lineTo') return (x: number, y: number) => cur.push([x, y]);
+      if (p === 'stroke') return () => cur.length === 2 && out.segs.push([cur[0][0], cur[0][1], cur[1][0], cur[1][1]]);
+      if (p === 'fillText') return (s: string, x: number, y: number) => out.at.push({ s: String(s), x, y });
+      if (p === 'arc') return (x: number, y: number, r: number) => out.arcs.push({ x, y, r });
+      return () => undefined;
+    },
+    set: (_t, p, v) => {
+      store[String(p)] = v;
+      return true;
+    },
+  });
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(proxy as never);
+  return {
+    out,
+    frame(dt = 0.05) {
+      if (dt > 0.05) h.advance(dt - 0.05);
+      out.at.length = 0;
+      out.arcs.length = 0;
+      out.segs.length = 0;
+      h.advance(0.05);
+      return { at: [...out.at], arcs: [...out.arcs], segs: [...out.segs] };
+    },
+  };
+}
+type Geom = ReturnType<ReturnType<typeof geomRecorder>['frame']>;
+const GRAPH_RIGHT = 440;
+/** What is drawn in the graph area (x below 440): texts, arcs and segments, none of the panel on the right. */
+const graphPart = (f: Geom) =>
+  JSON.stringify({
+    at: f.at.filter((a) => a.x < GRAPH_RIGHT).map((a) => [a.s, a.x, a.y]),
+    arcs: f.arcs.filter((a) => a.x < GRAPH_RIGHT).map((a) => [a.x, a.y, a.r]),
+    segs: f.segs.filter((s) => s[0] < GRAPH_RIGHT && s[2] < GRAPH_RIGHT),
+  });
+/** The two engine handle rings (radius 25 to 29 with the pulse). */
+const handleRings = (f: Geom) => f.arcs.filter((a) => a.r >= 24 && a.r <= 30);
+
+describe('level 3: the drag handles sit on tracks away from the graph, so no part of the player’s line shows without the helper', () => {
+  it('both handles are on the right-hand panel at fixed heights, at least 18 px in radius, whatever the dials say', () => {
+    for (const [hv, pv] of [[5, 3.6], [6.63, 2.14], [8.5, 5.5], [4.2, 1.2]]) {
+      const rec = geomRecorder();
+      h.start(3, 5);
+      h.setSlider(hv, 0);
+      h.setSlider(pv, 1);
+      const rings = handleRings(rec.frame());
+      expect(rings).toHaveLength(2);
+      expect(Math.min(...rings.map((a) => a.r))).toBeGreaterThanOrEqual(24);
+      const byY = [...rings].sort((a, b) => a.y - b.y);
+      expect(byY.map((a) => a.y)).toEqual([150, 250]);
+      expect(Math.abs(byY[0].x - TX(hv, 4, 9))).toBeLessThan(0.01);
+      expect(Math.abs(byY[1].x - TX(pv, 1, 6))).toBeLessThan(0.01);
+      for (const a of rings) {
+        expect(a.x).toBeGreaterThanOrEqual(480);
+        expect(a.x).toBeLessThanOrEqual(605);
+      }
+    }
+  });
+  it('rounds 2 (before a test shot) and 3: nothing in the graph area changes with the dials, at all', () => {
+    for (const round of [1, 2]) {
+      const rec = geomRecorder();
+      h.start(3, 5);
+      playTo3(round);
+      h.advance(4);
+      const settings: [number, number][] = [[5, 3.6], [6.63, 2.14], [8.9, 5.9], [4.1, 1.1], [7, 4.2]];
+      const seen = new Set<string>();
+      for (const [hv, pv] of settings) {
+        h.setSlider(hv, 0);
+        h.setSlider(pv, 1);
+        seen.add(graphPart(rec.frame()));
+      }
+      expect(seen.size).toBe(1);
+      // and no segment of the whole screen runs from the axis start to the end of the graph (the line itself)
+      const f = rec.frame();
+      expect(f.segs.some((s) => s[0] === 36 && Math.abs(s[2] - 432) < 0.01 && s[1] !== 170)).toBe(false);
+    }
+  });
+  it('round 1 still draws the line live, and a win draws it in every round', () => {
+    const rec = geomRecorder();
+    h.start(3, 5);
+    h.setSlider(6.63, 0);
+    h.setSlider(2.14, 1);
+    const f = rec.frame();
+    expect(f.segs.some((s) => s[0] === 36 && Math.abs(s[2] - 432) < 0.01 && s[1] !== 170)).toBe(true);
+    for (const round of [1, 2]) {
+      h.start(3, 5);
+      const g = playTo3(round);
+      solve3(g, round);
+      h.click(FIRE[2]);
+      h.advance(2.0);
+      const w = rec.frame();
+      expect(w.segs.some((s) => s[0] === 36 && Math.abs(s[2] - 432) < 0.01 && s[1] !== 170)).toBe(true);
+    }
+  });
+  it('the dials are printed beside their handles with units, and no label sits on the graph at a point of the line', () => {
+    const rec = geomRecorder();
+    h.start(3, 5);
+    const f = rec.frame();
+    const texts = f.at.map((a) => a.s);
+    expect(texts).toContain('5.00');
+    expect(texts).toContain('3.60 eV');
+    expect(texts).toContain('h  (× 10⁻³⁴ J s)');
+    expect(texts).toContain('φ  (eV)');
+    // the readouts are in the panel, never on the graph
+    for (const a of f.at.filter((x) => /^\d+\.\d\d( eV)?$/.test(x.s))) expect(a.x).toBeGreaterThanOrEqual(480 - 40);
+    expect(texts.some((s) => /^(φ = |h = )/.test(s))).toBe(false);
+  });
+  it('the goal is on the canvas at the start of each round and gone after 4 s', () => {
+    const rec = geomRecorder();
+    h.start(3, 5);
+    const goal = (f: Geom) => f.at.filter((a) => /^Goal: /.test(a.s));
+    expect(goal(rec.frame(0.1))).toHaveLength(1);
+    expect(goal(rec.frame(4))).toHaveLength(0);
+    const g = playTo3(1);
+    expect(g).toBeTruthy();
+    expect(goal(rec.frame(0.3))).toHaveLength(1);
   });
 });
 

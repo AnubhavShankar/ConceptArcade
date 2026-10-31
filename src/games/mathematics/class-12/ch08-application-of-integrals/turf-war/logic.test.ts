@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createRng } from '@core/random';
-import { area, arcHeight, buildRounds, CURVES, edgeText, explain, height, hitPoint, intel, judge, missText, needText, pastFence, ROUND_DIAL_MAX, roundArea, show, signed, spotText, type Round } from './logic';
+import { area, arcHeight, buildRounds, changeText, CURVES, edgeText, explain, height, hitPoint, intel, judge, missText, needText, pastFence, ROUND_DIAL_MAX, roundArea, show, signed, spotText, type Round } from './logic';
 
 const seeds = Array.from({ length: 60 }, (_, i) => i * 7919 + 13);
 const all = (level: number) => seeds.flatMap((s) => buildRounds(level, createRng(s)));
@@ -225,7 +225,8 @@ describe('levels 5 and 6: only the answer wins, and a miss never gives the answe
       for (const r of all80(level)) {
         for (const v of span(r.min, r.max).filter((x) => x !== r.ans)) {
           const m = missText(r, v).replace(SLIP, '');
-          expect(m).toBe(`With ${edgeText(r, v)}, ${v < r.ans ? 'bare patches are left' : 'paint spilled onto the rival’s turf'}.`);
+          expect(m).toBe(`With ${edgeText(r, v)}, ${v < r.ans ? 'bare patches are left' : 'paint spilled onto the rival’s turf'}. ${changeText(r, v < r.ans)}`);
+          expect(changeText(r, true)).not.toBe(changeText(r, false));
           // the player's own edge may share a digit with the target (y = 6, target 6), so look at the rest of the sentence
           const rest = m.replace(edgeText(r, v), '');
           expect(rest).not.toMatch(/\d/);

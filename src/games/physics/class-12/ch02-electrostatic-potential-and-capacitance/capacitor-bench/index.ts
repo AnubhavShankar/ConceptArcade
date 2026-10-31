@@ -8,8 +8,9 @@ import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel, type DialSpec, type HandleSpec, type SceneInput } from '@core/dialgame';
 import { fmt } from '@core/judge';
-import { track, trackHandle } from '@core/mathkit';
+import { TRACK, track, trackHandle } from '@core/mathkit';
 import { along, line, text, trace } from '@core/neon';
+import { GRIP_MIN, goalLine, grip, tint } from './ux';
 import {
   ANTENNA, CAMERA, RACK, RIG, STRIKER, SWITCH, TITAN, bolt, cable, cablePts, camera, clamp01, clapper, crankXFor, daily, desk, director, ease, plateW, rack, rig, slab, slotX, smoke, stage, supplyPts, titan, topY, zara,
   type DailyKind, type DirectorState, type TitanOpts, type ZaraMood,
@@ -42,7 +43,15 @@ const HEROES = [
 const PEEK_SECONDS = 1.5;
 type Out = 'win' | Fault;
 
-const crank: HandleSpec<Round> = { dial: 'd', at: (r, v) => [crankXFor(r.kind === 'flash' ? plateW(v.a) : RIG.w), topY(v.d)], drag: (_r, _px, py) => (RIG.bottom - RIG.plate - py) / RIG.mm, radius: 16 };
+const crank: HandleSpec<Round> = { dial: 'd', at: (r, v) => [crankXFor(r.kind === 'flash' ? plateW(v.a) : RIG.w), topY(v.d)], drag: (_r, _px, py) => (RIG.bottom - RIG.plate - py) / RIG.mm, radius: GRIP_MIN };
+/** Where the plate-area grip sits (level 4): below the bottom plate's right edge, clear of the screw jack's hand-wheel. */
+const AREA_Y = RIG.bottom + 20;
+/** The round's goal, one short line on the scene at the start of each take. It states only what the hint line already gives. */
+const goalText = (r: Round) =>
+  r.kind === 'wake' ? `Goal: charge the plates so the core holds ${r.q} µC`
+  : r.kind === 'gap' ? `Goal: set the gap so the core gets ${r.q} µC`
+  : r.kind === 'panel' ? `Goal: land the spark and give the core ${fmt(targetQ(r))} µC`
+  : `Goal: flash on the ${r.cue} kV cue, exposure ${r.joules} J`;
 const openAngle = (-140 * Math.PI) / 180;
 const openTip: [number, number] = [SWITCH.x + SWITCH.len * Math.sin(openAngle), SWITCH.y - SWITCH.len * Math.cos(openAngle)];
 
@@ -215,7 +224,7 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
           slabLeft = 342 + (x0 - 342) * ease(rt / 0.5);
           slabLabel = `K = ${k3}`;
         } else if (rt < 0.5 && Math.floor(rt * 6) % 2 === 0) {
-          extras.push(() => text(g, 'air only', RIG.cx, topY(d) - 9, PAL.yellow, 10));
+          extras.push(() => text(g, 'air only', RIG.cx, topY(d) - 9, PAL.yellow, 11));
         }
         if (!v.on) {
           once('click', () => A.float('CLICK', SWITCH.x, SWITCH.y - 34, PAL.white));
@@ -380,13 +389,14 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
 
     // ---- compose the frame ----
     stage(g, t);
+    tint(g, k, t, 590, 26);
     const rackOn = r.kind === 'panel';
     desk(g, { needle, band, cue, lcd, lcdColor, closed, lever });
     camera(g, t, n === 4 && !!shot, iris);
-    rig(g, { d, w, field, tokens, crank: r.kind === 'gap' || r.kind === 'flash', areaTab: r.kind === 'flash' });
+    rig(g, { d, w, field, tokens, crank: r.kind === 'gap' || r.kind === 'flash', areaTab: r.kind === 'flash', label: !!shot });
     if (slabLeft !== null) slab(g, d, w, slabLeft, slabLabel);
-    if (r.kind === 'gap' && r.k === 1) text(g, 'air', RIG.cx, (topY(d) + RIG.bottom) / 2 + 4, PAL.dim, 8);
-    if (r.kind === 'wake') text(g, `gap ${r.gap} mm`, RIG.cx, topY(d) - 9, PAL.dim, 10);
+    if (r.kind === 'gap' && r.k === 1) text(g, 'air', RIG.cx, (topY(d) + RIG.bottom) / 2 + 4, PAL.dim, 11);
+    if (r.kind === 'wake') text(g, `gap ${r.gap} mm`, RIG.cx, topY(d) - 9, PAL.dim, 11);
     if (rackOn) rack(g, v.k);
     if (r.kind === 'wake') track(g, DIAL.v.min, DIAL.v.max);
     const sp = supplyPts(d, w);
@@ -398,7 +408,7 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
       g.beginPath();
       g.arc(STRIKER.x, STRIKER.y, 5, 0, Math.PI * 2);
       g.fill();
-      if (r.kind === 'panel') text(g, `striker gap ${r.striker} mm`, STRIKER.x + 14, STRIKER.y - 2, PAL.dim, 9, 'left');
+      if (r.kind === 'panel') text(g, `striker gap ${r.striker} mm`, STRIKER.x + 14, STRIKER.y - 2, PAL.dim, 11, 'left');
     }
     T.core = coreOpts;
     titan(g, t, T);
@@ -406,6 +416,22 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
     zara(g, t, { mood: zMood, goggles, lever, both, fist });
     for (const fn of extras) fn();
     if (t - clapAt < 0.8) clapper(g, t - clapAt, k === 2 ? 'FINAL TAKE' : `TAKE ${k + 1}`);
+    // The grips of the handles, each with the player's own setting beside it, and the round's goal on top of everything but the white flash.
+    if (!shot) {
+      const cue1 = n === 1 && k === 0;
+      if (r.kind === 'wake') {
+        const hx = TRACK.x0 + ((v.v! - DIAL.v.min) / (DIAL.v.max - DIAL.v.min)) * (TRACK.x1 - TRACK.x0);
+        grip(g, A.canvas, t, { x: hx, y: TRACK.y, r: 20, dir: 'h', read: `${v.v} kV`, side: hx > 450 ? 'left' : 'right', cue: cue1, glass: true });
+      } else if (r.kind === 'gap' || r.kind === 'flash') {
+        grip(g, A.canvas, t, { x: crankXFor(r.kind === 'flash' ? plateW(v.a!) : RIG.w), y: topY(v.d!), r: GRIP_MIN, dir: 'v', read: `${v.d} mm`, side: 'right', glass: true });
+        if (r.kind === 'flash') grip(g, A.canvas, t, { x: RIG.cx + plateW(v.a!) / 2 + 3, y: AREA_Y, r: GRIP_MIN, dir: 'h', read: `${fmt(v.a!)} m²`, side: 'right', glass: true });
+      } else {
+        grip(g, A.canvas, t, { x: slotX(v.k!), y: RACK.y + RACK.h / 2, r: GRIP_MIN, dir: 'h', read: v.k === 1 ? 'panel: none (air)' : `panel: K = ${v.k}`, side: 'above', glass: true });
+        const [sx, sy] = v.on ? [SWITCH.x, SWITCH.y - SWITCH.len] : openTip;
+        grip(g, A.canvas, t, { x: sx, y: sy, r: GRIP_MIN, dir: 'v', read: `switch ${v.on ? 'ON' : 'OFF'}`, side: 'left', glass: true });
+      }
+    }
+    goalLine(g, goalText(r), A.t, shot !== null);
     if (flashA > 0) {
       g.fillStyle = `rgba(255,255,255,${flashA.toFixed(3)})`;
       g.fillRect(0, 0, 640, 340);
@@ -427,12 +453,12 @@ function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
       { key: 'on', aria: 'Charger switch: 1 connected, 0 unplugged', label: 'Charger', unit: '', step: 1, min: DIAL.on.min, max: DIAL.on.max, start: DIAL.on.start, text: (x) => (x ? 'connected' : 'unplugged') },
     );
     handles.push(
-      { dial: 'k', at: (_r, v) => [slotX(v.k), RACK.y + RACK.h / 2], drag: (_r, px) => Math.floor((px - RACK.x0) / RACK.w) + 1, radius: 18 },
-      { dial: 'on', at: (_r, v) => (v.on ? [SWITCH.x, SWITCH.y - SWITCH.len] : openTip), drag: (_r, _px, py) => (py < SWITCH.y ? 1 : 0), radius: 16 },
+      { dial: 'k', at: (_r, v) => [slotX(v.k), RACK.y + RACK.h / 2], drag: (_r, px) => Math.floor((px - RACK.x0) / RACK.w) + 1, radius: GRIP_MIN },
+      { dial: 'on', at: (_r, v) => (v.on ? [SWITCH.x, SWITCH.y - SWITCH.len] : openTip), drag: (_r, _px, py) => (py < SWITCH.y ? 1 : 0), radius: GRIP_MIN },
     );
   } else {
     dials.push(dD(2), { key: 'a', aria: 'Plate area in square metres', label: 'Plate area', unit: 'm²', step: DIAL.a.step, min: DIAL.a.min, max: DIAL.a.max, start: DIAL.a.start });
-    handles.push(crank, { dial: 'a', at: (_r, v) => [RIG.cx + plateW(v.a) / 2 + 3, RIG.bottom + 1], drag: (_r, px) => (2 * (px - RIG.cx) - 60) / 60, radius: 16 });
+    handles.push(crank, { dial: 'a', at: (_r, v) => [RIG.cx + plateW(v.a) / 2 + 3, AREA_Y], drag: (_r, px) => (2 * (px - RIG.cx) - 60) / 60, radius: GRIP_MIN });
   }
 
   return {

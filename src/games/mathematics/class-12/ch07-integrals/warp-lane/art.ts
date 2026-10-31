@@ -185,7 +185,7 @@ export function mouth(g: G, x: number, color: string, label: string, capped: boo
     line(g, x - 5, top - 2, x + 5, top + 2, PAL.white, 1.6);
     line(g, x - 5, top + 2, x + 5, top - 2, PAL.white, 1.6);
   }
-  text(g, label, x, top + 16, color, 8);
+  text(g, label, x, top + 16, color, 11);
 }
 
 /** A striped barrier across the lane: the dead end of a mouth that is not where the warp lands. */
@@ -208,8 +208,8 @@ export function scenery(g: G, r: Row, t: number) {
   g.fillRect(0, 46, 640, 98);
   g.fillStyle = 'rgba(8,70,60,0.26)';
   g.fillRect(0, 222, 640, 74);
-  text(g, 'x-land', 8, 60, PAL.dim, 10, 'left');
-  text(g, 'u-land', 8, 236, PAL.dim, 10, 'left');
+  text(g, 'x-land', 8, 60, PAL.dim, 11, 'left');
+  text(g, 'u-land', 8, 236, PAL.dim, 11, 'left');
   // the sign
   g.fillStyle = '#0a1236';
   g.fillRect(140, 6, 360, 38);
@@ -217,7 +217,7 @@ export function scenery(g: G, r: Row, t: number) {
   g.lineWidth = 1.5;
   g.strokeRect(140, 6, 360, 38);
   text(g, r.text, 320, 24, PAL.white, 16);
-  text(g, `${r.uText} · ${r.duText}`, 320, 38, PAL.cyan, 10);
+  text(g, `${r.uText} · ${r.duText}`, 320, 38, PAL.cyan, 11);
   // the track
   const ys = trackYs(r);
   const pts: P[] = [[26, ys[0]], [XLAND.x0, ys[0]]];
@@ -232,8 +232,8 @@ export function scenery(g: G, r: Row, t: number) {
     g.fillStyle = (i + j) % 2 ? PAL.white : '#1b1030';
     g.fillRect(XLAND.finish + j * 5, yEnd - 38 + i * 5, 5, 5);
   }
-  text(g, 'FINISH', XLAND.finish - 4, yEnd + 14, PAL.dim, 9);
-  text(g, 'START', XLAND.park - 14, ys[0] + 14, PAL.dim, 9);
+  text(g, 'FINISH', XLAND.finish - 4, yEnd + 14, PAL.dim, 11);
+  text(g, 'START', XLAND.park - 14, ys[0] + 14, PAL.dim, 11);
   // the u-lane
   g.fillStyle = '#121a44';
   g.fillRect(ULANE.x0 - 6, ULANE.y - 10, ULANE.x1 - ULANE.x0 + 12, 22);
@@ -243,7 +243,7 @@ export function scenery(g: G, r: Row, t: number) {
   for (let u = ULANE.uMin; u <= ULANE.uMax; u++) {
     const x = Ux(u);
     line(g, x, ULANE.y + 14, x, ULANE.y + (u % 5 === 0 ? 24 : 19), PAL.dim, 1);
-    if (u % 5 === 0) text(g, uv(u), x, ULANE.y + 35, PAL.dim, 9);
+    if (u % 5 === 0) text(g, uv(u), x, ULANE.y + 35, PAL.dim, 11);
   }
   // the u-integrand painted on the road
   for (const x of [150, 330, 510]) text(g, r.hText, x, ULANE.y + 5, 'rgba(255,210,63,0.5)', 13);
@@ -267,7 +267,7 @@ export function gauge(g: G, k: number) {
   g.strokeRect(x0, 303, x1 - x0, 12);
   for (let i = -12; i <= 12; i += 3) line(g, mid + (i / 12) * ((x1 - x0) / 2), 315, mid + (i / 12) * ((x1 - x0) / 2), i === 0 ? 322 : 319, PAL.dim, 1);
   line(g, kx, 299, kx, 319, PAL.white, 2.5);
-  text(g, `boost ×${sixths(k)}`, 272, 314, PAL.white, 12, 'left');
+  text(g, `boost ×${sixths(k)}`, 286, 314, PAL.white, 12, 'left');
   text(g, '−', 52, 314, PAL.pink, 12, 'right');
 }
 

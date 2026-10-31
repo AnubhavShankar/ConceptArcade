@@ -146,9 +146,9 @@ export const intel = (r: Row) => `Track: ${r.text}. Warp: ${r.uText}. Place the 
 export const hintText = (r: Round) => `${intel(r)} ${r.assist === 0 ? 'Round 1: the ghost kart shows the clean line.' : r.assist === 1 ? 'No ghost: a test lap costs a charge.' : 'Boss round: no ghost, no test lap.'}`;
 export const missText = (r: Row, v: Values) => {
   const o = outcome(r, v);
-  if (o === 'entry') return `The warp from x = ${r.aText} does not open at u = ${uv(v.lo)}: Zip shot out of a dead pipe and tumbled into the void.`;
-  if (o === 'exit') return `Zip warped in cleanly, but the exit mouth at u = ${uv(v.hi)} is not where x = ${r.bText} lands: the kart missed the exit and crashed into the end of the lane.`;
-  return `Both mouths were right, but the boost ${sixths(v.k)} was wrong: Zip came out of the warp ${o === 'fast' ? 'too fast and spun out' : 'too slow and stalled'}${backwards(r, v) ? ', facing the wrong way' : ''}.`;
+  if (o === 'entry') return `The warp from x = ${r.aText} does not open at u = ${uv(v.lo)}: Zip shot out of a dead pipe and tumbled into the void. Work out u at the lower limit again and move the entry mouth.`;
+  if (o === 'exit') return `Zip warped in cleanly, but the exit mouth at u = ${uv(v.hi)} is not where x = ${r.bText} lands: the kart missed the exit and crashed into the end of the lane. Work out u at the upper limit again and move the exit mouth.`;
+  return `Both mouths were right, but the boost ${sixths(v.k)} was wrong: Zip came out of the warp ${o === 'fast' ? 'too fast and spun out' : 'too slow and stalled'}${backwards(r, v) ? ', facing the wrong way' : ''}. Try a ${o === 'fast' ? 'weaker' : 'stronger'} boost${backwards(r, v) ? ' that points the other way' : ''}.`;
 };
 export const testText = (r: Row, v: Values) => `Test lap: the entry is ${v.lo === r.lo ? 'right' : 'wrong'}, the exit is ${v.hi === r.hi ? 'right' : 'wrong'} and the boost is ${v.k === r.k6 ? 'right' : 'wrong'}.`;
 export const winText = (r: Row) => `Clean warp! ${r.uText}, ${r.duText}. When x = ${r.aText}, u = ${uv(r.lo)}; when x = ${r.bText}, u = ${uv(r.hi)}. So ${r.text} = ${sixths(r.k6)} × ∫ from ${uv(r.lo)} to ${uv(r.hi)} of ${r.hText} du = ${r.valueText}.`;

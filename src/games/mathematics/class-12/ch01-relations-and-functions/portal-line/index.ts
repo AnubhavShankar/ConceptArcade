@@ -1,5 +1,6 @@
 // Inspirations: Lemmings (a crowd walks in a line and you place the things that decide who survives) and Portal (a doorway whose far
 // side must be exactly right). Pip leads the travellers through the portal f; two travellers on one door means f is not one-one.
+import { helperOn, paidFlash } from '@core/aidflash';
 import { PAL, type Arcade } from '@core/arcade';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel, type DialSpec, type HandleSpec } from '@core/dialgame';
@@ -7,11 +8,15 @@ import { TRACK, backdrop, face, track, trackHandle, verdict } from '@core/mathki
 import { glow, line, text } from '@core/neon';
 import type { GameContext } from '@core/types';
 import { COUNT, DOMAIN, PQ, RANGE, TRAVELLERS, aidLine, buildRounds, domainFault, explain, imageOf, intel, judge, landing, missText, outcome, rangeFault, spotText, startQ, type Round } from './logic';
+import { goalLine, grip, tint } from './ux';
 
 type G = CanvasRenderingContext2D;
 type Mood = 'happy' | 'worried' | 'cheer';
 const VERDICT = 1.6;
 const Y0 = 232;
+/** Radius of every drag handle, in scene pixels (at least 18, about 44 px on a phone). */
+export const HANDLE_R = 18;
+const dn = (x: number) => (x < 0 ? `−${Math.abs(x)}` : String(x));
 
 const HEROES = [
   { story: 'The portal sends each traveller x to the door f(x). A function is one-one when no two travellers ever share a door. Where f turns (rising, then falling) two different travellers land on the same door, so the fences must stop before the turn. The Mayor wants as many travellers as possible to cross, and Pip must be among them.', objective: 'Place the left and right fences so f is one-one on the fenced stretch and as wide as possible around Pip, in three rounds. The graph shows in round 1; a test walk costs a charge.' },
@@ -22,6 +27,14 @@ const HEROES = [
 ];
 const FIRE = ['Send the travellers through', 'Send the travellers through', 'Hand the ledger to the Mayor', 'Send the travellers there and back', 'Send the travellers there and back'];
 const TEST_TRIP = 'Test walk: send one test traveller';
+/** The round's goal, one line at the top of the scene. */
+const GOALS = [
+  'Goal: fence the widest one-one stretch around Pip',
+  'Goal: fence the doors so f is onto',
+  'Goal: count the one-one maps onto the doors',
+  'Goal: build the return portal that brings everyone home',
+  'Goal: one return portal that undoes f, then g',
+];
 type ArcadeRef = { A: Arcade | null };
 
 /** Pip: a traveller with a cap, a numbered shirt and a backpack. */
@@ -43,18 +56,20 @@ function pip(g: G, x: number, y: number, t: number, mood: Mood, walk: number, la
   g.fill();
   g.fillRect(x - 3, y - 61, 14, 4);
   face(g, x, y - 47, 9, mood, t, '#1b1030');
-  text(g, label, x, y - 20, '#1b1030', 10);
+  text(g, label, x, y - 20, '#1b1030', 11);
 }
 
 const NL = (x: number) => 320 + x * 45;
-const fence = (g: G, x: number, color: string, label: string) => {
+/** A fence: a pole with a flag. Its word stands beside the flag (the left fence to the left, the right fence to the right), clear of the axis numbers. */
+const fence = (g: G, x: number, color: string, label: string, side: 'left' | 'right') => {
   glow(g, color, 10, () => line(g, x, Y0 - 56, x, Y0 + 4, color, 4));
   g.fillStyle = color;
   g.fillRect(x - 3, Y0 - 56, 16, 10);
-  text(g, label, x, Y0 + 20, color, 11);
+  if (side === 'left') text(g, label, x - 7, Y0 - 47, color, 12, 'right');
+  else text(g, label, x + 19, Y0 - 47, color, 12, 'left');
 };
 
-function drawDomain(g: G, r: Round, v: Record<string, number>, t: number, rt: number, shot: { ok: boolean; v: Record<string, number> } | null) {
+function drawDomain(g: G, r: Round, v: Record<string, number>, t: number, rt: number, shot: { ok: boolean; v: Record<string, number> } | null, helper: boolean) {
   const f = (x: number) => r.f(x);
   const ys = Array.from({ length: 101 }, (_, i) => f(-5 + i / 10));
   const lo = Math.min(...ys);
@@ -63,12 +78,10 @@ function drawDomain(g: G, r: Round, v: Record<string, number>, t: number, rt: nu
   line(g, NL(DOMAIN.min), Y0, NL(DOMAIN.max), Y0, PAL.dim, 3);
   for (let x = DOMAIN.min; x <= DOMAIN.max; x++) {
     line(g, NL(x), Y0 - 4, NL(x), Y0 + 4, PAL.dim, 1.5);
-    text(g, String(x), NL(x), Y0 + 20, PAL.dim, 10);
+    text(g, String(x), NL(x), Y0 + 20, PAL.dim, 11);
   }
-  // The graph is the live helper of rounds 1 and 2; a miss never adds it (it would show the turning point), a win may.
-  const won = !!shot && shot.ok;
-  if (r.assist <= 1 || won) {
-    g.globalAlpha = r.assist === 1 && !won ? 0.3 : 1;
+  // The graph is the helper: live in round 1, on for 1.5 s after a paid test walk in round 2, never in round 3. A miss never adds it (it would show the turning point), a win may.
+  if (helper) {
     g.strokeStyle = PAL.cyan;
     g.lineWidth = 2;
     g.beginPath();
@@ -78,13 +91,12 @@ function drawDomain(g: G, r: Round, v: Record<string, number>, t: number, rt: nu
       else g.lineTo(NL(x), Y(f(x)));
     }
     g.stroke();
-    g.globalAlpha = 1;
   } else text(g, 'graph off', 520, 70, PAL.dim, 12);
   const use = shot ? shot.v : v;
   const L = Math.min(use.lo, use.hi);
   const R = Math.max(use.lo, use.hi);
-  fence(g, NL(use.lo), PAL.green, 'left');
-  fence(g, NL(use.hi), PAL.pink, 'right');
+  fence(g, NL(use.lo), PAL.green, 'left', 'left');
+  fence(g, NL(use.hi), PAL.pink, 'right', 'right');
   const mood: Mood = shot ? (rt > VERDICT ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
   pip(g, NL(r.pip), Y0 - 2, t, mood, shot && rt < 1 ? rt : 0, String(r.pip));
   if (shot) {
@@ -104,25 +116,23 @@ function drawDomain(g: G, r: Round, v: Record<string, number>, t: number, rt: nu
   }
 }
 
-function drawRange(g: G, r: Round, v: Record<string, number>, t: number, rt: number, shot: { ok: boolean; v: Record<string, number> } | null) {
+function drawRange(g: G, r: Round, v: Record<string, number>, t: number, rt: number, shot: { ok: boolean; v: Record<string, number> } | null, helper: boolean) {
   const X = (y: number) => 320 + (y / 30) * 250;
   line(g, X(RANGE.min), Y0, X(RANGE.max), Y0, PAL.dim, 3);
   for (let y = RANGE.min; y <= RANGE.max; y += 10) {
     line(g, X(y), Y0 - 4, X(y), Y0 + 4, PAL.dim, 1.5);
-    text(g, String(y), X(y), Y0 + 20, PAL.dim, 10);
+    text(g, String(y), X(y), Y0 + 20, PAL.dim, 11);
   }
   const [ilo, ihi] = imageOf(r, r.a, r.b);
-  const won = !!shot && shot.ok;
-  if (r.assist <= 1 || won) {
-    g.globalAlpha = r.assist === 1 && !won ? 0.3 : 1;
+  // The lit doors are the helper: live in round 1, on for 1.5 s after a paid test walk in round 2, never in round 3 (a win may show them).
+  if (helper) {
     g.fillStyle = 'rgba(77,225,255,0.5)';
     g.fillRect(X(ilo), Y0 - 14, X(ihi) - X(ilo), 10);
     text(g, 'doors in use', (X(ilo) + X(ihi)) / 2, Y0 - 22, PAL.cyan, 11);
-    g.globalAlpha = 1;
   } else text(g, 'lit doors off', 520, 70, PAL.dim, 12);
   const use = shot ? shot.v : v;
-  fence(g, X(use.lo), PAL.green, 'low');
-  fence(g, X(use.hi), PAL.pink, 'high');
+  fence(g, X(use.lo), PAL.green, 'low', 'left');
+  fence(g, X(use.hi), PAL.pink, 'high', 'right');
   text(g, `travellers from ${r.a} to ${r.b}`, 150, 60, PAL.white, 12);
   const mood: Mood = shot ? (rt > VERDICT ? (shot.ok ? 'cheer' : 'worried') : 'happy') : 'happy';
   pip(g, 80, 150, t, mood, shot && rt < 1 ? rt : 0, String(r.a));
@@ -166,7 +176,7 @@ function drawCount(g: G, r: Round, t: number, rt: number, shot: { ok: boolean } 
     g.strokeStyle = PAL.cyan;
     g.lineWidth = 2;
     g.strokeRect(x - 16 + 180, 150, 32, 44);
-    text(g, `door ${i + 1}`, x + 180, 214, PAL.dim, 10);
+    text(g, `door ${i + 1}`, x + 180, 214, PAL.dim, 11);
   }
   if (shot) {
     const p = Math.min(1, rt / 1.0);
@@ -186,7 +196,10 @@ const HOME_Y = 226;
 const LANE_Y = 118;
 const RET_X = 566;
 const STEP = 27;
-const TY = { q: 288, p: 322 };
+/** The two tracks of levels 4 and 5 sit side by side on one row, so each handle can be 18 px or more in radius without touching the other or the ghosts above. */
+const TR = { y: 308, q: { x0: 84, x1: 290 }, p: { x0: 368, x1: 574 } } as const;
+const trackX = (key: 'p' | 'q', v: number) => TR[key].x0 + ((v - PQ[key].min) / (PQ[key].max - PQ[key].min)) * (TR[key].x1 - TR[key].x0);
+const trackDrag = (key: 'p' | 'q', px: number) => PQ[key].min + ((px - TR[key].x0) / (TR[key].x1 - TR[key].x0)) * (PQ[key].max - PQ[key].min);
 const lerp = (a: number, b: number, u: number) => a + (b - a) * u;
 const ease = (u: number) => u * u * (3 - 2 * u);
 
@@ -230,29 +243,28 @@ function tripPos(i: number, u: number, end: number, gates: number[]): { x: numbe
   return { x: end, y: home, s: 1, a: 1, walking: 0 };
 }
 
-function drawTrip(g: G, r: Round, v: Record<string, number>, t: number, rt: number, shot: { ok: boolean; v: Record<string, number> } | null) {
+function drawTrip(g: G, r: Round, v: Record<string, number>, t: number, rt: number, shot: { ok: boolean; v: Record<string, number> } | null, helper: boolean, A: Arcade) {
   const gates = r.kind === 'inverse' ? [410] : [370, 450];
   line(g, 50, HOME_Y, 600, HOME_Y, PAL.dim, 3);
-  text(g, 'home', 36, HOME_Y + 18, PAL.dim, 10, 'left');
+  text(g, 'home', 36, HOME_Y + 18, PAL.dim, 11, 'left');
   for (const i of TRAVELLERS) {
     line(g, HX(i), HOME_Y - 4, HX(i), HOME_Y + 4, PAL.dim, 1.5);
-    text(g, String(i), HX(i), HOME_Y + 18, PAL.dim, 10);
+    text(g, String(i), HX(i), HOME_Y + 18, PAL.dim, 11);
   }
   line(g, 60, LANE_Y, 600, LANE_Y, PAL.dim, 2, [6, 6]);
-  text(g, 'the doors', 60, LANE_Y + 16, PAL.dim, 10, 'left');
-  gates.forEach((gx, k) => portal(g, gx, LANE_Y - 16, PAL.cyan, k === 0 ? 'f' : 'g'));
+  text(g, 'the doors', 60, LANE_Y + 16, PAL.dim, 11, 'left');
+  gates.forEach((gx, i) => portal(g, gx, LANE_Y - 16, PAL.cyan, i === 0 ? 'f' : 'g'));
   portal(g, RET_X, HOME_Y - 24, PAL.pink, 'return');
   for (const key of ['q', 'p'] as const) {
-    const y = TY[key];
-    line(g, TRACK.x0, y, TRACK.x1, y, PAL.dim, 3);
-    text(g, key, 40, y + 4, PAL.yellow, 13);
-    text(g, String(PQ[key].min), TRACK.x0, y + 14, PAL.dim, 10);
-    text(g, String(PQ[key].max), TRACK.x1, y + 14, PAL.dim, 10);
+    line(g, TR[key].x0, TR.y, TR[key].x1, TR.y, PAL.dim, 3);
+    text(g, key, TR[key].x0 - 30, TR.y + 5, PAL.yellow, 14);
+    text(g, String(PQ[key].min), TR[key].x0, TR.y + 31, PAL.dim, 11);
+    text(g, String(PQ[key].max), TR[key].x1, TR.y + 31, PAL.dim, 11);
   }
   if (!shot) {
     for (const i of TRAVELLERS) mini(g, HX(i), HOME_Y - 2, 1, 1, t + i, 'happy', 0, String(i));
-    if (r.assist <= 1) {
-      g.globalAlpha = r.assist === 1 ? 0.3 : 0.9;
+    if (helper) {
+      g.globalAlpha = 0.9;
       for (const i of TRAVELLERS) {
         const L = landing(r, v, i);
         if (!L) continue;
@@ -262,11 +274,15 @@ function drawTrip(g: G, r: Round, v: Record<string, number>, t: number, rt: numb
         g.beginPath();
         g.arc(gx, HOME_Y + 36, 8, 0, Math.PI * 2);
         g.stroke();
-        text(g, String(i), gx, HOME_Y + 40, PAL.cyan, 9);
+        text(g, String(i), gx, HOME_Y + 41, PAL.cyan, 11);
       }
       g.globalAlpha = 1;
-      text(g, 'ghosts: where each traveller would land', 500, 46, PAL.cyan, 10);
+      text(g, 'ghosts: where each traveller would land', 440, 46, PAL.cyan, 11);
     } else text(g, 'ghosts off', 560, 46, PAL.dim, 12);
+    // the two handles, each with the player's own setting beside it
+    for (const key of ['q', 'p'] as const) {
+      grip(g, A.canvas, t, { x: trackX(key, v[key]), y: TR.y, r: HANDLE_R, dir: 'h', read: `${key} = ${dn(v[key])}`, side: 'above', cue: false });
+    }
     return;
   }
   const side = shot.ok ? 0 : outcome(r, shot.v) || 1;
@@ -302,10 +318,13 @@ function level(n: number, random: () => number, ref: ArcadeRef): DialLevel<Round
     { key: 'p', aria: 'Return portal shift p', label: 'Shift p (subtract)', unit: '', step: 1, min: PQ.p.min, max: PQ.p.max, start: PQ.p.start, text: (v: number) => `${v}` },
     { key: 'q', aria: 'Return portal divisor q', label: 'Divisor q (divide by)', unit: '', step: 1, min: PQ.q.min, max: PQ.q.max, start: startQ, text: (v: number) => `${v}` },
   ];
-  const tripHandles: HandleSpec<Round>[] = [
-    { ...trackHandle<Round>('q', () => PQ.q.min, () => PQ.q.max, TY.q), radius: 10 },
-    { ...trackHandle<Round>('p', () => PQ.p.min, () => PQ.p.max, TY.p), radius: 10 },
-  ];
+  const flash = paidFlash();
+  const tripHandles: HandleSpec<Round>[] = (['q', 'p'] as const).map((key) => ({
+    dial: key,
+    at: (_r: Round, v: Record<string, number>): [number, number] => [trackX(key, v[key]), TR.y],
+    drag: (_r: Round, px: number) => trackDrag(key, px),
+    radius: HANDLE_R,
+  }));
   const dials = trip ? tripDials : n === 3
     ? [{ key: 'c', aria: 'Number of one-one maps', label: 'Number of ways', unit: '', step: 1, min: COUNT.min, max: COUNT.max, start: 1, text: (v: number) => `${v}` }]
     : (() => {
@@ -330,23 +349,40 @@ function level(n: number, random: () => number, ref: ArcadeRef): DialLevel<Round
     dials,
     handles,
     test: trip
-      ? { button: '🚶 Test walk', aria: TEST_TRIP, read: (r, v) => spotText(r, v) }
-      : { button: '🚶 Test walk', aria: 'Test walk: send two test travellers', read: (r, v) => spotText(r, v) },
+      ? { button: '🚶 Test walk', aria: TEST_TRIP, read: (r, v) => (flash.paid(), spotText(r, v)) }
+      : { button: '🚶 Test walk', aria: 'Test walk: send two test travellers', read: (r, v) => (flash.paid(), spotText(r, v)) },
     fire: { button: n === 3 ? '📒 Give the ledger' : trip ? '🚪 Send them there and back' : '🚪 Send them through', aria: FIRE[n - 1] },
     judge: (r, v) => judge(r, v),
     miss: (r, v) => missText(r, v),
     win: (r) => `${trip ? 'Everyone home!' : 'Everyone through!'} ${explain(r)}`,
-    hint: (r) => (trip ? `${intel(r)} ${aidLine(r)}` : `${intel(r)} ${r.assist === 0 ? 'The live picture is on.' : r.assist === 1 ? 'The picture is dim: a test walk costs a charge.' : 'Boss round: no picture, no test walk.'}`),
+    hint: (r) => (trip ? `${intel(r)} ${aidLine(r)}` : n === 3 ? `${intel(r)} ${r.assist < 2 ? 'A test walk costs a charge.' : 'Boss round: no test walk.'}` : `${intel(r)} ${r.assist === 0 ? 'The live picture is on.' : r.assist === 1 ? 'The picture shows for a moment after a test walk, which costs a charge.' : 'Boss round: no picture, no test walk.'}`),
     hit: () => [320, 150],
     delay: VERDICT,
-    draw: ({ g, r, v, t, rt, shot, A }) => {
+    draw: ({ g, r, v, t, rt, shot, k, A }) => {
       ref.A = A;
       backdrop(g);
-      if (n === 1) drawDomain(g, r, v, t, rt, shot);
-      else if (n === 2) drawRange(g, r, v, t, rt, shot);
+      tint(g, k, t);
+      // The helper (graph, lit doors, ghosts): live in round 1, 1.5 s after a paid test walk in round 2, never in round 3; a win may show the graph or the doors.
+      const helper = helperOn(r.assist, !!shot && shot.ok && n <= 2, shot ? Infinity : flash.since(t, k));
+      A.canvas.dataset.helper = helper ? '1' : '0';
+      if (n === 1) drawDomain(g, r, v, t, rt, shot, helper);
+      else if (n === 2) drawRange(g, r, v, t, rt, shot, helper);
       else if (n === 3) drawCount(g, r, t, rt, shot);
-      else drawTrip(g, r, v, t, rt, shot);
+      else drawTrip(g, r, v, t, rt, shot, helper, A);
       if (n === 3) track(g, COUNT.min, COUNT.max);
+      if (!shot) {
+        const own = (key: string) => v[key];
+        if (n === 1 || n === 2) {
+          const word = n === 1 ? ['left', 'right'] : ['low', 'high'];
+          (['lo', 'hi'] as const).forEach((key, i) => {
+            const x = n === 1 ? NL(own(key)) : 320 + (own(key) / 30) * 250;
+            grip(g, A.canvas, t, { x, y: Y0 + 40, r: HANDLE_R, dir: 'h', read: `${word[i]} ${dn(own(key))}`, side: i === 0 ? (x < 120 ? 'below' : 'left') : x > 520 ? 'below' : 'right', cue: n === 1 && k === 0 });
+          });
+        } else if (n === 3) {
+          grip(g, A.canvas, t, { x: TRACK.x0 + ((own('c') - COUNT.min) / (COUNT.max - COUNT.min)) * (TRACK.x1 - TRACK.x0), y: TRACK.y, r: 20, dir: 'h', read: `${own('c')} ways`, side: 'above' });
+        }
+      }
+      goalLine(g, GOALS[n - 1], A.t, shot !== null, n === 3 ? 14 : 12);
       if (n !== 3) text(g, r.fnText, 320, 30, PAL.yellow, 14);
       if (shot && rt > VERDICT) {
         if (trip) verdict(g, shot.ok, 'EVERYONE HOME', 'LOST!');

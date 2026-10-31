@@ -4,6 +4,8 @@ import game from '../src/games/mathematics/class-12/ch06-application-of-derivati
 import { buildRounds, type Round } from '../src/games/mathematics/class-12/ch06-application-of-derivatives/catch-rate/logic';
 import { createRng } from '../src/core/random';
 import { arcadeHarness, shellTests } from './helpers/arcade-harness';
+import { canvasRecorder, type Rec } from './helpers/canvas-rec';
+import { GRIP_MIN } from '../src/games/mathematics/class-12/ch06-application-of-derivatives/catch-rate/ux';
 
 const h = arcadeHarness(game, 'catch-rate', 4);
 const build = (level: number, seed: number) => buildRounds(level, createRng(seed));
@@ -15,6 +17,78 @@ shellTests<Round[]>(h, {
   setRight: (g, k) => h.setSlider(g[k].ans),
   setWrong: (g, k) => h.setSlider(wrong(g[k])),
   commit: (level) => h.click(level === 4 ? 'Start the run' : 'Run the winch'),
+});
+
+describe('Catch Rate UX', () => {
+  const TEST = (level: number) => (level === 4 ? 'Test run: read the money rate at this setting' : 'Test run: read the result rate at this winch speed');
+  const FIRE = (level: number) => (level === 4 ? 'Start the run' : 'Run the winch');
+  const canvas = () => h.$('canvas')!;
+  const frame = (R: ReturnType<typeof canvasRecorder>, dt: number) => {
+    if (dt > 0.05) h.advance(dt - 0.05);
+    R.clear();
+    h.advance(0.05);
+    return R.rec;
+  };
+  const gauge = (rec: Rec) => rec.at.some((a) => a.s === 'you');
+  const playTo = (level: number, seed: number, k: number) => {
+    h.start(level, seed);
+    const g = build(level, seed);
+    for (let i = 0; i < k; i++) {
+      h.setSlider(g[i].ans);
+      h.click(FIRE(level));
+      h.advance(3.4);
+      h.advance(1);
+    }
+    return g;
+  };
+  for (const level of [1, 2, 3, 4]) {
+    it(`level ${level}: the goal line is drawn at round start and fades; the handle is at least ${GRIP_MIN} px with its setting and unit beside it`, () => {
+      const R = canvasRecorder();
+      h.start(level, 5);
+      const rec = frame(R, 0.05);
+      const goal = rec.at.filter((a) => /^Goal: /.test(a.s));
+      expect(goal.length).toBe(1);
+      expect(goal[0].y).toBeGreaterThanOrEqual(12);
+      expect(GRIP_MIN).toBeGreaterThanOrEqual(18);
+      expect(rec.arcs.some((a) => a.y === 322 && a.r >= 18)).toBe(true);
+      expect(rec.at.some((a) => /^w = 1 \S+ per (s|hour|day)/.test(a.s))).toBe(true);
+      expect(frame(R, 4).at.some((a) => /^Goal: /.test(a.s))).toBe(false);
+    });
+    it(`level ${level}: the gauge is live in round 1, shows 1.5 s after a test run in round 2, never in round 3`, () => {
+      const R = canvasRecorder();
+      h.start(level, 5);
+      expect(gauge(frame(R, 0.1))).toBe(true);
+      expect(canvas().dataset.helper).toBe('1');
+      const g = playTo(level, 5, 1);
+      expect(h.hud()).toMatch(/Round 2 of 3/);
+      expect(h.note()).toMatch(/lights for a moment after a test run/);
+      expect(gauge(frame(R, 0.3))).toBe(false);
+      expect(canvas().dataset.helper).toBe('0');
+      h.setSlider(g[1].ans);
+      expect(gauge(frame(R, 0.3))).toBe(false);
+      h.click(TEST(level));
+      expect(gauge(frame(R, 0.3))).toBe(true);
+      expect(gauge(frame(R, 0.8))).toBe(true);
+      expect(gauge(frame(R, 0.8))).toBe(false);
+      expect(canvas().dataset.helper).toBe('0');
+      const g2 = playTo(level, 5, 2);
+      expect(h.hud()).toMatch(/BOSS/);
+      h.setSlider(g2[2].ans);
+      expect(gauge(frame(R, 0.3))).toBe(false);
+      expect(canvas().dataset.helper).toBe('0');
+    });
+  }
+  it('a miss says which way to change the rate, never the right setting', () => {
+    for (const level of [2, 4]) {
+      h.start(level, 5);
+      const g = build(level, 5);
+      h.setSlider(wrong(g[0]));
+      h.click(FIRE(level));
+      h.advance(3.4);
+      expect(h.feedback()).toMatch(/(Turn the winch (faster|slower)|Try a (higher|lower) rate)\.$/);
+      expect(h.feedback()).not.toMatch(/\d/);
+    }
+  });
 });
 
 describe('Catch Rate', () => {

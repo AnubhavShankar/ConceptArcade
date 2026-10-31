@@ -402,11 +402,8 @@ export function stars(g: G, x: number, y: number, t: number) {
 
 // ---- The duck's ride -----------------------------------------------------------------------------------------------------------------------------------------
 
-export interface DuckPose { x: number; y: number; ang: number; state: 'idle' | 'ride' | 'fall' | 'fly' | 'stuck' | 'float'; mood: DuckMood; landedAt: number | null; u: number }
-const G_LEAK = 900;
-const G_FLY = 1400;
-const VY_FLY = -260;
-/** Where Sir Quacks is, and how he looks, `rt` seconds after Send. Only the player's own flags decide it: a fault happens at its own joint and nowhere else. */
+export interface DuckPose { x: number; y: number; ang: number; state: 'idle' | 'ride' | 'fall' | 'stuck' | 'float'; mood: DuckMood; landedAt: number | null; u: number }
+/** Where Sir Quacks is, and how he looks, `rt` seconds after Send. Only the player's own flags decide it: a fault stops him at its own joint and nowhere else. */
 export function duckPose(r: Round, fault: Fault | null, rt: number): DuckPose {
   const n = r.joints.length;
   const [sx, sy] = slideAt(0);
@@ -428,83 +425,39 @@ export function duckPose(r: Round, fault: Fault | null, rt: number): DuckPose {
     if (s < 1) return { x, y, ang: 0.4 - s * 0.6, state: 'fall', mood: 'happy', landedAt: null, u: 1 };
     return { x: EXIT[0], y: EXIT[1] + Math.sin(rt * 4) * 1.5, ang: Math.sin(rt * 2) * 0.05, state: 'float', mood: 'grin', landedAt: 0.3 + RUN + 0.35, u: 1 };
   }
+  // every fault looks the same: the duck rides to the first wrong joint and stops just before it
   const i = fault.joint;
   const tj = jointTime(r, i);
   const uj = jointU(i, n);
-  if (fault.what === 'needless') {
-    const u = Math.min(ride, uj - 0.035);
-    const [x, y] = at(u);
-    const stuck = rt >= tj;
-    return { x, y, ang: slideAng(u), state: stuck ? 'stuck' : 'ride', mood: stuck ? 'worried' : 'happy', landedAt: null, u };
-  }
-  if (rt < tj) {
-    const [x, y] = at(ride);
-    return { x, y, ang: slideAng(ride), state: 'ride', mood: 'happy', landedAt: null, u: ride };
-  }
-  const [jx, jy] = at(uj);
-  const s = rt - tj;
-  if (fault.what === 'leak') {
-    const land = Math.sqrt((2 * (GROUND - jy)) / G_LEAK);
-    if (s < land) return { x: jx + 18 * s, y: jy + 0.5 * G_LEAK * s * s, ang: slideAng(uj) + s * 2.2, state: 'fall', mood: 'dead', landedAt: null, u: uj };
-    return { x: jx + 18 * land, y: GROUND + Math.sin(rt * 3) * 1.2, ang: slideAng(uj) + land * 2.2 + 0.2, state: 'float', mood: 'dead', landedAt: tj + land, u: uj };
-  }
-  // kink and wrongfix: the duck slams into the bend and is thrown out over the side, spinning
-  const d = GROUND - jy;
-  const land = (-VY_FLY + Math.sqrt(VY_FLY * VY_FLY + 2 * G_FLY * d)) / G_FLY;
-  if (s < land) return { x: jx + 62 * s, y: jy + VY_FLY * s + 0.5 * G_FLY * s * s, ang: s * 14, state: 'fly', mood: 'dizzy', landedAt: null, u: uj };
-  return { x: jx + 62 * land, y: GROUND, ang: 0.35, state: 'float', mood: 'dizzy', landedAt: tj + land, u: uj };
+  const u = Math.min(ride, uj - 0.035);
+  const [x, y] = at(u);
+  const stuck = rt >= tj;
+  return { x, y, ang: slideAng(u), state: stuck ? 'stuck' : 'ride', mood: stuck ? 'dizzy' : 'happy', landedAt: null, u };
 }
 
 // ---- Fault effects (each shows only its own joint) ------------------------------------------------------------------------------------------------
 
-/** The tube splitting open: a dark gap, jagged edges and water gushing out. `age` is seconds since the duck reached the joint. */
-export function leakFx(g: G, x: number, y: number, ang: number, age: number) {
-  g.save();
-  g.translate(x, y);
-  g.rotate(ang);
-  const open = Math.min(1, age / 0.15);
-  rect(g, -7 * open, -17, 14 * open, 34, '#060a24');
-  g.strokeStyle = PAL.red;
-  g.lineWidth = 2;
-  g.beginPath();
-  g.moveTo(-7 * open, -17);
-  for (let k = 1; k <= 4; k++) g.lineTo(-7 * open + (k % 2 ? 4 : -2), -17 + k * 8.5);
-  g.moveTo(7 * open, -17);
-  for (let k = 1; k <= 4; k++) g.lineTo(7 * open + (k % 2 ? -4 : 2), -17 + k * 8.5);
-  g.stroke();
-  g.restore();
+/**
+ * The one fault marker, the same for every kind of fault: a puff of smoke at the joint and a "⚠ FAULT at x = …" tag above it. `age` is seconds
+ * since the duck reached the joint. It says where, never what: no part of it depends on how the joint is wrong.
+ */
+export function faultFx(g: G, x: number, y: number, age: number, label: string) {
+  if (age < 0) return;
   for (let k = 0; k < 5; k++) {
-    const f = (age * 2.2 + k * 0.2) % 1;
-    g.fillStyle = `rgba(160,230,255,${0.8 * (1 - f)})`;
-    g.fillRect(x - 6 + k * 3, y + 10 + f * 70, 2, 8);
+    const f = clamp01(age / 0.7 - k * 0.08);
+    if (f <= 0 || f >= 1) continue;
+    const a = (k * Math.PI * 2) / 5 + 0.6;
+    disc(g, x + Math.cos(a) * 16 * f, y - 4 + Math.sin(a) * 12 * f - 10 * f, 6 + 9 * f, `rgba(220,225,245,${0.7 * (1 - f)})`);
   }
-}
-/** The tube bending at an unsmoothed kink: two thick pieces at different slopes and a starburst of the slam. */
-export function kinkFx(g: G, x: number, y: number, ang: number, age: number) {
-  const bend = Math.min(1, age / 0.12) * 0.55;
-  g.lineCap = 'round';
-  g.strokeStyle = 'rgba(255,155,61,0.85)';
-  g.lineWidth = 9;
-  g.beginPath();
-  g.moveTo(x - Math.cos(ang) * 24, y - Math.sin(ang) * 24);
-  g.lineTo(x, y);
-  g.lineTo(x + Math.cos(ang + bend) * 24, y + Math.sin(ang + bend) * 24);
-  g.stroke();
-  g.lineCap = 'butt';
-  for (let k = 0; k < 8; k++) {
-    const a = (k * Math.PI) / 4 + age * 3;
-    line(g, x + Math.cos(a) * 12, y + Math.sin(a) * 12, x + Math.cos(a) * (18 + 8 * Math.min(1, age * 5)), y + Math.sin(a) * (18 + 8 * Math.min(1, age * 5)), `rgba(255,210,63,${Math.max(0, 1 - age * 1.2)})`, 2);
-  }
-}
-/** A STOP barrier dropping across the tube. */
-export function stopFx(g: G, x: number, y: number, ang: number, age: number) {
-  const drop = 1 - Math.min(1, Math.max(0, (age + 0.15) / 0.15)) ** 2;
+  const pop = clamp01(age / 0.15);
   g.save();
-  g.translate(x, y - drop * 40);
-  g.rotate(ang);
-  for (let k = 0; k < 6; k++) rect(g, -4, -17 + k * 6, 8, 6, k % 2 ? PAL.white : PAL.red);
+  g.translate(x, y - 64);
+  g.scale(0.6 + 0.4 * pop, 0.6 + 0.4 * pop);
+  g.globalAlpha = pop;
+  rrect(g, -78, -12, 156, 24, 6, '#1d1020', PAL.orange);
+  text(g, label, 0, 5, PAL.orange, 13);
   g.restore();
-  if (age > 0) text(g, 'STOP', x, y - 24, PAL.red, 12);
+  g.globalAlpha = 1;
 }
 /** Rings spreading over water where something landed. */
 export function splashRing(g: G, x: number, y: number, age: number) {
@@ -517,10 +470,6 @@ export function splashRing(g: G, x: number, y: number, age: number) {
     g.ellipse(x, y + 8, 8 + f * 30, 3 + f * 8, 0, 0, Math.PI * 2);
     g.stroke();
   }
-}
-/** A puddle spreading from a leak. */
-export function puddle(g: G, x: number, y: number, age: number) {
-  ell(g, x, y + 10, 8 + 26 * clamp01(age / 0.6), 2.5 + 3 * clamp01(age / 0.6), 'rgba(90,190,240,0.55)');
 }
 
 // ---- The repair crew -------------------------------------------------------------------------------------------------------------------------------------

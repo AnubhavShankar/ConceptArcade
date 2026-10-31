@@ -28,7 +28,7 @@
   "estimatedMinutes": 25,
   "levels": [
     {
-      "title": "Hawkeye’s range",
+      "title": "Kestrel’s range",
       "tier": "concept",
       "kind": "foundation",
       "adds": "Baseline: the n-th bright fringe is at x = nλD/d, so the colour of the light decides where a stripe lands (Ex 10.4).",

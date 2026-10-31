@@ -14,6 +14,12 @@ const RED = '#d8232f';
 const SKIN = '#f0c8a0';
 const DIRT = '#6b4a2b';
 
+/** Blaze's number 7 drawn as two strokes (it is a prop on the bike and the jersey, not scene text). */
+function seven(g: G, cx: number, cy: number, s: number, color: string) {
+  line(g, cx - s, cy - s, cx + s, cy - s, color, 1.4);
+  line(g, cx + s, cy - s, cx - s * 0.3, cy + s, color, 1.4);
+}
+
 export function rr(g: G, x: number, y: number, w: number, h: number, r: number) {
   g.beginPath();
   g.moveTo(x + r, y);
@@ -111,7 +117,7 @@ function bikeParts(g: G, t: number, o: RiderOpts) {
   g.fillStyle = PAL.white;
   rr(g, 13, -16 + c, 9, 9, 2);
   g.fill();
-  text(g, '7', 17.5, -8.6 + c, INK, 8);
+  seven(g, 17.5, -11.6 + c, 2.6, INK);
   if (o.nitro) {
     const a = 14 + 8 * Math.sin(t * 40);
     const b = 9 + 5 * Math.cos(t * 37);
@@ -196,7 +202,7 @@ function person(g: G, t: number, o: RiderOpts, dy: number, turn: number) {
   }
   limb(g, [[hx, hy], sh], 9, '#1d4cc4');
   limb(g, [[hx + (sh[0] - hx) * 0.4, hy + (sh[1] - hy) * 0.4], sh], 10, '#8b90a8');
-  text(g, '7', hx + (sh[0] - hx) * 0.3 - 0.5, hy + (sh[1] - hy) * 0.3 + 2.4, PAL.white, 6.5);
+  seven(g, hx + (sh[0] - hx) * 0.3 - 0.5, hy + (sh[1] - hy) * 0.3, 1.9, PAL.white);
   helmet(g, P.head[0], P.head[1] + dy, t, o.mood, turn);
   for (const a of P.arms) {
     limb(g, [sh, [a[0], a[1] + dy], [a[2], a[3] + dy]], 3.8, '#1d4cc4');
@@ -366,9 +372,9 @@ export function sign(g: G, x: number, y: number, w: number, h: number, title: st
   g.strokeStyle = PAL.cyan;
   g.lineWidth = 1.4;
   g.stroke();
-  text(g, title, x + 10, y + 15, PAL.dim, 10, 'left');
+  text(g, title, x + 10, y + 15, PAL.dim, 11, 'left');
   text(g, body, x + 10, y + 33, PAL.yellow, 14, 'left');
-  if (extra) text(g, extra, x + 10, y + 47, PAL.white, 10, 'left');
+  if (extra) text(g, extra, x + 10, y + 49, PAL.white, 11, 'left');
 }
 
 // ---- The kicker, the landing ramp, the gauges ------------------------------------------------------------------------------------------------------------
@@ -417,7 +423,7 @@ export function spinGauge(g: G, cx: number, cy: number, r: number, deg: number, 
   const ang = (d: number) => (d * Math.PI) / 180 - Math.PI / 2;
   for (const d of [0, 90, 180, 270]) {
     line(g, cx + Math.cos(ang(d)) * (r - 7), cy + Math.sin(ang(d)) * (r - 7), cx + Math.cos(ang(d)) * r, cy + Math.sin(ang(d)) * r, PAL.dim, 2);
-    text(g, String(d), cx + Math.cos(ang(d)) * (r - 15), cy + Math.sin(ang(d)) * (r - 15) + 3, PAL.dim, 8);
+    text(g, String(d), cx + Math.cos(ang(d)) * (r - 17), cy + Math.sin(ang(d)) * (r - 17) + 4, PAL.dim, 11);
   }
   line(g, cx + Math.cos(ang(targetDeg)) * (r - 9), cy + Math.sin(ang(targetDeg)) * (r - 9), cx + Math.cos(ang(targetDeg)) * (r + 3), cy + Math.sin(ang(targetDeg)) * (r + 3), PAL.red, 3);
   line(g, cx, cy, cx + Math.cos(ang(deg)) * (r - 10), cy + Math.sin(ang(deg)) * (r - 10), PAL.yellow, 2.4);
@@ -426,7 +432,7 @@ export function spinGauge(g: G, cx: number, cy: number, r: number, deg: number, 
   g.arc(cx, cy, 3, 0, Math.PI * 2);
   g.fill();
   text(g, `${Math.round(deg)}°`, cx, cy + r + 13, PAL.yellow, 12);
-  text(g, 'SPIN', cx, cy - r - 5, PAL.dim, 9);
+  text(g, 'SPIN', cx, cy - r - 5, PAL.dim, 11);
 }
 
 /** The speedometer: a half dial from 0 to 220 km/h, a needle at `kmh`, a red mark at `target`, and the speed in digits. */
@@ -442,7 +448,7 @@ export function speedo(g: G, cx: number, cy: number, r: number, kmh: number, tar
   const ang = (v: number) => Math.PI + (Math.max(0, Math.min(220, v)) / 220) * Math.PI;
   for (const v of [0, 55, 110, 165, 220]) {
     line(g, cx + Math.cos(ang(v)) * (r - 6), cy + Math.sin(ang(v)) * (r - 6), cx + Math.cos(ang(v)) * r, cy + Math.sin(ang(v)) * r, PAL.dim, 2);
-    text(g, String(v), cx + Math.cos(ang(v)) * (r - 15), cy + Math.sin(ang(v)) * (r - 15) + 3, PAL.dim, 8);
+    text(g, String(v), cx + Math.cos(ang(v)) * (r - 17), cy + Math.sin(ang(v)) * (r - 17) + 4, PAL.dim, 11);
   }
   line(g, cx + Math.cos(ang(target)) * (r - 9), cy + Math.sin(ang(target)) * (r - 9), cx + Math.cos(ang(target)) * (r + 3), cy + Math.sin(ang(target)) * (r + 3), PAL.red, 3);
   line(g, cx, cy, cx + Math.cos(ang(kmh)) * (r - 8), cy + Math.sin(ang(kmh)) * (r - 8), PAL.yellow, 2.4);

@@ -99,17 +99,11 @@ export const buildRounds = (level: Level, random: () => number): Round[] => POOL
 export const want = (level: Level, j: Joint): 'fine' | 'kink' | 'gap' => (j.kind === 'gap' ? 'gap' : level === 1 || j.kind === 'smooth' ? 'fine' : 'kink');
 export const complete = (flags: Flag[], n: number) => flags.length >= n && flags.slice(0, n).every((f) => f !== null);
 export const judge = (r: Round, flags: Flag[]) => complete(flags, r.joints.length) && r.joints.every((j, i) => flags[i] === want(r.level, j));
-export type Fault = { joint: number; what: 'leak' | 'kink' | 'needless' | 'wrongfix' };
-/** The first joint (left to right) where the flag is wrong, and what happens there. */
+/** A fault is only a position: the first joint where the flag is wrong. It never says what kind of fault it is or what the joint needed (owner decision, 2026-10-31). */
+export type Fault = { joint: number };
+/** The first joint (left to right) where the flag is wrong. */
 export function firstFault(r: Round, flags: Flag[]): Fault | null {
-  for (let i = 0; i < r.joints.length; i++) {
-    const w = want(r.level, r.joints[i]);
-    const f = flags[i];
-    if (f === w) continue;
-    if (w === 'gap') return { joint: i, what: 'leak' };          // a gap left open, or only smoothed
-    if (w === 'kink') return { joint: i, what: f === 'gap' ? 'wrongfix' : 'kink' };
-    return { joint: i, what: 'needless' };                        // a repair ordered on a fine joint
-  }
+  for (let i = 0; i < r.joints.length; i++) if (flags[i] !== want(r.level, r.joints[i])) return { joint: i };
   return null;
 }
 export const RUN = 1.6;  // seconds from the start of the ride to the pool
@@ -147,14 +141,15 @@ export const intel = (r: Round) => `Blueprint: ${r.name}, from x = ${r.loText} t
 export const hintLine = (r: Round) => `${intel(r)} ${r.assist === 0 ? 'Round 1: the zoom shows the joint you last tapped.' : r.assist === 1 ? 'No zoom: a zoom drone costs a charge.' : 'Boss round: no zoom.'}`;
 export const jointAria = (j: Joint) => `Joint at x = ${j.cText}`;
 
+/** The text for the one joint where the ride stopped: the position only, never the kind of fault or what the joint needed. */
+export const faultText = (r: Round, joint: number) => `⚠ FAULT at x = ${r.joints[joint].cText}`;
+/** A miss says where the first fault is, and what to do about it in plain words; the same for every wrong flag at that joint. */
 export function missText(r: Round, flags: Flag[]): string {
   const f = firstFault(r, flags);
   if (!f) return '';
   const x = `x = ${r.joints[f.joint].cText}`;
-  if (f.what === 'leak') return `At ${x} the tube was broken and nobody patched it: Sir Quacks dropped out of the slide into the pool.`;
-  if (f.what === 'kink') return `At ${x} the tube bent sharply and nobody smoothed it: Sir Quacks slammed into the kink and flew over the side.`;
-  if (f.what === 'wrongfix') return `At ${x} the welder came to patch a gap, but the tube was joined there with a sharp bend: the kink stayed and Sir Quacks flew over the side.`;
-  return `At ${x} a repair crew was sent where the slide needed nothing: the whistle blew and the test was stopped.`;
+  const look = r.level === 1 ? 'the left piece, the right piece and the value there' : 'the two sides, the value and the slopes there';
+  return `Sir Quacks stopped at the joint at ${x}: the inspector found a fault there. Work out again what the slide does at that joint (${look}), and change your flag.`;
 }
 export const zoomText = (r: Round, i: number) => `Zoom drone at x = ${r.joints[i].cText}: close-up of the joint for a moment.`;
 export function explain(r: Round): string {

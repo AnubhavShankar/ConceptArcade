@@ -3,11 +3,18 @@
 // the rail's tangent. The art is in art.ts. The rail drawn on screen is a fixed decoration, never the graph of f.
 // A miss shows only "above" or "below": the robot hits the hull 2 m past the clamp on the side it really passes (missEnd), never at the true height.
 import { PAL } from '@core/arcade';
+import { FLASH } from '@core/aidflash';
 import { defineGame } from '@core/define';
 import { mountDialLevel, type DialLevel, type SceneInput } from '@core/dialgame';
 import { line, text } from '@core/neon';
 import { CLAMP_X, LASER_DASH, REL, WALL, clampRing, clampY, hull, orbit, rail, ruler, sign, station, vega, type OrbitMood, type VegaMood } from './art';
 import { DIAL, DOCK, buildRounds, heightText, hintText, judge, missEnd, missText, pingText, winText, type Round } from './logic';
+import { goalLine, grip, tag, tint, wasTouched } from './ux';
+
+/** The clamp handle's grab radius, in scene pixels (about 44 px on a phone). */
+export const HANDLE_RADIUS = 18;
+/** The round's goal as one short line on the scene, the same for every level. */
+export const GOAL = 'Goal: catch Orbit in the clamp';
 
 const ARIA = 'A maintenance robot on a curved space-station rail, about to drift across to a docking clamp on the hull wall that the player slides up or down.';
 const ROLE = 'a maintenance robot that rides the rails of a space station and must drift into its docking clamp';
@@ -47,12 +54,15 @@ function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
   let lastK = -1;
   let lastH = 0;
   let lastOk = false;
+  let roundT0 = 0;
+  let moved = false;
   const fx = { shot: null as unknown, clack: false, verdict: false };
 
   function drawScene(s: SceneInput<Round>) {
     const { g, r, k, t, rt, shot, A } = s;
     if (k !== lastK) {
       lastK = k;
+      roundT0 = t;
       pingPending = false;
       pingAt = -10;
     }
@@ -72,6 +82,7 @@ function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
     else delete A.canvas.dataset.driftEnd;
 
     station(g, t);
+    tint(g, k);
     hull(g, t, ok && docked ? 'green' : 'amber');
     ruler(g);
     sign(g, 'RAIL', r.text, `release at x = ${r.x0Text} · wall ${r.d} m away`);
@@ -93,7 +104,7 @@ function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
         g.lineTo(cx + Math.cos(a - 2.5) * 5, cy + Math.sin(a - 2.5) * 5);
         g.fill();
       }
-      text(g, 'GUIDE LASER', (REL.x + CLAMP_X) / 2, (REL.y + ly) / 2 - 9, PAL.pink, 9);
+      text(g, 'GUIDE LASER', (REL.x + CLAMP_X) / 2, (REL.y + ly) / 2 - 9, PAL.pink, 11);
     }
 
     // Orbit
@@ -145,9 +156,9 @@ function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
     }
     orbit(g, rx, ry, { t, mood, claw, flash, rot, hang, scale: S, wave });
 
-    // the pings: a ring from Orbit and an arrow on the clamp (direction only), for a short time after the charge is spent
+    // the pings: a ring from Orbit and an arrow on the clamp (direction only), for 1.5 s after the charge is spent
     const dp = t - pingAt;
-    if (!shot && dp >= 0 && dp < 1.8) {
+    if (!shot && dp >= 0 && dp < FLASH) {
       if (dp < 1.2) {
         for (const delay of [0, 0.25]) {
           const q = (dp - delay) / 0.95;
@@ -160,7 +171,7 @@ function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
           g.stroke();
           g.globalAlpha = 1;
         }
-        text(g, 'PING', REL.x, REL.y - 40, PAL.cyan, 10);
+        text(g, 'PING', REL.x, REL.y - 40, PAL.cyan, 11);
       }
       const py = clampY(pingH);
       if (pingH === r.ans) text(g, '◎', CLAMP_X - 30, py + 5, PAL.green, 16);
@@ -177,9 +188,17 @@ function level(n: 1 | 2 | 3 | 4 | 5, random: () => number): DialLevel<Round> {
     const cy = clampY(h);
     const tone = shot && docked ? (ok ? 'win' : rt - DOCK < 0.5 ? 'miss' : 'idle') : 'idle';
     clampRing(g, CLAMP_X, cy, t, ok && docked ? ease((rt - DOCK) / 0.25) : 0, tone);
+    // the player's own setting with its unit, beside the clamp (not drawn once the robot is released)
     g.fillStyle = 'rgba(8,12,40,0.85)';
-    g.fillRect(432, cy - 9, 40, 18);
+    g.fillRect(430, cy - 9, 44, 18);
     text(g, `${heightText(h)} m`, 452, cy + 4, PAL.yellow, 11);
+    if (!shot) {
+      if (h !== r.start) moved = true;
+      const cue = n === 1 && k === 0 && !moved && !wasTouched(A.canvas);
+      grip(g, A.canvas, t, { x: CLAMP_X, y: cy, r: HANDLE_RADIUS, dir: 'v', read: '', side: 'left', cue });
+      if (cue) tag(g, 'drag ⇕', 426, cy + 4, 'right', PAL.yellow, 12);
+      goalLine(g, GOAL, t - roundT0, false, 22, 300);
+    }
 
     // Commander Vega in the airlock window
     let vm: VegaMood = 'idle';

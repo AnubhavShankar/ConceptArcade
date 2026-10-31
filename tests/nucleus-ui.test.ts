@@ -39,7 +39,7 @@ shellTests<G>(h, {
   commit: (level) => h.click(FIRE[level - 1]),
 });
 
-describe('level 1: Katamari’s radius', () => {
+describe('level 1: Clump’s radius', () => {
   it('a ball too big or too small is described, and a test shot gives the cube root of A', () => {
     h.start(1, 5);
     const g = build(1, 5);

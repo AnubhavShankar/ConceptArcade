@@ -155,8 +155,12 @@ export function spotText(r: Round, v: number, state: number[] = []): string {
   const [n, d] = drawChance(r, v);
   return `Check: with ${v} red cards the chance is ${frac(n, d)}.`;
 }
-/** After a miss. */
+/** After a miss. Level 1 (the plain board) says only that a mark is wrong: counts of missing, extra or wrongly coloured cards would let a board of all-yellow
+ * cards print |B| and |A ∩ B|. Level 4 keeps its reviewed text. Levels 2 and 3 give the direction only: the product or the chance at the player's own value is the paid check. */
 export function missText(r: Round, v: number, state: number[] = []): string {
+  if (r.kind === 'board' && !r.ev) return 'The dealer checked the table and at least one card is marked wrong. Re-read B, mark every card that fits it once, then mark again only the cards that also fit A.';
+  // Level 4: round 1 (live count) may describe the fault; rounds 2 and 3 get one generic text, so an all-yellow board cannot read |B| off it.
+  if (r.kind === 'board' && r.assist > 0) return 'The dealer checked the table and at least one card is marked wrong. Re-read B, mark every card that fits it once, then mark again only the cards that also fit the event.';
   if (r.kind === 'board') {
     const missing = r.target.filter((x, i) => x > 0 && state[i] === 0).length;
     const extra = state.filter((x, i) => x > 0 && r.target[i] === 0).length;
@@ -167,9 +171,8 @@ export function missText(r: Round, v: number, state: number[] = []): string {
     if (wrongLevel) bits.push(`${wrongLevel} card${wrongLevel === 1 ? ' is' : 's are'} in B but marked the wrong colour for ${r.ev ? 'the event' : 'A'}`);
     return `The dealer checked the table: ${bits.join('; ') || 'the marks do not match'}.`;
   }
-  if (r.kind === 'indep') return `With that P(B) the product P(A)·P(B) comes to ${frac(r.a * v, 144)}, ${r.a * v > r.a * r.ans ? 'more' : 'less'} than P(A ∩ B), so A and B are not independent.`;
-  const [n, d] = drawChance(r, v);
-  return `With ${v} red cards the chance is ${frac(n, d)}, ${n / d > drawChance(r, r.ans)[0] / drawChance(r, r.ans)[1] ? 'more' : 'less'} than the chance stated.`;
+  if (r.kind === 'indep') return `With that P(B) the product P(A)·P(B) comes out ${v > r.ans ? 'more' : 'less'} than P(A ∩ B), so A and B are not independent. Set ${v > r.ans ? 'a smaller' : 'a larger'} k.`;
+  return `With that many red cards the chance of the draw comes out ${v > r.ans ? 'more' : 'less'} than the chance stated. Set ${v > r.ans ? 'fewer' : 'more'} red cards.`;
 }
 /** After a hit. */
 export function explain(r: Round): string {

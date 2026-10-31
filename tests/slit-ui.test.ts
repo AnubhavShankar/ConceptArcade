@@ -4,6 +4,9 @@ import game from '../src/games/physics/class-12/ch10-wave-optics/slit-dash/index
 import { LAMP, SLIDERS, gaugeRounds, hunterRounds, lampMiss, lampRounds, lockRounds } from '../src/games/physics/class-12/ch10-wave-optics/slit-dash/logic';
 import { createRng } from '../src/core/random';
 import { arcadeHarness, shellTests } from './helpers/arcade-harness';
+import { canvasRecorder, type Rec } from './helpers/canvas-rec';
+import { HANDLE_R } from '../src/games/physics/class-12/ch10-wave-optics/slit-dash/index';
+import { GRIP_MIN } from '../src/games/physics/class-12/ch10-wave-optics/slit-dash/ux';
 
 const h = arcadeHarness(game, 'sd', 4);
 type G = { hunt: ReturnType<typeof hunterRounds>; lock: ReturnType<typeof lockRounds>; gauge: ReturnType<typeof gaugeRounds>; lamp: ReturnType<typeof lampRounds> };
@@ -33,7 +36,7 @@ shellTests<G>(h, {
   commit: (level) => h.click(FIRE[level - 1]),
 });
 
-describe('level 1: Hawkeye’s range', () => {
+describe('level 1: Kestrel’s range', () => {
   it('a test shot costs a charge and tells where the stripe lands; the colour dial moves with the handle', () => {
     h.start(1, 5);
     h.click('Test shot: see where the bright stripe lands');
@@ -182,7 +185,7 @@ describe('level 4: lamps or lasers', () => {
     h.setSlider(g.lamp[0].sol);
     h.click(FIRE[3]);
     h.advance(3.8);
-    expect(h.note()).toMatch(/sum is hidden: a phase check costs a charge/);
+    expect(h.note()).toMatch(/waves show for a moment after a phase check, which costs a charge; the sum is hidden/);
     h.setSlider(g.lamp[1].sol);
     h.click(FIRE[3]);
     h.advance(3.8);
@@ -203,5 +206,95 @@ describe('level 4: lamps or lasers', () => {
     expect(h.sliders()[0].value).toBe('8');
     h.pointer('pointermove', 560, 280 - 3 * 30);
     expect(h.sliders()[0].value).toBe('3');
+  });
+});
+
+describe('Slit Dash UX pass', () => {
+  const TESTS = ['Test shot: see where the bright stripe lands', 'Test shot: read the fringe order of each colour here', 'Test shot: measure the resultant amplitude', PHASE_CHECK];
+  type R = ReturnType<typeof canvasRecorder>;
+  const frame = (R: R, dt: number) => {
+    if (dt > 0.05) h.advance(dt - 0.05);
+    R.clear();
+    h.advance(0.05);
+    return R.rec;
+  };
+  /** Whether this level's helper (stripes, patterns, waves) is on the canvas this frame. */
+  const helperDrawn = (level: number, rec: Rec) =>
+    level === 1 ? rec.at.some((a) => /^stripe spacing /.test(a.s))
+    : level === 2 ? !rec.at.some((a) => a.s === '?')
+    : rec.strokes.some((s) => s.style === '#4de1ff' && s.n >= 90);
+  const right = (level: number, g: G, k: number) => h.setSlider(level === 1 ? g.hunt[k].lamSol : level === 2 ? g.lock[k].xSol : level === 3 ? g.gauge[k].sol : g.lamp[k].sol);
+  const wrongSet = (level: number, g: G, k: number) =>
+    h.setSlider(level === 1 ? g.hunt[k].lamSol + 100 : level === 2 ? (g.lock[k].xSol > 6 ? g.lock[k].xSol - 2.3 : g.lock[k].xSol + 2.3) : level === 3 ? (g.gauge[k].sol > 0.5 ? g.gauge[k].sol - 0.4 : g.gauge[k].sol + 0.4) : g.lamp[k].sol === LAMP.max ? LAMP.max - 1 : g.lamp[k].sol + 1);
+  const playTo = (level: number, seed: number, k: number) => {
+    h.start(level, seed);
+    const g = build(level, seed);
+    for (let i = 0; i < k; i++) {
+      right(level, g, i);
+      h.click(FIRE[level - 1]);
+      h.advance(3.8);
+    }
+    return g;
+  };
+  it('every handle is at least 18 px in radius', () => {
+    expect(HANDLE_R).toBeGreaterThanOrEqual(18);
+    expect(GRIP_MIN).toBeGreaterThanOrEqual(18);
+  });
+  for (const level of [1, 2, 3, 4]) {
+    it(`level ${level}: the goal line is drawn at round start and fades; the grip is at least 18 px; the player's own setting is beside it`, () => {
+      const R = canvasRecorder();
+      h.start(level, 5);
+      const rec = frame(R, 0.05);
+      const goals = rec.at.filter((a) => /^Goal: /.test(a.s));
+      expect(goals.length).toBe(1);
+      expect(goals[0].y).toBeGreaterThanOrEqual(12);
+      const spots: [number, number][] = [[162, 312], [440, 278], [470 - 130 * Math.cos(Math.PI * SLIDERS.g.start), 270 - 130 * Math.sin(Math.PI * SLIDERS.g.start)], [560, 280 - LAMP.start * 30]];
+      const [sx, sy] = spots[level - 1];
+      expect(rec.arcs.some((a) => Math.abs(a.x - sx) < 1 && Math.abs(a.y - sy) < 1 && a.r >= 18)).toBe(true);
+      const own = [/^\d+ nm/, /^[\d.]+ mm$/, /^[\d.]+ K$/, /^[\d.]+ I₀$/][level - 1];
+      expect(rec.at.some((a) => own.test(a.s))).toBe(true);
+      expect(frame(R, 4).at.some((a) => /^Goal: /.test(a.s))).toBe(false);
+    });
+    it(`level ${level}: the helper is live in round 1, shows 1.5 s after a paid check in round 2, never in round 3`, () => {
+      const R = canvasRecorder();
+      h.start(level, 5);
+      expect(helperDrawn(level, frame(R, 0.1))).toBe(true);
+      expect(h.$('canvas')!.dataset.helper).toBe('1');
+      const g = playTo(level, 5, 1);
+      expect(h.hud()).toMatch(/Round 2 of 3/);
+      wrongSet(level, g, 1);
+      expect(helperDrawn(level, frame(R, 0.3))).toBe(false);
+      expect(h.$('canvas')!.dataset.helper).toBe('0');
+      h.click(TESTS[level - 1]);
+      expect(helperDrawn(level, frame(R, 0.3))).toBe(true);
+      expect(helperDrawn(level, frame(R, 0.8))).toBe(true);
+      expect(helperDrawn(level, frame(R, 0.8))).toBe(false);
+      expect(h.$('canvas')!.dataset.helper).toBe('0');
+      // a miss does not bring the helper back
+      h.click(FIRE[level - 1]);
+      h.advance(3.8);
+      expect(helperDrawn(level, frame(R, 0.3))).toBe(false);
+      const g2 = playTo(level, 5, 2);
+      expect(h.hud()).toMatch(/BOSS/);
+      wrongSet(level, g2, 2);
+      expect(helperDrawn(level, frame(R, 0.3))).toBe(false);
+      // even a paid check in round 3 (levels 1 to 3 still have one) draws no helper
+      if (level <= 3) {
+        h.click(TESTS[level - 1]);
+        expect(helperDrawn(level, frame(R, 0.3))).toBe(false);
+      }
+      expect(h.$('canvas')!.dataset.helper).toBe('0');
+    });
+  }
+  it('level 1: the stripe spacing is no longer always on (it is part of the helper), and the first-touch cue ends at the first press', () => {
+    const R = canvasRecorder();
+    h.start(1, 5);
+    expect(frame(R, 0.1).at.some((a) => / · drag$/.test(a.s))).toBe(true);
+    h.pointer('pointerdown', 162, 312);
+    h.pointer('pointerup', 162, 312);
+    expect(frame(R, 0.1).at.some((a) => / · drag$/.test(a.s))).toBe(false);
+    playTo(1, 5, 2);
+    expect(h.hud()).toMatch(/BOSS/);
+    expect(frame(R, 0.3).at.some((a) => /^stripe spacing /.test(a.s))).toBe(false);
   });
 });

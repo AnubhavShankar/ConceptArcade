@@ -1,274 +1,389 @@
+// Inspirations (code comment only): cooking-rush games (serve the order before the timer ends: a train that leaves on time), and photo-timing games
+// (snap at the exact moment) for level 4. The player rigs a railway chai stall's electric kettle by hand (a clip along the coil, a voltage selector knob,
+// a brew timer, a phasor arm) and flips the stall switch. The art is in art.ts.
+// Never leak the answer: the plume has three fixed sizes (0.3, 1, 1.6), the stove glow three fixed colours, the photo one of three looks; the stall meter LCD
+// is the only helper (live in round 1, for 1.5 s after a meter check in round 2, never in round 3); no voltage arrow is ever drawn on the phasor circle but the
+// player's own arm; `hit` is a fixed point; every animation ends by 2.3 s.
+import { PAL } from '@core/arcade';
 import { defineGame } from '@core/define';
-import { disc, label, themeColors } from '@core/draw';
-import { h } from '@core/dom';
-import { parseNumber } from '@core/quiz';
-import { fitCanvas, startLoop } from '@core/sim';
-import { buildLevel, explainSolution, fmt, judgeBulb, judgeConvert, judgeCycle, judgeInstant, starsFor, type Phase } from './logic';
+import { mountDialLevel, type DialLevel, type DialSpec, type HandleSpec, type SceneInput } from '@core/dialgame';
+import { helperOn, paidFlash } from '@core/aidflash';
+import { track, trackHandle } from '@core/mathkit';
+import {
+  CAMERA, COIL_TRACK, CUP, KNOB, PHASOR, STALL, camera, clamp01, clipX, coilBoard, counter, ease, foam, fuseBox, glidingCup, goalPill, gopal, grip, guard, iyer, kettle, knob, knobAngle,
+  lcd, neonSign, orderSlip, photo, plume, scopeBox, spoutTip, station, stallBack, stream, tag, timerClock, train,
+  type GopalMood, type IyerMood, type ScopeMode,
+} from './art';
+import { DEG, DIAL, LCD_OFF, PLUME, buildRounds, fault, goal, hintText, judge, lcdText, meterText, missText, verdictDelay, winText, type Fault, type Round, type Values } from './logic';
 
-const W = 640;
-const H = 340;
-const REVEAL = 0.9;
-const RUN = 3;
-const GX = 330;
-const GW = 280;
-const GY = 130;
+const ARIA = 'A railway platform: a chai-seller at his stall with an electric kettle, a pocket scope and a neon sign, and a passenger waiting at a train window.';
+const ROLE = 'the chai-seller on Platform 3, whose electric kettle runs on the station’s AC supply';
+const HEROES = [
+  {
+    story: 'Trains stop at Platform 3 for two minutes, and every passenger wants Gopal’s chai. His kettle’s coil burnt out, so he must fit a new one from a roll of bare nichrome wire. The rating on the kettle, power at a voltage, is an rms rating: the coil must give that power at that rms voltage. Too little resistance draws more current than the stall’s fuse allows.',
+    objective: 'Slide the clip to the coil resistance that gives the rated power, before the whistle, in three trains.',
+  },
+  {
+    story: 'The station’s supply changes from one platform to the next, and the only meter Gopal has is a pocket scope. A scope shows the peak of the wave, but the kettle’s selector is marked in rms volts, like every rating. The peak is √2 times the rms value.',
+    objective: 'Turn the selector to the supply’s rms voltage, read from the scope’s peak, in three trains.',
+  },
+  {
+    story: 'Each order needs a set amount of heat. In a resistor the power v·i rises and falls twice every cycle but never goes negative, and its average is V_rms I_rms = V²/R, half its peak. The timer switches the kettle off.',
+    objective: 'Set the timer so the chai gets exactly the heat it needs: not lukewarm, not boiling over.',
+  },
+  {
+    story: 'A travel magazine wants a photo of the neon CHAI sign at the instant it strikes. The neon strikes when the supply first reaches a set voltage; the camera is synced to the mains phasor, v = v_m sin ωt. The kettle’s current is in phase with the voltage, i = i_m sin ωt, so a relay on the kettle line can trigger the shot too.',
+    objective: 'Swing the phasor arm to the instant the sign strikes, and get the shot in three trains.',
+  },
+];
+const ORDERS = ['Masala', 'Ginger', 'Elaichi'];
+
+type Out = 'win' | Fault;
+type Cr = Extract<Round, { kind: 'coil' }>;
+
+const clip: HandleSpec<Round> = {
+  dial: 'r',
+  at: (_r, v) => [clipX(v.r), COIL_TRACK.y],
+  drag: (_r, px) => 10 + ((px - COIL_TRACK.x0) / (COIL_TRACK.x1 - COIL_TRACK.x0)) * 110,
+  radius: 20,
+};
+const knobHandle: HandleSpec<Round> = {
+  dial: 'v',
+  at: (_r, v) => [KNOB.x + KNOB.tip * Math.sin(knobAngle(v.v)), KNOB.y - KNOB.tip * Math.cos(knobAngle(v.v))],
+  drag: (_r, px, py) => 100 + ((Math.atan2(px - KNOB.x, KNOB.y - py) / DEG + 120) / 240) * 150,
+  radius: 18,
+};
+const arm: HandleSpec<Round> = {
+  dial: 'th',
+  at: (_r, v) => [PHASOR.x + PHASOR.r * Math.cos(v.th * DEG), PHASOR.y - PHASOR.r * Math.sin(v.th * DEG)],
+  drag: (_r, px, py) => (Math.atan2(PHASOR.y - py, px - PHASOR.x) / DEG + 360) % 360,
+  radius: 18,
+};
+
+function level(n: 1 | 2 | 3 | 4, random: () => number): DialLevel<Round> {
+  const rounds = buildRounds(n, random);
+  const flash = paidFlash();
+  const fx = { shot: null as unknown, done: new Set<string>() };
+  let hooked = false;
+  let dragged = false;
+
+  function draw(s: SceneInput<Round>) {
+    const { g, r, k, t, rt, shot, A } = s;
+    const v = s.v as Values;
+    if (!hooked) {
+      hooked = true;
+      A.canvas.addEventListener('pointerdown', () => (dragged = true));
+    }
+    if (fx.shot !== shot) {
+      fx.shot = shot;
+      fx.done.clear();
+    }
+    const once = (key: string, fn: () => void) => {
+      if (!fx.done.has(key)) {
+        fx.done.add(key);
+        fn();
+      }
+    };
+
+    // the stall meter LCD, the only helper: live in round 1, for 1.5 s after a meter check in round 2, never in round 3
+    const live = helperOn(r.assist, false, flash.since(t, k));
+    A.canvas.dataset.lcd = live ? '1' : '0';
+
+    const tv = shot ? verdictDelay(r, shot.v as Values) : 0;
+    const since = shot ? rt - tv : -1; // seconds since the verdict
+    const f = shot ? fault(r, shot.v as Values) : null;
+    const out: Out | null = shot ? (shot.ok ? 'win' : (f ?? 'weak')) : null;
+    if (out) A.canvas.dataset.take = out;
+    else delete A.canvas.dataset.take;
+
+    // defaults: the stall at rest, Gopal waiting
+    let glowColor: string | null = null;
+    let glowA = 1;
+    let plumeH = 0;
+    let plumeA = 1;
+    let flip = 0;
+    let lever = 0;
+    let gMood: GopalMood = 'happy';
+    let iMood: IyerMood = 'wait';
+    let iU = 0;
+    let dx = 0;
+    let whistle = false;
+    let kTilt = 0;
+    let kLift = -1;
+    let streamTo = false;
+    let cupU = -1;
+    let foamU = -1;
+    let lit: 0 | 1 | 2 = 0;
+    let armTh = v.th ?? 0;
+    let camFlash = 0;
+    let flashA = 0;
+    let photoState: { kind: 'win' | 'early' | 'late'; u: number; label: string } | null = null;
+    let bulbs = true;
+    let blown = false;
+    let timerAngle = ((v.t ?? 30) / 300) * Math.PI * 2;
+
+    if (shot) {
+      flip = rt < 0.5 ? ease(rt / 0.15) : 1 - ease((rt - 0.5) / 0.2);
+      lever = ease(rt / 0.15);
+      if (rt >= 0) once('click', () => A.float('CLICK', 40, 178, PAL.white));
+    }
+
+    // the serve: a low pour into the cup, the cup slides along the sill to Mr. Iyer
+    const serve = (ts: number, gs: number, ge: number) => {
+      kLift = 0;
+      kTilt = 0.5 * ease((rt - ts) / 0.12) * (1 - ease((rt - (gs - 0.08)) / 0.08));
+      streamTo = kTilt > 0.35;
+      if (rt >= gs && rt < ge) cupU = (rt - gs) / (ge - gs);
+    };
+    // Gopal’s high pour after a win: the kettle held up, a 60 px arc of chai into the cup
+    const highPour = () => {
+      if (since < 0.1) return;
+      const u = since - 0.1;
+      kLift = 28 * ease(u / 0.15);
+      kTilt = 0.55 * ease(u / 0.15) * (1 - ease((u - 0.3) / 0.1));
+      streamTo = u > 0.12 && u < 0.4;
+    };
+
+    if (r.kind === 'coil' || r.kind === 'scope') {
+      if (shot) {
+        const base = out === 'blow' ? '#ffffff' : out === 'weak' ? '#8a2a1a' : '#ff9b3d';
+        glowColor = base;
+        glowA = ease(rt / 0.4);
+        if (out === 'blow') {
+          if (rt >= 0.45) {
+            blown = true;
+            bulbs = false;
+            glowColor = null;
+            gMood = 'sooty';
+            once('bang', () => {
+              A.float('BANG!', 56, 96, PAL.yellow);
+              A.burst(40, 120, PAL.yellow, 14, 150);
+              A.shake(6);
+            });
+            if (rt < 0.6) flashA = 0.35 * (1 - (rt - 0.45) / 0.15);
+          }
+          if (rt >= 0.55) iMood = 'blow';
+          iU = rt - 0.55;
+        } else if (out === 'weak') {
+          plumeH = PLUME.weak;
+          plumeA = ease((rt - 0.4) / 0.2);
+          if (rt >= 1.0) {
+            whistle = true;
+            dx = 300 * ease((rt - 1.0) / 1.2);
+            iMood = 'weak';
+            once('tweet', () => A.float('TWEET!', 600, 230, PAL.yellow));
+          }
+          if (since >= 0) gMood = 'worried';
+        } else {
+          plumeH = PLUME.right;
+          plumeA = ease((rt - 0.4) / 0.2);
+          serve(0.5, 0.9, 1.1);
+          if (since >= 0) {
+            gMood = 'cheer';
+            iMood = 'win';
+            iU = since;
+            once('aah', () => A.float('AAH!', 500, 140, PAL.green));
+            highPour();
+          }
+        }
+      }
+    } else if (r.kind === 'brew') {
+      timerAngle = (((v.t ?? 30) / 300) + clamp01(rt / 0.8)) * Math.PI * 2;
+      if (shot) {
+        glowColor = '#ff9b3d';
+        glowA = ease(rt / 0.3);
+        if (out === 'cold') {
+          plumeH = PLUME.weak;
+          plumeA = ease((rt - 0.5) / 0.2);
+        } else if (out === 'over') {
+          plumeH = PLUME.over;
+          plumeA = ease((rt - 0.7) / 0.1);
+          if (rt >= 0.6) foamU = (rt - 0.6) / 0.4;
+          if (rt >= 0.7) once('pssh', () => A.float('PSSSH!', 200, 150, PAL.white));
+        } else {
+          plumeH = PLUME.right;
+          plumeA = ease((rt - 0.5) / 0.3);
+        }
+        if (rt >= 0.8) once('ding', () => A.float('DING', 92, 244, PAL.yellow));
+        serve(0.76, 0.88, 1.0);
+        if (since >= 0) {
+          if (out === 'win') {
+            gMood = 'cheer';
+            iMood = 'win';
+            highPour();
+          } else {
+            gMood = 'worried';
+            iMood = out === 'cold' ? 'cold' : 'over';
+            whistle = true;
+            once('tweet', () => A.float('TWEET!', 600, 230, PAL.yellow));
+          }
+          iU = since;
+          once('react', () => A.float(out === 'win' ? 'AAH!' : out === 'cold' ? 'COLD!' : 'HOT!', 500, 140, out === 'win' ? PAL.green : PAL.orange));
+        }
+      }
+    } else {
+      const th = v.th ?? 0;
+      if (shot) {
+        armTh = th * ease(rt / 0.6);
+        glowColor = '#ff9b3d';
+        glowA = ease(rt / 0.3);
+        const win = out === 'win';
+        // the sign: dark through the sweep; strikes at the flash if the shot is right, before it if late, after it if early
+        if (out === 'late') lit = rt >= 0.6 ? 2 : 0;
+        else if (win) lit = rt >= 0.9 ? 2 : rt >= 0.6 ? 1 : 0;
+        else lit = rt >= 0.9 ? 2 : 0;
+        if (rt >= 0.6) {
+          camFlash = clamp01((rt - 0.6) / 0.15);
+          once('snap', () => {
+            A.float('SNAP', CAMERA.x, CAMERA.y - 70, PAL.white);
+            A.burst(CAMERA.x - 19, CAMERA.y - 12, '#ffffff', 10, 120);
+          });
+          const kind = (win ? 'win' : out === 'early' ? 'early' : 'late') as 'win' | 'early' | 'late';
+          A.canvas.dataset.photo = kind;
+          photoState = { kind, u: (rt - 0.6) / 0.2, label: win ? 'PERFECT SHOT' : kind === 'early' ? 'TOO EARLY' : 'TOO LATE' };
+        }
+        if (since >= 0) {
+          iU = since;
+          if (win) {
+            gMood = 'cheer';
+            iMood = 'pose';
+          } else {
+            gMood = 'worried';
+            iMood = 'blink';
+            whistle = true;
+            once('tweet', () => A.float('TWEET!', 600, 230, PAL.yellow));
+          }
+        }
+      } else delete A.canvas.dataset.photo;
+    }
+    A.canvas.dataset.train = String(Math.round(dx));
+    A.canvas.dataset.plume = shot ? String(plumeH) : '';
+    A.canvas.dataset.glow = shot ? (glowColor === null ? 'off' : glowColor === '#ffffff' ? 'white' : glowColor === '#8a2a1a' ? 'red' : 'orange') : '';
+
+    // ---- compose the frame ----
+    station(g, t, k);
+    if (n === 4) neonSign(g, t, lit);
+    train(g, t, dx, k === 2);
+    iyer(g, t, { mood: iMood, u: iU, dx });
+    stallBack(g, t, bulbs, k === 2);
+    fuseBox(g, lever, blown);
+    gopal(g, t, { mood: gMood, flip, kettleLift: kLift, idle: !shot });
+    g.globalAlpha = 1;
+    counter(g, glowColor, glowA);
+    kettle(g, t, kTilt, Math.max(0, kLift));
+    if (streamTo) stream(g, spoutTip(kTilt, Math.max(0, kLift)), [CUP.x, CUP.y - 6]);
+    plume(g, t, plumeH, plumeA);
+    if (foamU >= 0) foam(g, foamU);
+    if (cupU >= 0) glidingCup(g, cupU);
+    guard(g, t, { whistle, sad: false });
+
+    // the level's apparatus and the player's own setting by its handle
+    const mode: ScopeMode = n === 1 ? 'off' : n === 2 ? 'sine' : n === 3 ? 'power' : 'phasor';
+    const rmsLabel = r.kind === 'sign' ? `${r.rms} ${r.trig === 'v' ? 'V' : 'A'} rms` : '';
+    scopeBox(g, t, mode, { peak: r.kind === 'scope' ? `${r.vm} V peak` : '', rms: rmsLabel, arm: armTh });
+    if (n === 1) {
+      coilBoard(g, v.r ?? DIAL.r.start);
+      grip(g, clipX(v.r ?? DIAL.r.start), COIL_TRACK.y, 'h');
+      const rr1 = r as Cr;
+      tag(g, `${rr1.p} W · ${rr1.v} V`, 125, 245, PAL.white, 11);
+      tag(g, `${v.r} Ω`, clipX(v.r ?? DIAL.r.start), 260, PAL.yellow, 12);
+      if (k === 0 && !dragged && !shot) {
+        g.globalAlpha = 0.5 + 0.5 * Math.sin(t * 5);
+        tag(g, 'drag', clipX(v.r ?? DIAL.r.start), 326, PAL.yellow, 11);
+        g.globalAlpha = 1;
+      }
+    } else if (n === 2) {
+      knob(g, v.v ?? DIAL.v.start);
+      const [hx, hy] = knobHandle.at(r, { v: v.v ?? DIAL.v.start });
+      grip(g, hx, hy, 'rot');
+      tag(g, `${v.v} V`, 216, 266, PAL.yellow, 12, 'left');
+    } else if (n === 3) {
+      const b = r as Extract<Round, { kind: 'brew' }>;
+      orderSlip(g, ORDERS[k], `${b.e} kJ`);
+      timerClock(g, 92, 270, timerAngle, `${v.t} s`);
+      tag(g, `${b.v} V · ${b.r} Ω`, 170, 258, PAL.white, 11);
+      railStrip(g);
+      track(g, DIAL.t.min, DIAL.t.max);
+      const hx = 60 + (((v.t ?? 30) - 30) / 270) * 520;
+      grip(g, hx, 322, 'h');
+      tag(g, `${v.t} s`, hx, 296, PAL.yellow, 12);
+    } else {
+      camera(g, camFlash);
+      const ha = (v.th ?? 0) * DEG;
+      const hx = PHASOR.x + PHASOR.r * Math.cos(ha);
+      const hy = PHASOR.y - PHASOR.r * Math.sin(ha);
+      grip(g, hx, hy, 'rot');
+      let lx = PHASOR.x + (PHASOR.r + 26) * Math.cos(ha);
+      let ly = PHASOR.y - (PHASOR.r + 26) * Math.sin(ha) + 4;
+      const side = Math.cos(ha) >= 0 ? 1 : -1;
+      if (ly < 78 || ly > 138) {
+        lx = hx + side * 32;
+        ly = hy + 4;
+      }
+      tag(g, `${v.th}°`, lx, ly, PAL.yellow, 12);
+    }
+
+    // the stall meter LCD (hung in front of the train)
+    const lcdOn = live;
+    lcd(g, lcdOn ? lcdText(r, v) : LCD_OFF, lcdOn ? (r.assist === 0 ? PAL.green : PAL.yellow) : PAL.dim);
+    if (photoState) photo(g, photoState.kind, photoState.u, photoState.label);
+    if (flashA > 0) {
+      g.fillStyle = `rgba(255,255,255,${flashA.toFixed(3)})`;
+      g.fillRect(0, 0, STALL.x + 228, 306);
+    }
+    if (!shot) goalPill(g, goal(r));
+  }
+
+  const dials: DialSpec<Round>[] = [];
+  const handles: HandleSpec<Round>[] = [];
+  if (n === 1) {
+    dials.push({ key: 'r', aria: 'Coil resistance in ohms', label: 'Coil', unit: 'Ω', step: 1, min: DIAL.r.min, max: DIAL.r.max, start: DIAL.r.start });
+    handles.push(clip);
+  } else if (n === 2) {
+    dials.push({ key: 'v', aria: 'Kettle voltage selector in rms volts', label: 'Selector', unit: 'V', step: 10, min: DIAL.v.min, max: DIAL.v.max, start: DIAL.v.start });
+    handles.push(knobHandle);
+  } else if (n === 3) {
+    dials.push({ key: 't', aria: 'Brew timer in seconds', label: 'Timer', unit: 's', step: 10, min: DIAL.t.min, max: DIAL.t.max, start: DIAL.t.start });
+    handles.push(trackHandle('t', () => DIAL.t.min, () => DIAL.t.max));
+  } else {
+    dials.push({ key: 'th', aria: 'Camera sync angle in degrees', label: 'Sync ωt', unit: '°', step: 5, min: DIAL.th.min, max: DIAL.th.max, start: DIAL.th.start });
+    handles.push(arm);
+  }
+
+  return {
+    hero: { name: 'Gopal', role: ROLE, ...HEROES[n - 1] },
+    rounds,
+    charges: [1, 1, 0],
+    dials,
+    handles,
+    test: {
+      button: '🔎 Meter check',
+      aria: 'Meter check: read the stall meter for this setting',
+      read: (r, v) => {
+        flash.paid();
+        return meterText(r, v as Values);
+      },
+    },
+    fire: { button: '☕ Switch on', aria: 'Flip the stall switch and serve' },
+    judge: (r, v) => judge(r, v as Values),
+    miss: (r, v) => missText(r, v as Values),
+    win: (r) => winText(r),
+    hint: (r) => hintText(r),
+    hit: () => [320, 80],
+    delay: (r, v) => verdictDelay(r, v as Values),
+    draw,
+  };
+}
+
+/** A dark strip behind the bottom track so its line and labels read against the rails. */
+function railStrip(g: CanvasRenderingContext2D) {
+  g.fillStyle = 'rgba(6,10,36,0.7)';
+  g.fillRect(50, 310, 540, 30);
+}
 
 export default defineGame({
   mount(ctx) {
-    const lvl = buildLevel(ctx.level, ctx.random);
-    const col = themeColors();
-
-    let misses = 0;
-    let finished = false;
-    let pendingWin: 1 | 2 | 3 | null = null;
-    let wonAt: number | null = null;
-    let clock = 0;
-    let verdictAt: number | null = null;
-    let verdictOk = false;
-    let runT: number | null = null;
-    let phasePick: Phase | null = null;
-
-    // ---- DOM --------------------------------------------------------------------------------
-    const canvas = h('canvas', { role: 'img', 'aria-label': 'A phasor rotating in a circle, with the sine waves of voltage and current and the power drawn beside it.' });
-    const g = fitCanvas(canvas, W, H);
-    const feedback = h('p', { class: 'feedback', hidden: true, 'aria-live': 'polite' });
-    const solution = h('section', { class: 'panel solution', hidden: true });
-    const hint = h('p', { class: 'muted note' });
-    const controls = h('div', { class: 'lab-controls' });
-    const free = lvl.freeTests;
-    const say = (text: string, good = false) => {
-      feedback.hidden = false;
-      feedback.className = `feedback ${good ? 'good' : 'bad'}`;
-      feedback.textContent = text;
-    };
-    const costNote = () => (misses > free ? ' That cost a star.' : free > 0 ? ` ${free - misses} free test${free - misses === 1 ? '' : 's'} left.` : '');
-    const freeNote = (m: string) => say(`${m} That does not cost you anything.`);
-    const miss = (text: string) => {
-      misses++;
-      say(text + costNote());
-    };
-    const succeed = (text: string) => {
-      finished = true;
-      say(text, true);
-      solution.replaceChildren(h('h3', null, 'Why that works'), ...explainSolution(lvl).map((t) => h('p', null, t)));
-      solution.hidden = false;
-      controls.querySelectorAll('button, input').forEach((b) => b.setAttribute('disabled', ''));
-      pendingWin = starsFor(misses, free);
-    };
-    const verdict = (ok: boolean) => {
-      verdictAt = clock;
-      verdictOk = ok;
-      runT = 0;
-    };
-    const busy = () => runT !== null && runT < RUN;
-    const field = (aria: string, placeholder: string) => h('input', { class: 'field', type: 'text', inputmode: 'decimal', autocomplete: 'off', 'aria-label': aria, placeholder }) as HTMLInputElement;
-    const num = (el: HTMLInputElement) => parseNumber(el.value);
-    const actionBtn = (text: string, aria: string, fn: () => void) => h('button', { class: 'btn', type: 'button', 'aria-label': aria, onclick: fn }, text);
-    const row = (name: string, input: HTMLElement, unit: string) => h('div', { class: 'control' }, h('span', { class: 'control-label' }, name), input, h('span', { class: 'unit' }, unit));
-    const positive = (...vs: (number | null)[]) => vs.every((v) => v !== null && v > 0);
-
-    // ---- the levels -------------------------------------------------------------------------------------------
-    if (lvl.kind === 'bulb') {
-      const rIn = field('Resistance in Ω', 'R = ? Ω');
-      const vIn = field('Peak voltage in V', 'v m = ? V');
-      const iIn = field('Rms current in A', 'I = ? A');
-      const run = () => {
-        if (finished || busy()) return;
-        const r = num(rIn);
-        const v = num(vIn);
-        const i = num(iIn);
-        if (!positive(r, v, i)) return freeNote('Enter all three as positive numbers.');
-        const res = judgeBulb(lvl, r as number, v as number, i as number);
-        verdict(res.ok);
-        if (res.ok) return succeed(`R = ${fmt(lvl.r)} Ω, v_m = ${fmt(lvl.vm)} V, I = ${fmt(lvl.i)} A.`);
-        const parts: string[] = [];
-        if (!res.rOk) parts.push('The resistance is not right: the rating gives the power at the rms voltage, and P = V²/R.');
-        if (!res.vOk) parts.push('The peak voltage is not right: the stated voltage is the rms value.');
-        if (!res.iOk) parts.push('The rms current is not right: power is rms voltage times rms current.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Resistance', rIn, 'Ω'), row('Peak voltage', vIn, 'V'), row('Rms current', iIn, 'A'), actionBtn('Light the bulb', 'Light the bulb', run));
-      hint.textContent = `The bulb is rated ${lvl.p} W for a ${lvl.v} V supply.`;
-    }
-    if (lvl.kind === 'convert') {
-      const vIn = field('Rms voltage in V', 'V rms = ? V');
-      const iIn = field('Peak current in A', 'i m = ? A');
-      const run = () => {
-        if (finished || busy()) return;
-        const v = num(vIn);
-        const i = num(iIn);
-        if (!positive(v, i)) return freeNote('Enter both answers as positive numbers.');
-        const res = judgeConvert(lvl, v as number, i as number);
-        verdict(res.ok);
-        if (res.ok) return succeed(`V_rms = ${fmt(lvl.vRms)} V and i_m = ${fmt(lvl.iPeak)} A.`);
-        const parts: string[] = [];
-        if (!res.vOk) parts.push('The rms voltage is not right: the rms value of a sine wave is smaller than its peak.');
-        if (!res.iOk) parts.push('The peak current is not right: the peak is larger than the rms value.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Rms voltage', vIn, 'V'), row('Peak current', iIn, 'A'), actionBtn('Convert', 'Convert', run));
-      hint.textContent = `The peak voltage is ${lvl.vm} V and the rms current is ${lvl.iRms} A.`;
-    }
-    if (lvl.kind === 'cycle') {
-      const iIn = field('Rms current in A', 'I = ? A');
-      const aIn = field('Average power in W', 'P avg = ? W');
-      const pIn = field('Peak power in W', 'P peak = ? W');
-      const run = () => {
-        if (finished || busy()) return;
-        const i = num(iIn);
-        const a = num(aIn);
-        const p = num(pIn);
-        if (!positive(i, a, p)) return freeNote('Enter all three as positive numbers.');
-        const res = judgeCycle(lvl, i as number, a as number, p as number);
-        verdict(res.ok);
-        if (res.ok) return succeed(`I = ${fmt(lvl.i)} A, average ${fmt(lvl.pAvg)} W, peak ${fmt(lvl.pPeak)} W.`);
-        const parts: string[] = [];
-        if (!res.iOk) parts.push('The rms current is not right: it is the rms voltage over the resistance.');
-        if (!res.aOk) parts.push('The average power is not right: it is the rms voltage times the rms current.');
-        if (!res.pOk) parts.push('The peak power is not right: at the peak of the cycle both v and i are at their maximum.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Rms current', iIn, 'A'), row('Average power', aIn, 'W'), row('Peak power', pIn, 'W'), actionBtn('Run the cycle', 'Run the cycle', run));
-      hint.textContent = `A ${lvl.r} Ω resistor on a ${lvl.v} V rms, ${lvl.hz} Hz supply.`;
-    }
-    if (lvl.kind === 'instant') {
-      const vIn = field('Instantaneous voltage in V', 'v = ? V');
-      const opts: [Phase, string, string][] = [['inphase', 'Current is in phase with the voltage', 'In phase'], ['lags', 'Current lags the voltage', 'Lags'], ['leads', 'Current leads the voltage', 'Leads']];
-      const btns: HTMLElement[] = opts.map(([v, aria, text]) => {
-        const b = h('button', { class: 'btn btn-ghost', type: 'button', 'aria-label': aria, 'aria-pressed': 'false', onclick: () => {
-          phasePick = v;
-          btns.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
-        } }, text);
-        return b;
-      });
-      const run = () => {
-        if (finished || busy()) return;
-        const v = num(vIn);
-        if (!positive(v)) return freeNote('Enter the voltage as a positive number of volts.');
-        if (phasePick === null) return freeNote('Choose how the current in the resistor is related to the voltage.');
-        const res = judgeInstant(lvl, v as number, phasePick);
-        verdict(res.ok);
-        if (res.ok) return succeed(`v = ${fmt(lvl.vNow)} V, and the current is in phase.`);
-        const parts: string[] = [];
-        if (!res.vOk) parts.push('The voltage is not right: the supply voltage is given as an rms value, and the instantaneous voltage is the peak times the sine.');
-        if (!res.pOk) parts.push('The phase is not right: for a resistor, Ohm’s law holds at every instant.');
-        miss(parts.join(' '));
-      };
-      controls.append(row('Voltage now', vIn, 'V'), h('div', { class: 'control' }, h('span', { class: 'control-label' }, 'Current'), ...btns), actionBtn('Read the phasor', 'Read the phasor', run));
-      hint.textContent = `${lvl.v} V rms, ${lvl.hz} Hz. Find v when ωt = ${lvl.phase}°.`;
-    }
-
-    // ---- drawing --------------------------------------------------------------------------------------------------------
-    const verdictLabel = (text: string, x: number, y: number) => {
-      if (verdictAt !== null && verdictOk) label(g, text, x, y, { size: 14, color: col.good });
-    };
-    function drawScene() {
-      const speed = lvl.kind === 'cycle' || lvl.kind === 'instant' ? 1.8 : 1.4;
-      let ang = clock * speed;
-      if (lvl.kind === 'instant') ang = (lvl.phase * Math.PI) / 180 + (runT === null ? Math.sin(clock) * 0.15 : 0);
-      // the phasor circle
-      const cx = 140;
-      const cy = 150;
-      g.strokeStyle = col.muted;
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.arc(cx, cy, 80, 0, Math.PI * 2);
-      g.stroke();
-      g.beginPath();
-      g.moveTo(cx - 95, cy);
-      g.lineTo(cx + 95, cy);
-      g.moveTo(cx, cy - 95);
-      g.lineTo(cx, cy + 95);
-      g.stroke();
-      g.strokeStyle = col.accent;
-      g.lineWidth = 4;
-      g.beginPath();
-      g.moveTo(cx, cy);
-      g.lineTo(cx + Math.cos(ang) * 80, cy - Math.sin(ang) * 80);
-      g.stroke();
-      g.strokeStyle = col.good;
-      g.setLineDash([4, 4]);
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.moveTo(cx + Math.cos(ang) * 80, cy - Math.sin(ang) * 80);
-      g.lineTo(cx + Math.cos(ang) * 80, cy);
-      g.stroke();
-      g.setLineDash([]);
-      label(g, 'phasor: v_m rotates, v is its projection', cx, 262, { size: 11, color: col.muted });
-      // the traces: voltage and current in phase, and power for the cycle level
-      g.strokeStyle = col.muted;
-      g.lineWidth = 1.5;
-      g.beginPath();
-      g.moveTo(GX, GY);
-      g.lineTo(GX + GW, GY);
-      g.moveTo(GX, GY - 80);
-      g.lineTo(GX, GY + 80);
-      g.stroke();
-      g.strokeStyle = col.accent;
-      g.lineWidth = 2.5;
-      g.beginPath();
-      for (let k = 0; k <= 120; k++) {
-        const u = k / 120;
-        const ph = ang - (1 - u) * 7;
-        const y = GY - Math.sin(ph) * 60;
-        if (k) g.lineTo(GX + u * GW, y);
-        else g.moveTo(GX + u * GW, y);
-      }
-      g.stroke();
-      label(g, 'v and i (in phase for a resistor)', GX + GW / 2, GY - 92, { size: 11, color: col.muted });
-      if (lvl.kind === 'cycle') {
-        const py = 270;
-        g.strokeStyle = '#c0392b';
-        g.lineWidth = 2.5;
-        g.beginPath();
-        for (let k = 0; k <= 120; k++) {
-          const u = k / 120;
-          const ph = ang - (1 - u) * 7;
-          const y = py - Math.sin(ph) ** 2 * 60;
-          if (k) g.lineTo(GX + u * GW, y);
-          else g.moveTo(GX + u * GW, y);
-        }
-        g.stroke();
-        g.strokeStyle = col.good;
-        g.setLineDash([5, 4]);
-        g.beginPath();
-        g.moveTo(GX, py - 30);
-        g.lineTo(GX + GW, py - 30);
-        g.stroke();
-        g.setLineDash([]);
-        label(g, 'power v i: always ≥ 0, average = half the peak', GX + GW / 2, py + 22, { size: 11, color: col.muted });
-      }
-      if (lvl.kind === 'bulb') {
-        const lit = runT === null ? 0.2 : 1;
-        disc(g, 480, 270, 24, `rgba(244,180,0,${0.15 + 0.85 * lit * (0.6 + 0.4 * Math.abs(Math.sin(ang)))})`);
-        label(g, `${lvl.p} W, ${lvl.v} V`, 480, 308, { size: 12, color: col.text });
-      }
-    }
-
-    ctx.root.append(h('p', null, lvl.story), canvas, hint, controls, feedback, solution);
-    return startLoop((dt) => {
-      clock += dt;
-      if (runT !== null && runT < RUN + 0.2) runT += dt;
-      g.clearRect(0, 0, W, H);
-      drawScene();
-      verdictLabel(lvl.kind === 'bulb' ? `R = ${fmt(lvl.r)} Ω, v_m = ${fmt(lvl.vm)} V` : lvl.kind === 'convert' ? `V_rms = ${fmt(lvl.vRms)} V, i_m = ${fmt(lvl.iPeak)} A` : lvl.kind === 'cycle' ? `average ${fmt(lvl.pAvg)} W` : `v = ${fmt(lvl.vNow)} V`, 320, 326);
-      if (verdictAt !== null && clock - verdictAt < REVEAL) {
-        g.strokeStyle = verdictOk ? col.good : col.bad;
-        g.lineWidth = 6;
-        g.globalAlpha = 1 - (clock - verdictAt) / REVEAL;
-        g.strokeRect(3, 3, W - 6, H - 6);
-        g.globalAlpha = 1;
-      }
-      const phase = verdictAt === null ? 'idle' : busy() || clock - verdictAt < REVEAL ? 'testing' : 'done';
-      canvas.dataset.phase = phase;
-      if (pendingWin !== null && phase !== 'testing') {
-        wonAt ??= clock;
-        if (clock - wonAt > 0.3) {
-          const s = pendingWin;
-          pendingWin = null;
-          ctx.win({ stars: s });
-        }
-      }
-    });
+    const n = Math.max(1, Math.min(4, ctx.level)) as 1 | 2 | 3 | 4;
+    return mountDialLevel(ctx as never, level(n, ctx.random) as never, ARIA);
   },
 });

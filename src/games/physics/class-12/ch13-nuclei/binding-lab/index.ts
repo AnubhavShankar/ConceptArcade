@@ -22,7 +22,7 @@ function bindLevel(): DialLevel<BindRound> {
   const flash = paidFlash();
   return {
     hero: {
-      name: 'Jenga',
+      name: 'Stacker',
       role: 'a tower of protons and neutrons that must be pulled apart block by block',
       story: 'A nucleus weighs less than its separate protons and neutrons: the missing mass is the mass defect, and it is the energy that holds the nucleus together. It is also the energy needed to pull every nucleon apart.',
       objective: 'Set the energy needed to take the whole nucleus apart, in three rounds. A test shot costs a charge; the live mass defect fades.',
